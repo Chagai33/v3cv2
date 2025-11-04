@@ -1264,7 +1264,7 @@ export const deleteAllSyncedEventsFromGoogleCalendar = functions.https.onCall(as
   }
 });
 
-export const disconnectGoogleCalendar = functions.https.onCall(async (data, context) => {
+export const disconnectGoogleCalendar = functions.https.onCall(async (data: any, context: any) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'חובה להיות מחובר למערכת');
   }
@@ -1277,7 +1277,7 @@ export const disconnectGoogleCalendar = functions.https.onCall(async (data, cont
       .get();
 
     const batch = db.batch();
-    birthdaysSnapshot.docs.forEach((doc) => {
+    birthdaysSnapshot.docs.forEach((doc: any) => {
       batch.update(doc.ref, {
         googleCalendarEventId: admin.firestore.FieldValue.delete(),
         googleCalendarEventIds: admin.firestore.FieldValue.delete(),
@@ -1296,7 +1296,7 @@ export const disconnectGoogleCalendar = functions.https.onCall(async (data, cont
   }
 });
 
-export const getGoogleAccountInfo = functions.https.onCall(async (data, context) => {
+export const getGoogleAccountInfo = functions.https.onCall(async (data: any, context: any) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'חובה להיות מחובר למערכת');
   }
