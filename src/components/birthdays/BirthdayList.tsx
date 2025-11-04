@@ -696,7 +696,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                           <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${refreshHebrewData.isPending ? 'animate-spin' : ''}`} />
                         </button>
                         {isConnected && (
-                          birthday.googleCalendarEventId ? (
+                          (birthday.googleCalendarEventId || birthday.googleCalendarEventIds) ? (
                             <button
                               onClick={() => handleRemoveFromCalendar(birthday.id)}
                               disabled={isSyncing}

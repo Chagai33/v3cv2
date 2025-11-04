@@ -84,6 +84,10 @@ export interface Birthday {
   notes?: string;
   archived: boolean;
   googleCalendarEventId?: string | null;
+  googleCalendarEventIds?: {
+    gregorian?: string[];
+    hebrew?: string[];
+  } | null;
   lastSyncedAt?: string | null;
   created_at: string;
   created_by: string;
@@ -220,6 +224,10 @@ export interface GoogleCalendarSyncStatus {
 export interface SyncResult {
   success: boolean;
   eventId?: string;
+  eventIds?: {
+    gregorian?: string[];
+    hebrew?: string[];
+  };
   error?: string;
   birthdayId: string;
 }

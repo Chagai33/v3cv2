@@ -789,82 +789,173 @@ export const syncBirthdayToGoogleCalendar = functions.https.onCall(async (data, 
 
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
-    const hebrewDate = birthday.next_upcoming_hebrew_birthday;
-    if (!hebrewDate) {
-      throw new functions.https.HttpsError('failed-precondition', 'תאריך עברי חסר ליום ההולדת');
+    if (birthday.googleCalendarEventIds) {
+      const oldEventIds = birthday.googleCalendarEventIds;
+      if (oldEventIds.gregorian && Array.isArray(oldEventIds.gregorian)) {
+        for (const eventId of oldEventIds.gregorian) {
+          try {
+            await calendar.events.delete({ calendarId: 'primary', eventId });
+          } catch (err) {
+            functions.logger.warn(`Failed to delete old gregorian event ${eventId}:`, err);
+          }
+        }
+      }
+      if (oldEventIds.hebrew && Array.isArray(oldEventIds.hebrew)) {
+        for (const eventId of oldEventIds.hebrew) {
+          try {
+            await calendar.events.delete({ calendarId: 'primary', eventId });
+          } catch (err) {
+            functions.logger.warn(`Failed to delete old hebrew event ${eventId}:`, err);
+          }
+        }
+      }
+    } else if (birthday.googleCalendarEventId) {
+      try {
+        await calendar.events.delete({ calendarId: 'primary', eventId: birthday.googleCalendarEventId });
+      } catch (err) {
+        functions.logger.warn(`Failed to delete old event ${birthday.googleCalendarEventId}:`, err);
+      }
     }
 
-    const startDate = new Date(hebrewDate);
-    startDate.setHours(0, 0, 0, 0);
+    const tenantDoc = await db.collection('tenants').doc(birthday.tenant_id).get();
+    const tenant = tenantDoc.data();
 
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + 1);
+    let groupDoc = null;
+    let group = null;
+    if (birthday.group_id) {
+      groupDoc = await db.collection('groups').doc(birthday.group_id).get();
+      if (groupDoc.exists) {
+        group = groupDoc.data();
+      }
+    }
 
-    const age = birthday.next_upcoming_hebrew_year && birthday.hebrew_year
-      ? birthday.next_upcoming_hebrew_year - birthday.hebrew_year
-      : 0;
+    let calendarPreference = birthday.calendar_preference_override ||
+                             group?.calendar_preference ||
+                             tenant?.default_calendar_preference ||
+                             'both';
 
-    const title = `${birthday.first_name} ${birthday.last_name} | ${age} | יום הולדת עברי 🎂`;
+    const currentYear = new Date().getFullYear();
+    const gregorianEventIds: string[] = [];
+    const hebrewEventIds: string[] = [];
 
     let description = `תאריך לידה לועזי: ${birthday.birth_date_gregorian}\n`;
     description += `תאריך לידה עברי: ${birthday.birth_date_hebrew_string || ''}\n`;
-
     if (birthday.after_sunset) {
       description += '⚠️ לאחר השקיעה\n';
     }
-
     if (birthday.notes) {
       description += `\nהערות: ${birthday.notes}`;
     }
 
-    if (birthday.googleCalendarEventId) {
-      await calendar.events.delete({
-        calendarId: 'primary',
-        eventId: birthday.googleCalendarEventId
-      });
+    if (calendarPreference === 'gregorian' || calendarPreference === 'both') {
+      const birthDate = new Date(birthday.birth_date_gregorian);
+      const birthYear = birthDate.getFullYear();
+
+      for (let year = currentYear; year <= currentYear + 10; year++) {
+        const eventDate = new Date(year, birthDate.getMonth(), birthDate.getDate());
+        const age = year - birthYear;
+
+        const startDate = new Date(eventDate);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 1);
+
+        const title = `${birthday.first_name} ${birthday.last_name} | ${age} | יום הולדת 🎂`;
+
+        const event = {
+          summary: title,
+          description: description,
+          start: { date: startDate.toISOString().split('T')[0] },
+          end: { date: endDate.toISOString().split('T')[0] },
+          reminders: {
+            useDefault: false,
+            overrides: [
+              { method: 'popup', minutes: 24 * 60 },
+              { method: 'popup', minutes: 60 }
+            ]
+          }
+        };
+
+        const response = await calendar.events.insert({
+          calendarId: 'primary',
+          requestBody: event
+        });
+
+        if (response.data.id) {
+          gregorianEventIds.push(response.data.id);
+        }
+      }
     }
 
-    const event = {
-      summary: title,
-      description: description,
-      start: {
-        date: startDate.toISOString().split('T')[0]
-      },
-      end: {
-        date: endDate.toISOString().split('T')[0]
-      },
-      reminders: {
-        useDefault: false,
-        overrides: [
-          { method: 'popup', minutes: 24 * 60 },
-          { method: 'popup', minutes: 60 }
-        ]
+    if ((calendarPreference === 'hebrew' || calendarPreference === 'both') && birthday.future_hebrew_birthdays) {
+      const futureBirthdays = birthday.future_hebrew_birthdays.slice(0, 10);
+
+      for (const hebrewBirthday of futureBirthdays) {
+        let hebrewDate: string;
+        let hebrewYear: number;
+
+        if (typeof hebrewBirthday === 'string') {
+          hebrewDate = hebrewBirthday;
+          hebrewYear = 0;
+        } else {
+          hebrewDate = hebrewBirthday.gregorian;
+          hebrewYear = hebrewBirthday.hebrewYear;
+        }
+
+        const startDate = new Date(hebrewDate);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 1);
+
+        const age = hebrewYear && birthday.hebrew_year ? hebrewYear - birthday.hebrew_year : 0;
+        const title = `${birthday.first_name} ${birthday.last_name} | ${age} | יום הולדת עברי 🎂`;
+
+        const event = {
+          summary: title,
+          description: description,
+          start: { date: startDate.toISOString().split('T')[0] },
+          end: { date: endDate.toISOString().split('T')[0] },
+          reminders: {
+            useDefault: false,
+            overrides: [
+              { method: 'popup', minutes: 24 * 60 },
+              { method: 'popup', minutes: 60 }
+            ]
+          }
+        };
+
+        const response = await calendar.events.insert({
+          calendarId: 'primary',
+          requestBody: event
+        });
+
+        if (response.data.id) {
+          hebrewEventIds.push(response.data.id);
+        }
       }
-    };
+    }
 
-    const response = await calendar.events.insert({
-      calendarId: 'primary',
-      requestBody: event
-    });
-
-    const eventId = response.data.id;
-
-    if (!eventId) {
-      throw new Error('No event ID returned from Google Calendar');
+    const eventIds: any = {};
+    if (gregorianEventIds.length > 0) {
+      eventIds.gregorian = gregorianEventIds;
+    }
+    if (hebrewEventIds.length > 0) {
+      eventIds.hebrew = hebrewEventIds;
     }
 
     await db.collection('birthdays').doc(birthdayId).update({
-      googleCalendarEventId: eventId,
+      googleCalendarEventIds: eventIds,
+      googleCalendarEventId: admin.firestore.FieldValue.delete(),
       lastSyncedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    functions.logger.log(`Synced birthday ${birthdayId} to Google Calendar, event ID: ${eventId}`);
+    functions.logger.log(`Synced birthday ${birthdayId} to Google Calendar. Gregorian: ${gregorianEventIds.length}, Hebrew: ${hebrewEventIds.length}`);
 
     return {
       success: true,
-      eventId: eventId,
+      eventIds: eventIds,
       birthdayId: birthdayId,
-      message: 'יום ההולדת נוסף ליומן Google בהצלחה'
+      message: `נוספו ${gregorianEventIds.length + hebrewEventIds.length} אירועים ליומן Google`
     };
   } catch (error: any) {
     functions.logger.error(`Error syncing birthday ${birthdayId}:`, error);
@@ -986,7 +1077,7 @@ export const removeBirthdayFromGoogleCalendar = functions.https.onCall(async (da
     }
 
     const birthday = birthdayDoc.data();
-    if (!birthday || !birthday.googleCalendarEventId) {
+    if (!birthday || (!birthday.googleCalendarEventId && !birthday.googleCalendarEventIds)) {
       throw new functions.https.HttpsError('not-found', 'יום ההולדת לא מסונכרן ליומן Google');
     }
 
@@ -997,36 +1088,74 @@ export const removeBirthdayFromGoogleCalendar = functions.https.onCall(async (da
 
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
-    await calendar.events.delete({
-      calendarId: 'primary',
-      eventId: birthday.googleCalendarEventId
-    });
+    let deletedCount = 0;
+
+    if (birthday.googleCalendarEventIds) {
+      const eventIds = birthday.googleCalendarEventIds;
+
+      if (eventIds.gregorian && Array.isArray(eventIds.gregorian)) {
+        for (const eventId of eventIds.gregorian) {
+          try {
+            await calendar.events.delete({ calendarId: 'primary', eventId });
+            deletedCount++;
+          } catch (err: any) {
+            if (err.code !== 404) {
+              functions.logger.warn(`Failed to delete gregorian event ${eventId}:`, err);
+            }
+          }
+        }
+      }
+
+      if (eventIds.hebrew && Array.isArray(eventIds.hebrew)) {
+        for (const eventId of eventIds.hebrew) {
+          try {
+            await calendar.events.delete({ calendarId: 'primary', eventId });
+            deletedCount++;
+          } catch (err: any) {
+            if (err.code !== 404) {
+              functions.logger.warn(`Failed to delete hebrew event ${eventId}:`, err);
+            }
+          }
+        }
+      }
+    } else if (birthday.googleCalendarEventId) {
+      try {
+        await calendar.events.delete({ calendarId: 'primary', eventId: birthday.googleCalendarEventId });
+        deletedCount++;
+      } catch (err: any) {
+        if (err.code !== 404) {
+          throw err;
+        }
+      }
+    }
 
     await db.collection('birthdays').doc(birthdayId).update({
       googleCalendarEventId: admin.firestore.FieldValue.delete(),
+      googleCalendarEventIds: admin.firestore.FieldValue.delete(),
       lastSyncedAt: admin.firestore.FieldValue.delete()
     });
 
-    functions.logger.log(`Removed birthday ${birthdayId} from Google Calendar`);
+    functions.logger.log(`Removed ${deletedCount} events for birthday ${birthdayId} from Google Calendar`);
 
-    return { success: true, message: 'יום ההולדת הוסר מיומן Google בהצלחה' };
+    return { success: true, message: `הוסרו ${deletedCount} אירועים מיומן Google בהצלחה` };
   } catch (error: any) {
     functions.logger.error(`Error removing birthday ${birthdayId}:`, error);
 
     if (error.code === 404) {
       await db.collection('birthdays').doc(birthdayId).update({
         googleCalendarEventId: admin.firestore.FieldValue.delete(),
+        googleCalendarEventIds: admin.firestore.FieldValue.delete(),
         lastSyncedAt: admin.firestore.FieldValue.delete()
       });
 
-      return { success: true, message: 'יום ההולדת כבר לא קיים ביומן Google' };
+      return { success: true, message: 'האירועים כבר לא קיימים ביומן Google' };
     }
 
     if (error.code === 401 || error.code === 403) {
       throw new functions.https.HttpsError('permission-denied', 'אין הרשאת גישה ליומן Google. אנא התחבר מחדש');
     }
 
-    throw new functions.https.HttpsError('internal', 'שגיאה בהסרת יום ההולדת מיומן Google');
+    throw new functions.https.HttpsError('internal', 'שגיאה בהסרת האירועים מיומן Google');
   }
 });
 
