@@ -8,13 +8,15 @@ import { useDeleteBirthday, useRefreshHebrewData } from '../../hooks/useBirthday
 import { useGroups } from '../../hooks/useGroups';
 import { useGroupFilter } from '../../contexts/GroupFilterContext';
 import { useTenant } from '../../contexts/TenantContext';
-import { Edit, Trash2, Calendar, Search, CalendarDays, RefreshCw, Filter, Gift, Download, Users, X } from 'lucide-react';
+import { useGoogleCalendar } from '../../contexts/GoogleCalendarContext';
+import { Edit, Trash2, Calendar, Search, CalendarDays, RefreshCw, Filter, Gift, Download, Users, X, UploadCloud, CloudOff } from 'lucide-react';
 import { FutureBirthdaysModal } from '../modals/FutureBirthdaysModal';
 import { UpcomingGregorianBirthdaysModal } from '../modals/UpcomingGregorianBirthdaysModal';
 import { WishlistModal } from '../modals/WishlistModal';
 import { birthdayCalculationsService } from '../../services/birthdayCalculations.service';
 import { calendarPreferenceService } from '../../services/calendarPreference.service';
 import { exportBirthdaysToCSV } from '../../utils/csvExport';
+import { useToast } from '../../hooks/useToast';
 
 interface BirthdayListProps {
   birthdays: Birthday[];
@@ -33,6 +35,8 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   const { data: groups = [] } = useGroups();
   const { currentTenant } = useTenant();
   const { selectedGroupIds, toggleGroupFilter, clearGroupFilters } = useGroupFilter();
+  const { isConnected, syncSingleBirthday, syncMultipleBirthdays, removeBirthdayFromCalendar, isSyncing } = useGoogleCalendar();
+  const { showToast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('birthday-search') || '');
   const [sortBy, setSortBy] = useState<'upcoming' | 'upcoming-latest' | 'name-az' | 'name-za' | 'birthday-oldest' | 'birthday-newest' | 'age-youngest' | 'age-oldest'>(() => (localStorage.getItem('birthday-sort') as any) || 'upcoming');
@@ -219,6 +223,56 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
     setSelectedIds(new Set());
   };
 
+  const handleSyncToCalendar = async (birthdayId: string) => {
+    if (!isConnected) {
+      showToast('יש להתחבר ליומן Google תחילה', 'error');
+      return;
+    }
+
+    try {
+      const result = await syncSingleBirthday(birthdayId);
+      if (result.success) {
+        showToast('יום ההולדת סונכרן ליומן Google בהצלחה', 'success');
+      } else {
+        showToast(result.error || 'שגיאה בסנכרון ליומן Google', 'error');
+      }
+    } catch (error: any) {
+      logger.error('Error syncing birthday:', error);
+      showToast(error.message || 'שגיאה בסנכרון ליומן Google', 'error');
+    }
+  };
+
+  const handleRemoveFromCalendar = async (birthdayId: string) => {
+    try {
+      await removeBirthdayFromCalendar(birthdayId);
+      showToast('יום ההולדת הוסר מיומן Google', 'success');
+    } catch (error: any) {
+      logger.error('Error removing birthday from calendar:', error);
+      showToast(error.message || 'שגיאה בהסרת יום ההולדת מיומן Google', 'error');
+    }
+  };
+
+  const handleBulkSyncToCalendar = async () => {
+    if (!isConnected) {
+      showToast('יש להתחבר ליומן Google תחילה', 'error');
+      return;
+    }
+
+    const birthdaysToSync = Array.from(selectedIds);
+
+    try {
+      const result = await syncMultipleBirthdays(birthdaysToSync);
+      showToast(
+        `${result.successCount} מתוך ${result.totalAttempted} ימי הולדת סונכרנו בהצלחה`,
+        result.successCount > 0 ? 'success' : 'error'
+      );
+      setSelectedIds(new Set());
+    } catch (error: any) {
+      logger.error('Error bulk syncing birthdays:', error);
+      showToast(error.message || 'שגיאה בסנכרון המרובה', 'error');
+    }
+  };
+
   return (
     <div className="space-y-3 sm:space-y-4">
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
@@ -316,6 +370,16 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                 <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">{t('birthday.exportSelected')}</span>
               </button>
+              {isConnected && (
+                <button
+                  onClick={handleBulkSyncToCalendar}
+                  disabled={isSyncing}
+                  className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <UploadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">סנכרן ליומן Google</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -631,6 +695,27 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                         >
                           <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${refreshHebrewData.isPending ? 'animate-spin' : ''}`} />
                         </button>
+                        {isConnected && (
+                          birthday.googleCalendarEventId ? (
+                            <button
+                              onClick={() => handleRemoveFromCalendar(birthday.id)}
+                              disabled={isSyncing}
+                              className="p-1 sm:p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="הסר מיומן Google"
+                            >
+                              <CloudOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleSyncToCalendar(birthday.id)}
+                              disabled={isSyncing}
+                              className="p-1 sm:p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="סנכרן ליומן Google"
+                            >
+                              <UploadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </button>
+                          )
+                        )}
                         {onAddToCalendar && (
                           <button
                             onClick={() => onAddToCalendar(birthday)}
