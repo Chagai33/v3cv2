@@ -8,7 +8,8 @@ import { googleCalendarService } from '../../services/googleCalendar.service';
 
 export const GoogleCalendarButton: React.FC = () => {
   const { t } = useTranslation();
-  const { isConnected, lastSyncTime, isSyncing, connectToGoogle, deleteAllSyncedEvents, checkConnectionStatus } = useGoogleCalendar();
+  // [FIX] שימוש בפונקציות הנכונות: disconnect ו-refreshStatus
+  const { isConnected, lastSyncTime, isSyncing, connectToGoogle, deleteAllSyncedEvents, disconnect, refreshStatus } = useGoogleCalendar();
   const { currentTenant } = useTenant();
   const [showConfirm, setShowConfirm] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -16,13 +17,19 @@ export const GoogleCalendarButton: React.FC = () => {
 
   useEffect(() => {
     if (isConnected) {
+      // טעינת פרטי המשתמש מתבצעת רק אם מחובר, אך נדרשת טיפול בשגיאת 403 (טוקן פג תוקף)
       import('../../services/googleCalendar.service').then(({ googleCalendarService }) => {
         googleCalendarService.getGoogleAccountInfo().then((info) => {
           if (info?.email) setUserEmail(info.email);
+        }).catch((error) => {
+          // אם הטוקן פג, הקריאה הזו נכשלת. נשתמש ב-refreshStatus
+          // כדי לאלץ את ה-Context לנקות את סטטוס החיבור.
+          console.warn('Could not fetch Google user info (token may be expired):', error);
+          refreshStatus(); 
         });
       });
     }
-  }, [isConnected]);
+  }, [isConnected, refreshStatus]); // הוספת refreshStatus כתלות
 
   const handleConnect = () => {
     // Call connectToGoogle synchronously from user click event
@@ -45,8 +52,8 @@ export const GoogleCalendarButton: React.FC = () => {
 
   const handleDisconnect = async () => {
     try {
-      await googleCalendarService.disconnectGoogleCalendar();
-      await checkConnectionStatus();
+      // [FIX] קריאה לפונקציית הניתוק הנכונה מה-Context
+      await disconnect(); 
     } catch (error) {
       console.error('Error disconnecting:', error);
     }
