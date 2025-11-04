@@ -247,6 +247,7 @@ export interface GoogleCalendarContextType {
   syncSingleBirthday: (birthdayId: string) => Promise<SyncResult>;
   syncMultipleBirthdays: (birthdayIds: string[]) => Promise<BulkSyncResult>;
   removeBirthdayFromCalendar: (birthdayId: string) => Promise<void>;
+  deleteAllSyncedEvents: (tenantId: string) => Promise<{ totalDeleted: number; failedCount: number }>;
   disconnect: () => Promise<void>;
   refreshStatus: () => Promise<void>;
 }

@@ -151,6 +151,26 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     }
   };
 
+  const deleteAllSyncedEvents = async (tenantId: string): Promise<{ totalDeleted: number; failedCount: number }> => {
+    if (!isConnected) {
+      showToast('יש להתחבר ליומן Google תחילה', 'error');
+      throw new Error('לא מחובר ליומן Google');
+    }
+
+    try {
+      setIsSyncing(true);
+      const result = await googleCalendarService.deleteAllSyncedEvents(tenantId);
+      showToast(result.message || `נמחקו ${result.totalDeleted} אירועים מיומן Google`, 'success');
+      return result;
+    } catch (error: any) {
+      logger.error('Error deleting all synced events:', error);
+      showToast(error.message || 'שגיאה במחיקת האירועים', 'error');
+      throw error;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const disconnect = async (): Promise<void> => {
     try {
       setIsSyncing(true);
@@ -176,6 +196,7 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     syncSingleBirthday,
     syncMultipleBirthdays,
     removeBirthdayFromCalendar,
+    deleteAllSyncedEvents,
     disconnect,
     refreshStatus
   };

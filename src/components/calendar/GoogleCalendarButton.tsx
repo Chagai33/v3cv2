@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Calendar, Check, Loader } from 'lucide-react';
+import { Calendar, Check, Loader, Trash2 } from 'lucide-react';
 import { useGoogleCalendar } from '../../contexts/GoogleCalendarContext';
+import { useTenant } from '../../contexts/TenantContext';
 import { format } from 'date-fns';
 
 export const GoogleCalendarButton: React.FC = () => {
   const { t } = useTranslation();
-  const { isConnected, lastSyncTime, isSyncing, connectToGoogle } = useGoogleCalendar();
+  const { isConnected, lastSyncTime, isSyncing, connectToGoogle, deleteAllSyncedEvents } = useGoogleCalendar();
+  const { currentTenant } = useTenant();
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleConnect = () => {
     // Call connectToGoogle synchronously from user click event
@@ -16,18 +19,67 @@ export const GoogleCalendarButton: React.FC = () => {
     });
   };
 
+  const handleDeleteAll = async () => {
+    if (!currentTenant) return;
+
+    try {
+      await deleteAllSyncedEvents(currentTenant.id);
+      setShowConfirm(false);
+    } catch (error) {
+      console.error('Error deleting all events:', error);
+    }
+  };
+
   if (isConnected) {
     return (
-      <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
-        <Check className="w-5 h-5 text-green-600" />
-        <div className="text-sm">
-          <div className="font-medium text-green-900">{t('googleCalendar.connected')}</div>
-          {lastSyncTime && (
-            <div className="text-green-700">
-              {t('googleCalendar.lastSync')}: {format(lastSyncTime, 'dd/MM/yyyy HH:mm')}
-            </div>
-          )}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
+          <Check className="w-5 h-5 text-green-600" />
+          <div className="text-sm flex-1">
+            <div className="font-medium text-green-900">{t('googleCalendar.connected')}</div>
+            {lastSyncTime && (
+              <div className="text-green-700">
+                {t('googleCalendar.lastSync')}: {format(lastSyncTime, 'dd/MM/yyyy HH:mm')}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setShowConfirm(true)}
+            disabled={isSyncing}
+            className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+            title="מחק את כל האירועים המסונכרנים"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>מחק הכל</span>
+          </button>
         </div>
+
+        {showConfirm && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm text-red-900 font-medium mb-3">
+              האם אתה בטוח שברצונך למחוק את **כל האירועים** המסונכרנים מיומן Google?
+            </p>
+            <p className="text-xs text-red-700 mb-3">
+              פעולה זו תמחק את כל ימי ההולדת שנוצרו דרך האפליקציה (עשרות או מאות אירועים).
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDeleteAll}
+                disabled={isSyncing}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+              >
+                {isSyncing ? 'מוחק...' : 'כן, מחק הכל'}
+              </button>
+              <button
+                onClick={() => setShowConfirm(false)}
+                disabled={isSyncing}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 disabled:opacity-50 text-sm"
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

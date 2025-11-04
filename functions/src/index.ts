@@ -1159,6 +1159,111 @@ export const removeBirthdayFromGoogleCalendar = functions.https.onCall(async (da
   }
 });
 
+export const deleteAllSyncedEventsFromGoogleCalendar = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'חובה להיות מחובר למערכת');
+  }
+
+  const { tenantId } = data;
+  if (!tenantId) {
+    throw new functions.https.HttpsError('invalid-argument', 'מזהה Tenant חסר');
+  }
+
+  try {
+    const accessToken = await getValidAccessToken(context.auth.uid);
+
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: accessToken });
+
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+    const birthdaysSnapshot = await db.collection('birthdays')
+      .where('tenant_id', '==', tenantId)
+      .get();
+
+    let totalDeleted = 0;
+    let failedCount = 0;
+
+    const batch = db.batch();
+
+    for (const doc of birthdaysSnapshot.docs) {
+      const birthday = doc.data();
+
+      if (birthday.googleCalendarEventIds) {
+        const eventIds = birthday.googleCalendarEventIds;
+
+        if (eventIds.gregorian && Array.isArray(eventIds.gregorian)) {
+          for (const eventId of eventIds.gregorian) {
+            try {
+              await calendar.events.delete({ calendarId: 'primary', eventId });
+              totalDeleted++;
+            } catch (err: any) {
+              if (err.code !== 404) {
+                failedCount++;
+                functions.logger.warn(`Failed to delete gregorian event ${eventId}:`, err);
+              }
+            }
+          }
+        }
+
+        if (eventIds.hebrew && Array.isArray(eventIds.hebrew)) {
+          for (const eventId of eventIds.hebrew) {
+            try {
+              await calendar.events.delete({ calendarId: 'primary', eventId });
+              totalDeleted++;
+            } catch (err: any) {
+              if (err.code !== 404) {
+                failedCount++;
+                functions.logger.warn(`Failed to delete hebrew event ${eventId}:`, err);
+              }
+            }
+          }
+        }
+
+        batch.update(doc.ref, {
+          googleCalendarEventIds: admin.firestore.FieldValue.delete(),
+          googleCalendarEventId: admin.firestore.FieldValue.delete(),
+          lastSyncedAt: admin.firestore.FieldValue.delete()
+        });
+      } else if (birthday.googleCalendarEventId) {
+        try {
+          await calendar.events.delete({ calendarId: 'primary', eventId: birthday.googleCalendarEventId });
+          totalDeleted++;
+        } catch (err: any) {
+          if (err.code !== 404) {
+            failedCount++;
+            functions.logger.warn(`Failed to delete event ${birthday.googleCalendarEventId}:`, err);
+          }
+        }
+
+        batch.update(doc.ref, {
+          googleCalendarEventId: admin.firestore.FieldValue.delete(),
+          lastSyncedAt: admin.firestore.FieldValue.delete()
+        });
+      }
+    }
+
+    await batch.commit();
+
+    functions.logger.log(`Deleted ${totalDeleted} events from Google Calendar for tenant ${tenantId}. Failed: ${failedCount}`);
+
+    return {
+      success: true,
+      totalDeleted,
+      failedCount,
+      message: `נמחקו ${totalDeleted} אירועים מיומן Google${failedCount > 0 ? `. ${failedCount} נכשלו` : ''}`
+    };
+  } catch (error: any) {
+    functions.logger.error('Error deleting all synced events:', error);
+
+    if (error.code === 401 || error.code === 403) {
+      throw new functions.https.HttpsError('permission-denied', 'אין הרשאת גישה ליומן Google. אנא התחבר מחדש');
+    }
+
+    throw new functions.https.HttpsError('internal', 'שגיאה במחיקת האירועים מיומן Google');
+  }
+});
+
 export const disconnectGoogleCalendar = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'חובה להיות מחובר למערכת');
@@ -1175,6 +1280,7 @@ export const disconnectGoogleCalendar = functions.https.onCall(async (data, cont
     birthdaysSnapshot.docs.forEach((doc) => {
       batch.update(doc.ref, {
         googleCalendarEventId: admin.firestore.FieldValue.delete(),
+        googleCalendarEventIds: admin.firestore.FieldValue.delete(),
         lastSyncedAt: admin.firestore.FieldValue.delete()
       });
     });

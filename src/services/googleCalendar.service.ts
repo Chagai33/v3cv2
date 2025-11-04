@@ -139,6 +139,27 @@ export const googleCalendarService = {
     }
   },
 
+  async deleteAllSyncedEvents(tenantId: string): Promise<{ totalDeleted: number; failedCount: number; message: string }> {
+    try {
+      const deleteFunction = httpsCallable<
+        { tenantId: string },
+        { success: boolean; totalDeleted: number; failedCount: number; message: string }
+      >(functions, 'deleteAllSyncedEventsFromGoogleCalendar');
+
+      const result = await deleteFunction({ tenantId });
+
+      if (!result.data.success) {
+        throw new Error(result.data.message || 'שגיאה במחיקה');
+      }
+
+      logger.log(`Successfully deleted ${result.data.totalDeleted} events from Google Calendar`);
+      return result.data;
+    } catch (error: any) {
+      logger.error('Error deleting all synced events:', error);
+      throw new Error(error.message || 'שגיאה במחיקת האירועים מיומן Google');
+    }
+  },
+
   async disconnectCalendar(): Promise<void> {
     try {
       const disconnectFunction = httpsCallable<void, { success: boolean; message: string }>(
