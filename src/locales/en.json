@@ -49,7 +49,10 @@
     "forgotPassword": "Forgot Password?",
     "resetPassword": "Reset Password",
     "linkAccount": "Link Account",
-    "linkedProviders": "Linked Providers"
+    "linkedProviders": "Linked Providers",
+    "acceptTerms": "I confirm that I have read and agree to the",
+    "and": "and",
+    "mustAcceptTerms": "You must accept the Terms of Use and Privacy Policy"
   },
   "tenant": {
     "switchTenant": "Switch Tenant",
@@ -140,7 +143,11 @@
     "allGroups": "All Groups",
     "groupDeleted": "Group deleted successfully",
     "groupCreated": "Group created successfully",
-    "groupUpdated": "Group updated successfully"
+    "groupUpdated": "Group updated successfully",
+    "createSubgroup": "Create Subgroup",
+    "parentGroup": "Parent Group",
+    "subgroupName": "Subgroup Name",
+    "enterSubgroupName": "Enter subgroup name"
   },
   "wishlist": {
     "wishlist": "Wishlist",
@@ -205,7 +212,8 @@
     "signOutSuccess": "Signed out successfully",
     "csvEmpty": "File is empty or invalid",
     "importError": "Error reading CSV file",
-    "importSuccess": "Imported {imported} birthdays. Failed: {failed}"
+    "importSuccess": "Imported {{imported}} birthdays successfully",
+    "importSuccessWithFailures": "Imported {{imported}} birthdays successfully. {{failed}} records failed"
   },
   "csvImport": {
     "previewTitle": "Preview - File Import",
@@ -243,5 +251,133 @@
     "note1": "This setting applies to all groups in this tenant by default",
     "note2": "Groups can override this with their own preference",
     "note3": "Individual records can override group preferences"
+  },
+  "footer": {
+    "termsOfUse": "Terms of Use",
+    "privacyPolicy": "Privacy Policy",
+    "feedback": "Feedback",
+    "deleteAccount": "Delete Account",
+    "confirmDelete": "Confirm deletion?",
+    "deleteAccountNotImplemented": "Account deletion functionality is not yet available. Please contact support.",
+    "deleteAccountError": "Error deleting account",
+    "feedbackSubject": "Feedback on the application",
+    "allRightsReserved": "All rights reserved"
+  },
+  "terms": {
+    "title": "Terms of Use for \"hebbirthday\"",
+    "lastUpdated": "Last Updated",
+    "intro": "Welcome to \"hebbirthday\" (the \"Application\" or \"Service\"). Use of the Application, its services, and its content is subject to the terms detailed below (\"Terms of Use\"). Please read them carefully. Your use of the Application, in any manner, constitutes your unconditional agreement to these terms. If you do not agree to the Terms of Use, in whole or in part, you may not use the Application.",
+    "section1": {
+      "title": "1. Definition of the Service",
+      "content": "The Application provides a platform for managing, centralizing, and tracking birthdays. The Service allows users to create closed \"Organizations\" (Tenants), input birthday details (including Gregorian date, Hebrew date, gender, and \"after sunset\" status), and manage records in a collaborative environment based on permissions (Owner, Admin, Member). The Application includes automatic calculation of Hebrew dates and an option to sync with the user's personal Google Calendar."
+    },
+    "section2": {
+      "title": "2. Legal Capacity and Age of Use",
+      "content": "Use of the Application is permitted only for users who are over 18 years of age and have full legal capacity to enter into this agreement. By using the Application, you declare and confirm that you meet these age and capacity requirements."
+    },
+    "section3": {
+      "title": "3. User Accounts",
+      "content": "Use of the Application requires registration and creation of an account via an email address and password or through third-party authentication services (such as Google). You are solely responsible for maintaining the confidentiality of your login details and for all activity that occurs under your account. Each user is associated with one or more \"Organizations\" (Tenants) and operates according to the permissions defined for them in that organization."
+    },
+    "section4": {
+      "title": "4. Intellectual Property",
+      "subtitle1": "The Application:",
+      "content1": "All intellectual property rights in the Application, including source code, design, logo, graphic interface, and any other material contained therein (excluding User-Generated Content), belong exclusively to the application's developer, Chagai Yechiel. You may not copy, reproduce, distribute, modify, or make any commercial use of the Application or any part of it without express written permission. Icons used in the application are from the lucide-react library under the ISC license.",
+      "subtitle2": "User-Generated Content (UGC):",
+      "content2": "You are solely responsible for the content you create and upload to the Application, including names, dates, notes, and any other personal information.",
+      "subtitle3": "Responsibility for Third-Party Data:",
+      "content3": "The Application allows you to enter personal information about other people (the birthday subjects). By uploading this content, you represent and warrant that you have obtained all necessary legal consents from those third parties (or their legal guardians) for the collection, storage, and processing of their information within the Service."
+    },
+    "section5": {
+      "title": "5. Proper Use, Content Removal, and Service Termination",
+      "content": "You undertake not to upload any content that is illegal, offensive, threatening, racist, defamatory, or violates privacy. The application developer reserves the right, at his sole discretion, to immediately remove any content that violates these terms, and to block or suspend a user's access to the service, without prior notice."
+    },
+    "section6": {
+      "title": "6. Changes, Updates, and Discontinuation of Service",
+      "content": "The application developer reserves the full right, at his sole discretion, to change the Application and its features at any time, including adding, removing, or modifying functionality, without prior notice. You agree that you shall have no claim or demand against the developer for making such changes. These Terms of Use will apply to any updated version. Reasonable notice will be given for material changes to the Terms of Use. Your continued use of the Application after an update will constitute acceptance of the updated terms. The developer also reserves the right to discontinue the Application's activity, in whole or in part."
+    },
+    "section7": {
+      "title": "7. Limitation of Liability",
+      "subtitle1": "\"As-Is\" Service:",
+      "content1": "The Application is provided for use \"as is,\" without any warranty, express or implied, as to its correctness, availability, or reliability.",
+      "subtitle2": "User Content:",
+      "content2": "The application developer is not responsible for the content uploaded by users, including the accuracy of the information entered or the acquisition of necessary consents for its entry.",
+      "subtitle3": "Date Calculations and Third-Party Services:",
+      "content3": "The Application provides tools for calculating Hebrew dates. This functionality depends on third-party services (such as Hebcal API). The application developer is not responsible for the accuracy of calculations, errors, or failures arising from these third-party services. Likewise, synchronization with external calendars (such as Google Calendar) is offered \"as is\" and is not guaranteed to be error-free. The responsibility for verifying the correctness of dates and events rests solely with the user."
+    },
+    "section8": {
+      "title": "8. Jurisdiction",
+      "content": "These Terms of Use shall be governed by the laws of the State of Israel. The competent courts in the Tel Aviv-Jaffa district shall have exclusive jurisdiction in any dispute."
+    },
+    "section9": {
+      "title": "9. Contact",
+      "content": "For any questions regarding these Terms of Use, you can contact us via email at:"
+    }
+  },
+  "privacy": {
+    "title": "Privacy Policy for \"hebbirthday\"",
+    "lastUpdated": "Last Updated",
+    "intro": "We respect the privacy of our users (\"you\", \"the user\") and are committed to protecting it. This Privacy Policy describes what personal information we collect, how we use it, with whom we share it, and your rights regarding this information.",
+    "section1": {
+      "title": "1. What Information Do We Collect?",
+      "intro": "We collect the following types of information:",
+      "subtitle1": "Information You Provide (Personal Information):",
+      "item1": {
+        "title": "Account Details:",
+        "content": "Display name, email address, phone number (optional), and photo URL (optional). If you register via a third-party service (like Google), we collect the information passed to us from that service."
+      },
+      "item2": {
+        "title": "Password:",
+        "content": "If you register with an email, your password is stored in an encrypted format."
+      },
+      "subtitle2": "Information You Enter (User Content):",
+      "item3": "Information about third parties (the birthday subjects): First name, last name, Gregorian birth date, gender (optional), and whether the birth was \"after sunset\".",
+      "item4": "Details of \"Organizations\" (Tenants) and \"Groups\" (Groups) you create.",
+      "item5": "Notes or Wishlist items you add to records.",
+      "subtitle3": "Technical Information (Collected Automatically):",
+      "item6": "Technical identifiers (such as IP address) collected by our infrastructure services (Firebase) for operational, security, and usage analysis purposes."
+    },
+    "section2": {
+      "title": "2. How Do We Use the Information?",
+      "intro": "The use of information is solely for the following purposes:",
+      "item1": "To enable the proper functioning of the Application, provide you with the Service, and authenticate your identity.",
+      "item2": "To display birthday details to members of your Organization (Tenant).",
+      "item3": "To perform calculations of Hebrew dates (as detailed in Section 3).",
+      "item4": "To allow you to sync events to your personal Google Calendar (as detailed in Section 3)."
+    },
+    "section3": {
+      "title": "3. Sharing Information with Third Parties",
+      "intro": "We do not sell or share your personal information, except in cases essential for the operation of the Service:",
+      "subtitle1": "Organization (Tenant) Members:",
+      "content1": "User-generated content you enter (such as birthday details) will be visible to other users in the same \"Organization\" (Tenant) to which the record belongs, according to the project's security settings.",
+      "subtitle2": "Google Firebase:",
+      "content2": "The Application is built on Google's Firebase platform, which is used for authentication, data storage (Firestore), and code execution (Functions). Your information is stored on Google's servers and is subject to their privacy policy.",
+      "subtitle3": "Hebcal API:",
+      "content3": "For the purpose of accurate Hebrew date calculation, we automatically send the Gregorian date, gender (if provided), and \"after sunset\" status to the external Hebcal API. We do not send names or any other personally identifiable information (like first or last name) to this service.",
+      "subtitle4": "Google Calendar API (With Your Consent Only):",
+      "item1": "If you choose to sync your birthdays, the Application will request your permission to access your Google Calendar (scope: calendar.events).",
+      "item2": "We will use this permission solely to create, update, and delete birthday events that the Application created for you.",
+      "item3": "To enable these actions, we store an accessToken for your account in our database (googleCalendarTokens). This token is stored securely, is accessible only to you, and is not used for any other purpose, especially not for reading existing events in your calendar that were not created by the Application."
+    },
+    "section4": {
+      "title": "4. International Data Transfer",
+      "content": "The use of Firebase and Hebcal services involves your information potentially being stored and processed on servers located outside the borders of the State of Israel. We rely on these providers to employ security measures that meet international standards."
+    },
+    "section5": {
+      "title": "5. Data Retention and Backup Policy",
+      "content": "We retain personal information only for the time necessary for the purposes for which it was collected. Personal information for your account and the birthday data you entered are retained in the active system as long as your account is active and the data has not been deleted by you or an administrator in your organization. We may maintain backups of the database for a limited period for disaster recovery purposes. Information deleted from the active system may remain in these backups until their final deletion."
+    },
+    "section6": {
+      "title": "6. Children's Privacy",
+      "content": "The service is not intended for use by children under the age of 18. We do not knowingly collect personal information from children under this age."
+    },
+    "section7": {
+      "title": "7. User Rights",
+      "content": "Under the Privacy Protection Law, you are entitled to review your personal information, request its correction, or request its deletion. To exercise these rights, or for any other privacy-related questions, please contact us via email at:"
+    },
+    "section8": {
+      "title": "8. Changes to the Privacy Policy",
+      "content": "We reserve the right to update this policy from time to time."
+    }
   }
 }

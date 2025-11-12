@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { Mail, Lock, LogIn, Globe } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -40,9 +40,21 @@ export const Login: React.FC = () => {
 
   const loading = isSubmitting || authLoading;
 
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'he' ? 'en' : 'he';
+    i18n.changeLanguage(newLang);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 px-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 relative">
+        <button
+          onClick={toggleLanguage}
+          className="absolute top-4 end-4 p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          title={i18n.language === 'he' ? 'English' : 'עברית'}
+        >
+          <Globe className="w-5 h-5" />
+        </button>
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             {t('auth.signIn')}
@@ -96,7 +108,7 @@ export const Login: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <LogIn className="w-5 h-5" />
             {loading ? t('common.loading') : t('auth.signIn')}

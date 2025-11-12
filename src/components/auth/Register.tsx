@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { Mail, Lock, User, UserPlus } from 'lucide-react';
+import { Mail, Lock, User, UserPlus, Globe } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -16,6 +16,7 @@ export const Register: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   useEffect(() => {
     const state = location.state as any;
@@ -31,6 +32,11 @@ export const Register: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!acceptedTerms) {
+      setError(t('auth.mustAcceptTerms', 'יש לאשר את תנאי השימוש ומדיניות הפרטיות'));
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError(t('validation.passwordsDontMatch'));
@@ -55,9 +61,21 @@ export const Register: React.FC = () => {
 
   const loading = isSubmitting || authLoading;
 
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'he' ? 'en' : 'he';
+    i18n.changeLanguage(newLang);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 relative">
+        <button
+          onClick={toggleLanguage}
+          className="absolute top-4 end-4 p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          title={i18n.language === 'he' ? 'English' : 'עברית'}
+        >
+          <Globe className="w-5 h-5" />
+        </button>
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             {t('auth.signUp')}
@@ -144,10 +162,32 @@ export const Register: React.FC = () => {
             </div>
           </div>
 
+          <div className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              id="acceptTerms"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-0.5 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              required
+            />
+            <label htmlFor="acceptTerms" className="text-sm text-gray-700 cursor-pointer">
+              {t('auth.acceptTerms', 'אני מאשר/ת שקראתי והסכמתי ל')}{' '}
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 underline" onClick={(e) => e.stopPropagation()}>
+                {t('footer.termsOfUse', 'תנאי השימוש')}
+              </a>
+              {' '}{t('auth.and', 'ול')}{' '}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 underline" onClick={(e) => e.stopPropagation()}>
+                {t('footer.privacyPolicy', 'מדיניות הפרטיות')}
+              </a>
+              .
+            </label>
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            disabled={loading || !acceptedTerms}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <UserPlus className="w-5 h-5" />
             {loading ? t('common.loading') : t('auth.signUp')}

@@ -296,7 +296,7 @@ export const BirthdayForm = ({
                   type="button"
                   onClick={() => setShowCreateGroupModal(true)}
                   className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-1 text-sm font-medium"
-                  title={t('group.createSubgroup', 'Create subgroup')}
+                  title={t('groups.createSubgroup', 'Create subgroup')}
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -429,12 +429,12 @@ export const BirthdayForm = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4">
-              {t('group.createSubgroup', 'Create Subgroup')}
+              {t('groups.createSubgroup', 'Create Subgroup')}
             </h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('group.parentGroup', 'Parent Group')} *
+                  {t('groups.parentGroup', 'Parent Group')} *
                 </label>
                 <select
                   value={selectedParentGroup}
@@ -451,14 +451,14 @@ export const BirthdayForm = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('group.subgroupName', 'Subgroup Name')} *
+                  {t('groups.subgroupName', 'Subgroup Name')} *
                 </label>
                 <input
                   type="text"
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder={t('group.enterSubgroupName', 'Enter subgroup name')}
+                  placeholder={t('groups.enterSubgroupName', 'Enter subgroup name')}
                   autoFocus
                 />
               </div>

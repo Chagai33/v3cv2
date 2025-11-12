@@ -20,14 +20,18 @@ export const Header: React.FC = () => {
   const { data: allGroups = [] } = useGroups();
   const { data: birthdays = [] } = useBirthdays();
 
+  // Check if we're on a public page (terms, privacy) without user
+  const isPublicPage = !user && (location.pathname === '/terms' || location.pathname === '/privacy');
+
   const countsByGroup = useMemo(() => {
+    if (isPublicPage) return new Map<string, number>();
     const map = new Map<string, number>();
     birthdays.forEach((birthday) => {
       if (!birthday.group_id) return;
       map.set(birthday.group_id, (map.get(birthday.group_id) ?? 0) + 1);
     });
     return map;
-  }, [birthdays]);
+  }, [birthdays, isPublicPage]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -38,6 +42,50 @@ export const Header: React.FC = () => {
     const newLang = i18n.language === 'he' ? 'en' : 'he';
     i18n.changeLanguage(newLang);
   };
+
+  // If public page, show minimal header
+  if (isPublicPage) {
+    return (
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-12 sm:h-16">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <button
+                onClick={() => navigate('/login')}
+                className="text-base sm:text-xl font-bold text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                {t('birthday.birthdays')}
+              </button>
+              <div className="hidden sm:flex items-center gap-2">
+                <a
+                  href="https://www.linkedin.com/in/chagai-yechiel/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  {t('common.developedBy')} {i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}
+                </a>
+                <span className="text-xs text-gray-400">•</span>
+                <span className="text-xs text-gray-500">
+                  {t('common.version')} 1.0
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleLanguage}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title={i18n.language === 'he' ? 'English' : 'עברית'}
+              >
+                <Globe className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -73,10 +121,17 @@ export const Header: React.FC = () => {
               </span>
             )}
 
-            {location.pathname === '/' && (
+            {user && location.pathname === '/' && (
               <div className="relative">
                 <button
-                  onClick={() => setShowGroupFilter(!showGroupFilter)}
+                  onClick={() => {
+                    if (selectedGroupIds.length > 0) {
+                      clearGroupFilters();
+                      setShowGroupFilter(false);
+                    } else {
+                      setShowGroupFilter(!showGroupFilter);
+                    }
+                  }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                     selectedGroupIds.length > 0
                       ? 'bg-blue-600 text-white'
@@ -105,17 +160,25 @@ export const Header: React.FC = () => {
               </div>
             )}
 
-            <button
-              onClick={() => navigate('/groups')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                location.pathname === '/groups'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <FolderTree className="w-4 h-4" />
-              <span className="text-sm">{t('groups.manageGroups')}</span>
-            </button>
+            {user && (
+              <button
+                onClick={() => {
+                  if (location.pathname === '/groups') {
+                    navigate('/');
+                  } else {
+                    navigate('/groups');
+                  }
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  location.pathname === '/groups'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <FolderTree className="w-4 h-4" />
+                <span className="text-sm">{t('groups.manageGroups')}</span>
+              </button>
+            )}
 
             <button
               onClick={toggleLanguage}
@@ -125,13 +188,15 @@ export const Header: React.FC = () => {
               <Globe className="w-5 h-5" />
             </button>
 
-            <button
-              onClick={handleSignOut}
-              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="text-sm">{t('auth.signOut')}</span>
-            </button>
+            {user && (
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="text-sm">{t('auth.signOut')}</span>
+              </button>
+            )}
           </div>
 
           <button
@@ -168,20 +233,26 @@ export const Header: React.FC = () => {
               </div>
             </div>
 
-            <button
-              onClick={() => {
-                navigate('/groups');
-                setMobileMenuOpen(false);
-              }}
-              className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg ${
-                location.pathname === '/groups'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <FolderTree className="w-5 h-5" />
-              {t('groups.manageGroups')}
-            </button>
+            {user && (
+              <button
+                onClick={() => {
+                  if (location.pathname === '/groups') {
+                    navigate('/');
+                  } else {
+                    navigate('/groups');
+                  }
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg ${
+                  location.pathname === '/groups'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <FolderTree className="w-5 h-5" />
+                {t('groups.manageGroups')}
+              </button>
+            )}
 
             <button
               onClick={toggleLanguage}
@@ -191,13 +262,15 @@ export const Header: React.FC = () => {
               {i18n.language === 'he' ? 'English' : 'עברית'}
             </button>
 
-            <button
-              onClick={handleSignOut}
-              className="w-full flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-            >
-              <LogOut className="w-4 h-4" />
-              {t('auth.signOut')}
-            </button>
+            {user && (
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              >
+                <LogOut className="w-4 h-4" />
+                {t('auth.signOut')}
+              </button>
+            )}
           </div>
         )}
       </div>

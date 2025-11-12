@@ -21,9 +21,10 @@ import { validateAndEnrichCSVData } from '../utils/csvValidation';
 import { CSVImportPreviewModal } from './modals/CSVImportPreviewModal';
 import { CSVBirthdayRow } from '../types';
 import { logger } from '../utils/logger';
+import { useToast } from '../contexts/ToastContext';
 
 export const Dashboard = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { data: allBirthdays = [], isLoading } = useBirthdays();
@@ -31,6 +32,7 @@ export const Dashboard = () => {
   const { data: rootGroups = [], isLoading: isLoadingGroups } = useRootGroups();
   const initializeRootGroups = useInitializeRootGroups();
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
 
   const [showForm, setShowForm] = useState(false);
   const [editBirthday, setEditBirthday] = useState<Birthday | null>(null);
@@ -94,7 +96,7 @@ export const Dashboard = () => {
       openGoogleCalendarForBirthday(birthday, language, wishlist);
     } catch (error) {
       logger.error('Error opening Google Calendar:', error);
-      alert(t('messages.calendarError'));
+      showError(t('messages.calendarError'));
     }
   };
 
@@ -107,7 +109,7 @@ export const Dashboard = () => {
       const parsedData = parseCSVFile(text);
 
       if (parsedData.length === 0) {
-        alert(t('messages.csvEmpty', 'הקובץ ריק או לא תקין'));
+        showError(t('messages.csvEmpty', 'הקובץ ריק או לא תקין'));
         event.target.value = '';
         return;
       }
@@ -125,7 +127,7 @@ export const Dashboard = () => {
       setShowCSVPreview(true);
     } catch (error) {
       logger.error('Error parsing CSV:', error);
-      alert(t('messages.importError', 'שגיאה בקריאת קובץ ה-CSV'));
+      showError(t('messages.importError', 'שגיאה בקריאת קובץ ה-CSV'));
     } finally {
       event.target.value = '';
     }
@@ -164,7 +166,18 @@ export const Dashboard = () => {
     await queryClient.invalidateQueries({ queryKey: ['birthdays'] });
     await queryClient.invalidateQueries({ queryKey: ['upcomingBirthdays'] });
 
-    alert(t('messages.importSuccess', `יובאו ${imported} ימי הולדת. נכשלו: ${failed}`));
+    // Show appropriate message based on import results
+    if (failed === 0) {
+      // All succeeded
+      success(t('messages.importSuccess', { imported }));
+    } else if (imported > 0) {
+      // Partial success
+      showError(t('messages.importSuccessWithFailures', { imported, failed }));
+    } else {
+      // All failed
+      showError(t('messages.importError', 'שגיאה בייבוא הקובץ'));
+    }
+    
     setShowCSVPreview(false);
   };
 
@@ -247,26 +260,52 @@ export const Dashboard = () => {
         </div>
 
         <div className="space-y-3 sm:space-y-4">
-          <div className="flex justify-end gap-1.5 sm:gap-2">
-            <GoogleCalendarButton />
-            <label className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md cursor-pointer text-sm">
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleCSVImport}
-                className="hidden"
-              />
-              <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">{t('birthday.importCSV', 'Import CSV')}</span>
-            </label>
-            <button
-              onClick={() => setShowForm(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md text-sm"
-              title={t('birthday.addBirthday')}
-            >
-              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">{t('birthday.addBirthday')}</span>
-            </button>
+          <div className={`flex w-full gap-1.5 sm:gap-2 ${i18n.language === 'he' ? 'justify-start' : 'justify-start'}`}>
+            {i18n.language === 'he' ? (
+              <>
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md text-sm"
+                  title={t('birthday.addBirthday')}
+                >
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">{t('birthday.addBirthday')}</span>
+                </button>
+                <label className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md cursor-pointer text-sm">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCSVImport}
+                    className="hidden"
+                  />
+                  <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">{t('birthday.importCSV', 'Import CSV')}</span>
+                </label>
+                <GoogleCalendarButton />
+              </>
+            ) : (
+              <>
+                <GoogleCalendarButton />
+                <label className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md cursor-pointer text-sm">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCSVImport}
+                    className="hidden"
+                  />
+                  <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">{t('birthday.importCSV', 'Import CSV')}</span>
+                </label>
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md text-sm"
+                  title={t('birthday.addBirthday')}
+                >
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">{t('birthday.addBirthday')}</span>
+                </button>
+              </>
+            )}
           </div>
 
           {isLoading ? (

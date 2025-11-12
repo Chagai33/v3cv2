@@ -237,6 +237,7 @@ export const GroupsPanel = () => {
             <div className="flex flex-wrap gap-3">
               {rootGroups.map((rootGroup) => {
                 const isActive = rootGroup.id === activeRootId;
+                const childGroups = childGroupsMap.get(rootGroup.id) ?? [];
                 return (
                   <button
                     key={rootGroup.id}
@@ -253,6 +254,9 @@ export const GroupsPanel = () => {
                     }}
                   >
                     <span className="font-semibold text-lg">{rootGroup.name}</span>
+                    <span className={`text-xs ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
+                      ({childGroups.length})
+                    </span>
                   </button>
                 );
               })}
@@ -418,38 +422,38 @@ const CategorySection = ({
     return sum + (countsByGroup.get(group.id) ?? 0);
   }, 0);
 
-  const childGroupsText =
-    childGroups.length > 0
-      ? t('groups.childCount', {
-          count: childGroups.length,
-          defaultValue:
-            childGroups.length === 1
-              ? 'קבוצה אחת משויכת'
-              : `${childGroups.length} קבוצות משויכות`,
-        })
-      : t('groups.noGroups', { category: rootGroup.name });
+  const childGroupsText = `(${childGroups.length})`;
 
   const recordCountText = isCountsLoading
     ? t('common.loading', 'טוען...')
     : `(${totalRecords})`;
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-      <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <div 
+      className="bg-white rounded-2xl shadow-lg overflow-hidden"
+      style={{
+        borderWidth: '3px',
+        borderStyle: 'solid',
+        borderColor: rootGroup.color,
+        background: `linear-gradient(to bottom, ${rootGroup.color}08, ${rootGroup.color}03, transparent)`
+      }}
+    >
+      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between" style={{ borderColor: `${rootGroup.color}40` }}>
+        <div className="flex items-center gap-3">
           <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner"
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
             style={{ backgroundColor: `${rootGroup.color}20` }}
           >
-            <div className="w-5 h-5 rounded-lg" style={{ backgroundColor: rootGroup.color }} />
+            <div
+              className="w-4 h-4 rounded-full"
+              style={{ backgroundColor: rootGroup.color }}
+            />
           </div>
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900">{rootGroup.name}</h3>
-            <p className="text-sm text-gray-500 flex flex-wrap items-center gap-2">
-              <span>{childGroupsText}</span>
-              <span className="text-gray-300">•</span>
-              <span>{recordCountText}</span>
-            </p>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-gray-900">{rootGroup.name}</h3>
+            <span className="text-sm text-gray-500">
+              {isCountsLoading ? t('common.loading', 'טוען...') : `${t('groups.totalRecords', 'סה"כ רשומות')}: (${totalRecords})`}
+            </span>
           </div>
         </div>
         <button

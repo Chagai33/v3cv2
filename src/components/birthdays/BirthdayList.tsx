@@ -333,52 +333,99 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
 
       {selectedIds.size > 0 && (
         <div className="sticky top-0 z-10 bg-blue-50 border border-blue-200 rounded-lg p-2.5 sm:p-4 shadow-md">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
+          <div className={`flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 ${i18n.language === 'he' ? 'justify-start' : 'justify-start'}`}>
             <div className="flex items-center gap-2">
               <span className="font-semibold text-blue-900 text-sm">
                 {selectedIds.size} {t('common.selected')}
               </span>
-              <button
-                onClick={() => setSelectedIds(new Set())}
-                className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 underline"
-              >
-                {t('common.clear')}
-              </button>
             </div>
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              <button
-                onClick={() => handleBulkDelete()}
-                className="px-2 sm:px-3 py-1 sm:py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1"
-              >
-                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">{t('common.delete')}</span>
-              </button>
-              <button
-                onClick={() => handleBulkRefresh()}
-                className="px-2 sm:px-3 py-1 sm:py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1"
-              >
-                <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">{t('birthday.refresh')}</span>
-              </button>
-              <button
-                onClick={() => {
-                  const selectedBirthdays = birthdays.filter(b => selectedIds.has(b.id));
-                  exportBirthdaysToCSV(selectedBirthdays, `birthdays-${new Date().toISOString().split('T')[0]}.csv`, i18n.language);
-                }}
-                className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1"
-              >
-                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">{t('birthday.exportSelected')}</span>
-              </button>
-              {isConnected && (
-                <button
-                  onClick={handleBulkSyncToCalendar}
-                  disabled={isSyncing}
-                  className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <UploadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">סנכרן ליומן Google</span>
-                </button>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              {i18n.language === 'he' ? (
+                <>
+                  <button
+                    onClick={() => {
+                      const selectedBirthdays = birthdays.filter(b => selectedIds.has(b.id));
+                      exportBirthdaysToCSV(selectedBirthdays, `birthdays-${new Date().toISOString().split('T')[0]}.csv`, i18n.language);
+                    }}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1"
+                  >
+                    <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">{t('birthday.exportSelected')}</span>
+                  </button>
+                  <button
+                    onClick={() => handleBulkRefresh()}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">{t('birthday.refresh')}</span>
+                  </button>
+                  <button
+                    onClick={() => handleBulkDelete()}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">{t('common.delete')}</span>
+                  </button>
+                  {isConnected && (
+                    <button
+                      onClick={handleBulkSyncToCalendar}
+                      disabled={isSyncing}
+                      className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <UploadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">סנכרן ליומן Google</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedIds(new Set())}
+                    className={`text-xs sm:text-sm text-blue-600 hover:text-blue-700 underline ${i18n.language === 'he' ? 'mr-2 sm:mr-3' : 'ml-2 sm:ml-3'}`}
+                  >
+                    {t('common.clear')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleBulkDelete()}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">{t('common.delete')}</span>
+                  </button>
+                  <button
+                    onClick={() => handleBulkRefresh()}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">{t('birthday.refresh')}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const selectedBirthdays = birthdays.filter(b => selectedIds.has(b.id));
+                      exportBirthdaysToCSV(selectedBirthdays, `birthdays-${new Date().toISOString().split('T')[0]}.csv`, i18n.language);
+                    }}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1"
+                  >
+                    <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">{t('birthday.exportSelected')}</span>
+                  </button>
+                  {isConnected && (
+                    <button
+                      onClick={handleBulkSyncToCalendar}
+                      disabled={isSyncing}
+                      className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <UploadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">סנכרן ליומן Google</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedIds(new Set())}
+                    className={`text-xs sm:text-sm text-blue-600 hover:text-blue-700 underline ${i18n.language === 'he' ? 'mr-2 sm:mr-3' : 'ml-2 sm:ml-3'}`}
+                  >
+                    {t('common.clear')}
+                  </button>
+                </>
               )}
             </div>
           </div>

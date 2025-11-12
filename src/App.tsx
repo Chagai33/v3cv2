@@ -10,6 +10,8 @@ import { Login } from './components/auth/Login';
 import { Register } from './components/auth/Register';
 import { Dashboard } from './components/Dashboard';
 import { GroupsPanel } from './components/groups/GroupsPanel';
+import { TermsOfUse } from './components/pages/TermsOfUse';
+import { PrivacyPolicy } from './components/pages/PrivacyPolicy';
 import './config/i18n';
 
 const queryClient = new QueryClient({
@@ -34,6 +36,8 @@ function App() {
                   <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/terms" element={<TermsOfUse />} />
+                    <Route path="/privacy" element={<PrivacyPolicy />} />
                     <Route
                       path="/"
                       element={
