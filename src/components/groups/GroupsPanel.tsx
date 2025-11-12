@@ -1,12 +1,13 @@
 import { logger } from "../../utils/logger";
-import { useState, useEffect } from 'react';
+import { Fragment, useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useRootGroups, useChildGroups, useCreateGroup, useUpdateGroup, useDeleteGroup, useInitializeRootGroups } from '../../hooks/useGroups';
+import { useGroups, useCreateGroup, useUpdateGroup, useDeleteGroup, useInitializeRootGroups } from '../../hooks/useGroups';
+import { useBirthdays } from '../../hooks/useBirthdays';
 import { groupService } from '../../services/group.service';
 import { Layout } from '../layout/Layout';
-import { Group } from '../../types';
-import { Plus, Edit, Trash2, X, ChevronDown, ChevronUp, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Group, GroupType } from '../../types';
+import { Plus, Edit, Trash2, X, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Toast } from '../common/Toast';
 import { useToast } from '../../hooks/useToast';
 import { DeleteGroupModal } from '../modals/DeleteGroupModal';
@@ -20,14 +21,15 @@ const GROUP_COLORS = [
 export const GroupsPanel = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { data: rootGroups = [], isLoading } = useRootGroups();
+  const { data: allGroups = [], isLoading } = useGroups();
+  const { data: birthdays = [], isLoading: isBirthdaysLoading } = useBirthdays();
   const createGroup = useCreateGroup();
   const updateGroup = useUpdateGroup();
   const deleteGroup = useDeleteGroup();
   const initializeRootGroups = useInitializeRootGroups();
   const { toasts, hideToast, success, error } = useToast();
 
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [activeRootId, setActiveRootId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
@@ -43,29 +45,80 @@ export const GroupsPanel = () => {
     calendarPreference: 'both',
   });
 
-  useEffect(() => {
-    if (rootGroups.length > 0) {
-      setExpandedCategories(new Set(rootGroups.map(g => g.id)));
+  const rootGroups = useMemo(() => {
+    const order: Record<GroupType, number> = {
+      family: 0,
+      friends: 1,
+      work: 2,
+    };
+
+    return allGroups
+      .filter(group => group.is_root)
+      .sort((a, b) => {
+        const orderA = a.type ? order[a.type] ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+        const orderB = b.type ? order[b.type] ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+
+        return a.name.localeCompare(b.name);
+      });
+  }, [allGroups]);
+
+  const childGroupsMap = useMemo(() => {
+    const map = new Map<string, Group[]>();
+    allGroups
+      .filter(group => !group.is_root && group.parent_id)
+      .forEach(group => {
+        const parentId = group.parent_id as string;
+        const list = map.get(parentId) ?? [];
+        list.push(group);
+        map.set(parentId, list);
+      });
+
+    for (const [parentId, groups] of map.entries()) {
+      groups.sort((a, b) => a.name.localeCompare(b.name));
+      map.set(parentId, groups);
     }
-  }, [rootGroups]);
+
+    return map;
+  }, [allGroups]);
+
+  const countsByGroup = useMemo(() => {
+    const map = new Map<string, number>();
+    birthdays.forEach((birthday) => {
+      if (!birthday.group_id) return;
+      map.set(birthday.group_id, (map.get(birthday.group_id) ?? 0) + 1);
+    });
+    return map;
+  }, [birthdays]);
 
   useEffect(() => {
-    if (rootGroups.length === 0 && !isLoading && !initializeRootGroups.isPending) {
+    if (!activeRootId && rootGroups.length > 0) {
+      const defaultGroup =
+        rootGroups.find(group => group.type === 'family') ??
+        rootGroups[0];
+      setActiveRootId(defaultGroup.id);
+      return;
+    }
+
+    if (activeRootId && rootGroups.length > 0) {
+      const exists = rootGroups.some(group => group.id === activeRootId);
+      if (!exists) {
+        const fallbackGroup =
+          rootGroups.find(group => group.type === 'family') ??
+          rootGroups[0];
+        setActiveRootId(fallbackGroup.id);
+      }
+    }
+  }, [rootGroups, activeRootId]);
+
+  useEffect(() => {
+    if (rootGroups.length === 0 && allGroups.length === 0 && !isLoading && !initializeRootGroups.isPending) {
       initializeRootGroups.mutate('he');
     }
-  }, [rootGroups.length, isLoading]);
-
-  const toggleCategory = (categoryId: string) => {
-    setExpandedCategories(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(categoryId)) {
-        newSet.delete(categoryId);
-      } else {
-        newSet.add(categoryId);
-      }
-      return newSet;
-    });
-  };
+  }, [rootGroups.length, allGroups.length, isLoading, initializeRootGroups]);
 
   const handleOpenForm = (parentId: string, group?: Group) => {
     if (group) {
@@ -168,7 +221,7 @@ export const GroupsPanel = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('groups.manageGroups')}</h2>
-            <p className="text-gray-600 mt-2">{t('groups.manageDescription', 'ארגן את אנשי הקשר שלך בקבוצות')}</p>
+            <p className="text-gray-600 mt-2">{t('groups.manageDescription', 'ארגן את הרשומות שלך בקבוצות')}</p>
           </div>
           <button
             onClick={() => navigate('/')}
@@ -179,19 +232,51 @@ export const GroupsPanel = () => {
           </button>
         </div>
 
-        <div className="grid gap-4">
-          {rootGroups.map((rootGroup) => (
-            <CategorySection
-              key={rootGroup.id}
-              rootGroup={rootGroup}
-              isExpanded={expandedCategories.has(rootGroup.id)}
-              onToggle={() => toggleCategory(rootGroup.id)}
-              onAddGroup={() => handleOpenForm(rootGroup.id)}
-              onEditGroup={(group) => handleOpenForm(rootGroup.id, group)}
-              onDeleteGroup={handleDeleteClick}
-            />
-          ))}
-        </div>
+        {rootGroups.length > 0 ? (
+          <Fragment>
+            <div className="flex flex-wrap gap-3">
+              {rootGroups.map((rootGroup) => {
+                const isActive = rootGroup.id === activeRootId;
+                return (
+                  <button
+                    key={rootGroup.id}
+                    onClick={() => setActiveRootId(rootGroup.id)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all shadow-sm ${
+                      isActive
+                        ? 'border-transparent text-white shadow-lg scale-[1.02]'
+                        : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                    }`}
+                    style={{
+                      background: isActive
+                        ? `linear-gradient(135deg, ${rootGroup.color}, ${rootGroup.color}e6)`
+                        : `${rootGroup.color}10`,
+                    }}
+                  >
+                    <span className="font-semibold text-lg">{rootGroup.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {activeRootId && (
+              <CategorySection
+                key={activeRootId}
+                rootGroup={rootGroups.find(group => group.id === activeRootId)!}
+                childGroups={childGroupsMap.get(activeRootId) ?? []}
+                isLoading={isLoading}
+                isCountsLoading={isBirthdaysLoading}
+                countsByGroup={countsByGroup}
+                onAddGroup={() => handleOpenForm(activeRootId)}
+                onEditGroup={(group) => handleOpenForm(activeRootId, group)}
+                onDeleteGroup={handleDeleteClick}
+              />
+            )}
+          </Fragment>
+        ) : (
+          <div className="bg-white rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-600">
+            {t('groups.noRootGroups', 'לא נמצאו קבוצות על')}
+          </div>
+        )}
 
         {isFormOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -309,8 +394,10 @@ export const GroupsPanel = () => {
 
 interface CategorySectionProps {
   rootGroup: Group;
-  isExpanded: boolean;
-  onToggle: () => void;
+  childGroups: Group[];
+  isLoading: boolean;
+  isCountsLoading: boolean;
+  countsByGroup: Map<string, number>;
   onAddGroup: () => void;
   onEditGroup: (group: Group) => void;
   onDeleteGroup: (group: Group) => void;
@@ -318,134 +405,138 @@ interface CategorySectionProps {
 
 const CategorySection = ({
   rootGroup,
-  isExpanded,
-  onToggle,
+  childGroups,
+  isLoading,
+  isCountsLoading,
+  countsByGroup,
   onAddGroup,
   onEditGroup,
   onDeleteGroup,
 }: CategorySectionProps) => {
   const { t } = useTranslation();
-  const { data: childGroups = [], isLoading } = useChildGroups(isExpanded ? rootGroup.id : null);
+  const totalRecords = childGroups.reduce((sum, group) => {
+    return sum + (countsByGroup.get(group.id) ?? 0);
+  }, 0);
+
+  const childGroupsText =
+    childGroups.length > 0
+      ? t('groups.childCount', {
+          count: childGroups.length,
+          defaultValue:
+            childGroups.length === 1
+              ? 'קבוצה אחת משויכת'
+              : `${childGroups.length} קבוצות משויכות`,
+        })
+      : t('groups.noGroups', { category: rootGroup.name });
+
+  const recordCountText = isCountsLoading
+    ? t('common.loading', 'טוען...')
+    : `(${totalRecords})`;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-      <div
-        className="flex items-center justify-between p-4 sm:p-5 cursor-pointer hover:bg-gray-50 transition-colors"
-        style={{
-          borderRightColor: rootGroup.color,
-          borderRightWidth: '4px',
-          background: `linear-gradient(to right, ${rootGroup.color}08, transparent)`
-        }}
-        onClick={onToggle}
-      >
-        <div className="flex items-center gap-3 sm:gap-4">
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+      <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+        <div className="flex items-center gap-4">
           <div
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shadow-sm"
+            className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner"
             style={{ backgroundColor: `${rootGroup.color}20` }}
           >
-            <div
-              className="w-4 h-4 sm:w-5 sm:h-5 rounded-full"
-              style={{ backgroundColor: rootGroup.color }}
-            />
+            <div className="w-5 h-5 rounded-lg" style={{ backgroundColor: rootGroup.color }} />
           </div>
           <div>
-            <h3 className="font-bold text-gray-900 text-lg sm:text-xl">{rootGroup.name}</h3>
-            {childGroups.length > 0 && (
-              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                {childGroups.length} {childGroups.length === 1 ? t('groups.group', 'קבוצה') : t('groups.groups', 'קבוצות')}
-              </p>
-            )}
+            <h3 className="text-xl font-semibold text-gray-900">{rootGroup.name}</h3>
+            <p className="text-sm text-gray-500 flex flex-wrap items-center gap-2">
+              <span>{childGroupsText}</span>
+              <span className="text-gray-300">•</span>
+              <span>{recordCountText}</span>
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddGroup();
-            }}
-            className="p-2 sm:p-2.5 text-white rounded-lg transition-all hover:scale-105 shadow-sm"
-            style={{ backgroundColor: rootGroup.color }}
-            title={t('groups.addGroup')}
-          >
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
-          {isExpanded ? (
-            <ChevronUp className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
-          ) : (
-            <ChevronDown className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
-          )}
-        </div>
+        <button
+          onClick={onAddGroup}
+          className="flex items-center gap-2 px-4 py-2 text-white rounded-lg font-medium transition-all hover:scale-105 shadow-sm"
+          style={{ backgroundColor: rootGroup.color }}
+        >
+          <Plus className="w-4 h-4" />
+          {t('groups.addGroup')}
+        </button>
       </div>
 
-      {isExpanded && (
-        <div className="border-t border-gray-200 p-4 bg-gradient-to-b from-gray-50 to-white">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: rootGroup.color }}></div>
+      <div className="p-6 bg-gradient-to-b from-gray-50 to-white space-y-4">
+        {isLoading || isCountsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: rootGroup.color }}></div>
+          </div>
+        ) : childGroups.length === 0 ? (
+          <div className="text-center py-10">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+              <Plus className="w-8 h-8 text-gray-400" />
             </div>
-          ) : childGroups.length === 0 ? (
-            <div className="text-center py-8 sm:py-10">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                <Plus className="w-8 h-8 text-gray-400" />
-              </div>
-              <p className="text-sm text-gray-600 mb-4">
-                {t('groups.noGroups', { category: rootGroup.name })}
-              </p>
-              <button
-                onClick={onAddGroup}
-                className="px-4 py-2 text-white rounded-lg font-medium transition-all hover:scale-105 shadow-sm"
-                style={{ backgroundColor: rootGroup.color }}
+            <p className="text-sm text-gray-600 mb-4">
+              {t('groups.noGroups', { category: rootGroup.name })}
+            </p>
+            <button
+              onClick={onAddGroup}
+              className="px-4 py-2 text-white rounded-lg font-medium transition-all hover:scale-105 shadow-sm"
+              style={{ backgroundColor: rootGroup.color }}
+            >
+              {t('groups.addGroup')}
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {childGroups.map((group) => {
+              const groupCount = countsByGroup.get(group.id) ?? 0;
+              return (
+              <div
+                key={group.id}
+                className="bg-white rounded-xl p-4 border border-gray-200 hover:shadow-lg transition-all hover:-translate-y-0.5 group"
+                style={{
+                  borderRightColor: group.color,
+                  borderRightWidth: '3px'
+                }}
               >
-                {t('groups.addGroup')}
-              </button>
-            </div>
-          ) : (
-            <div className="grid gap-3">
-              {childGroups.map((group) => (
-                <div
-                  key={group.id}
-                  className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-all hover:scale-[1.02] group"
-                  style={{
-                    borderRightColor: group.color,
-                    borderRightWidth: '3px'
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: `${group.color}20` }}
+                    >
                       <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: `${group.color}20` }}
-                      >
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: group.color }}
-                        />
-                      </div>
-                      <span className="font-semibold text-gray-900 text-sm sm:text-base">{group.name}</span>
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: group.color }}
+                      />
                     </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => onEditGroup(group)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title={t('common.edit')}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => onDeleteGroup(group)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title={t('common.delete')}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    <span className="font-semibold text-gray-900 text-sm sm:text-base">{group.name}</span>
+                  </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded-lg">
+                    {isCountsLoading ? t('common.loading', 'טוען...') : `(${groupCount})`}
+                  </span>
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => onEditGroup(group)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title={t('common.edit')}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => onDeleteGroup(group)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title={t('common.delete')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+              </div>
+            );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

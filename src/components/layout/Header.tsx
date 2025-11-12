@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { useGroupFilter } from '../../contexts/GroupFilterContext';
 import { useGroups } from '../../hooks/useGroups';
+import { useBirthdays } from '../../hooks/useBirthdays';
 import { LogOut, Globe, Menu, X, FolderTree, Filter } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -17,6 +18,16 @@ export const Header: React.FC = () => {
   const [showGroupFilter, setShowGroupFilter] = useState(false);
   const { selectedGroupIds, toggleGroupFilter, clearGroupFilters } = useGroupFilter();
   const { data: allGroups = [] } = useGroups();
+  const { data: birthdays = [] } = useBirthdays();
+
+  const countsByGroup = useMemo(() => {
+    const map = new Map<string, number>();
+    birthdays.forEach((birthday) => {
+      if (!birthday.group_id) return;
+      map.set(birthday.group_id, (map.get(birthday.group_id) ?? 0) + 1);
+    });
+    return map;
+  }, [birthdays]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -87,6 +98,7 @@ export const Header: React.FC = () => {
                     selectedGroupIds={selectedGroupIds}
                     toggleGroupFilter={toggleGroupFilter}
                     clearGroupFilters={clearGroupFilters}
+                    countsByGroup={countsByGroup}
                     onClose={() => setShowGroupFilter(false)}
                   />
                 )}
@@ -198,6 +210,7 @@ interface GroupFilterDropdownProps {
   selectedGroupIds: string[];
   toggleGroupFilter: (id: string) => void;
   clearGroupFilters: () => void;
+  countsByGroup: Map<string, number>;
   onClose: () => void;
 }
 
@@ -206,6 +219,7 @@ const GroupFilterDropdown: React.FC<GroupFilterDropdownProps> = ({
   selectedGroupIds,
   toggleGroupFilter,
   clearGroupFilters,
+  countsByGroup,
   onClose,
 }) => {
   const { t } = useTranslation();
@@ -247,24 +261,32 @@ const GroupFilterDropdown: React.FC<GroupFilterDropdownProps> = ({
                   {root.name}
                 </span>
               </div>
-              {children.map((group) => (
-                <button
-                  key={group.id}
-                  onClick={() => toggleGroupFilter(group.id)}
-                  className={`w-full px-6 py-2 text-start hover:bg-gray-50 flex items-center justify-between ${
-                    selectedGroupIds.includes(group.id) ? 'bg-blue-50' : ''
-                  }`}
-                >
-                  <span className="text-sm text-gray-700">{group.name}</span>
-                  {selectedGroupIds.includes(group.id) && (
-                    <div className="w-4 h-4 bg-blue-600 rounded-sm flex items-center justify-center">
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
+              {children.map((group) => {
+                const count = countsByGroup.get(group.id) ?? 0;
+                return (
+                  <button
+                    key={group.id}
+                    onClick={() => toggleGroupFilter(group.id)}
+                    className={`w-full px-6 py-2 text-start hover:bg-gray-50 flex items-center justify-between ${
+                      selectedGroupIds.includes(group.id) ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-700">{group.name}</span>
+                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                        ({count})
+                      </span>
                     </div>
-                  )}
-                </button>
-              ))}
+                    {selectedGroupIds.includes(group.id) && (
+                      <div className="w-4 h-4 bg-blue-600 rounded-sm flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           );
         })}
