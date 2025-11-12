@@ -260,18 +260,20 @@ export const Dashboard = () => {
         </div>
 
         <div className="space-y-3 sm:space-y-4">
-          <div className={`flex w-full gap-1.5 sm:gap-2 ${i18n.language === 'he' ? 'justify-start' : 'justify-start'}`}>
+          {/* שורת כפתורים ראשית */}
+          <div className="flex flex-col sm:flex-row w-full gap-2 sm:gap-2.5 items-start">
             {i18n.language === 'he' ? (
               <>
                 <button
                   onClick={() => setShowForm(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md text-sm"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg sm:rounded-xl font-medium transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0 w-full sm:w-auto"
                   title={t('birthday.addBirthday')}
                 >
                   <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span className="hidden sm:inline">{t('birthday.addBirthday')}</span>
+                  <span className="sm:hidden">הוסף</span>
                 </button>
-                <label className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md cursor-pointer text-sm">
+                <label className="flex items-center justify-center gap-1.5 px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg sm:rounded-xl font-medium transition-all shadow-md hover:shadow-lg cursor-pointer text-sm sm:text-base flex-shrink-0 w-full sm:w-auto">
                   <input
                     type="file"
                     accept=".csv"
@@ -280,13 +282,18 @@ export const Dashboard = () => {
                   />
                   <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span className="hidden sm:inline">{t('birthday.importCSV', 'Import CSV')}</span>
+                  <span className="sm:hidden">ייבא CSV</span>
                 </label>
-                <GoogleCalendarButton />
+                <div className="w-full sm:w-auto">
+                  <GoogleCalendarButton />
+                </div>
               </>
             ) : (
               <>
-                <GoogleCalendarButton />
-                <label className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md cursor-pointer text-sm">
+                <div className="w-full sm:w-auto">
+                  <GoogleCalendarButton />
+                </div>
+                <label className="flex items-center justify-center gap-1.5 px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg sm:rounded-xl font-medium transition-all shadow-md hover:shadow-lg cursor-pointer text-sm sm:text-base flex-shrink-0 w-full sm:w-auto">
                   <input
                     type="file"
                     accept=".csv"
@@ -295,14 +302,16 @@ export const Dashboard = () => {
                   />
                   <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span className="hidden sm:inline">{t('birthday.importCSV', 'Import CSV')}</span>
+                  <span className="sm:hidden">Import</span>
                 </label>
                 <button
                   onClick={() => setShowForm(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md text-sm"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg sm:rounded-xl font-medium transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0 w-full sm:w-auto"
                   title={t('birthday.addBirthday')}
                 >
                   <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span className="hidden sm:inline">{t('birthday.addBirthday')}</span>
+                  <span className="sm:hidden">Add</span>
                 </button>
               </>
             )}

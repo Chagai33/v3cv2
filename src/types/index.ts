@@ -211,6 +211,9 @@ export interface GoogleCalendarToken {
   accessToken: string;
   expiresAt: number;
   scope: string;
+  userEmail?: string;
+  calendarId?: string;
+  calendarName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -219,6 +222,9 @@ export interface GoogleCalendarSyncStatus {
   isConnected: boolean;
   lastSyncTime: string | null;
   syncedBirthdaysCount: number;
+  userEmail?: string;
+  calendarId?: string;
+  calendarName?: string;
 }
 
 export interface SyncResult {
@@ -243,6 +249,9 @@ export interface GoogleCalendarContextType {
   isConnected: boolean;
   lastSyncTime: Date | null;
   isSyncing: boolean;
+  userEmail: string | null;
+  calendarId: string | null;
+  calendarName: string | null;
   connectToGoogle: () => Promise<void>;
   syncSingleBirthday: (birthdayId: string) => Promise<SyncResult>;
   syncMultipleBirthdays: (birthdayIds: string[]) => Promise<BulkSyncResult>;
@@ -250,4 +259,7 @@ export interface GoogleCalendarContextType {
   deleteAllSyncedEvents: (tenantId: string) => Promise<{ totalDeleted: number; failedCount: number }>;
   disconnect: () => Promise<void>;
   refreshStatus: () => Promise<void>;
+  createCalendar: (name: string) => Promise<{ calendarId: string; calendarName: string }>;
+  updateCalendarSelection: (calendarId: string, calendarName: string) => Promise<void>;
+  listCalendars: () => Promise<Array<{ id: string; summary: string; description: string; primary: boolean }>>;
 }

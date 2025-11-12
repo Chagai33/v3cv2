@@ -15,7 +15,15 @@
     "connectFirst": "יש להתחבר ליומן Google תחילה",
     "disconnectConfirm": "האם אתה בטוח שברצונך לנתק את החיבור ליומן Google?",
     "syncingMultiple": "מסנכרן {count} ימי הולדת...",
-    "syncedCount": "סונכרנו {count} ימי הולדת בהצלחה"
+    "syncedCount": "סונכרנו {count} ימי הולדת בהצלחה",
+    "createCalendar": "צור יומן חדש",
+    "calendarName": "שם יומן",
+    "primaryCalendar": "יומן ראשי",
+    "customCalendar": "יומן מותאם אישית",
+    "selectCalendar": "בחר יומן",
+    "connectedAs": "מחובר כ",
+    "switchToPrimary": "עבור ליומן ראשי",
+    "switchToCustom": "עבור ליומן מותאם אישית"
   },
   "common": {
     "save": "שמור",

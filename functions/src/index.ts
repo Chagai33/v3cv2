@@ -738,6 +738,17 @@ async function getValidAccessToken(userId: string): Promise<string> {
   return tokenData.accessToken;
 }
 
+async function getCalendarId(userId: string): Promise<string> {
+  const tokenDoc = await db.collection('googleCalendarTokens').doc(userId).get();
+
+  if (!tokenDoc.exists) {
+    return 'primary';
+  }
+
+  const tokenData = tokenDoc.data();
+  return tokenData?.calendarId || 'primary';
+}
+
 
 export const syncBirthdayToGoogleCalendar = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -783,37 +794,49 @@ export const syncBirthdayToGoogleCalendar = functions.https.onCall(async (data, 
     }
 
     const accessToken = await getValidAccessToken(context.auth.uid);
+    const calendarId = await getCalendarId(context.auth.uid);
 
     const oauth2Client = new google.auth.OAuth2();
     oauth2Client.setCredentials({ access_token: accessToken });
 
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
+    // מחיקה רק של אירועים שנוצרו על ידי האפליקציה (שנשמרו ב-Firestore)
     if (birthday.googleCalendarEventIds) {
       const oldEventIds = birthday.googleCalendarEventIds;
       if (oldEventIds.gregorian && Array.isArray(oldEventIds.gregorian)) {
         for (const eventId of oldEventIds.gregorian) {
           try {
-            await calendar.events.delete({ calendarId: 'primary', eventId });
-          } catch (err) {
-            functions.logger.warn(`Failed to delete old gregorian event ${eventId}:`, err);
+            await calendar.events.delete({ calendarId: calendarId, eventId });
+            functions.logger.log(`Deleted gregorian event ${eventId} from calendar ${calendarId}`);
+          } catch (err: any) {
+            if (err.code !== 404) {
+              functions.logger.warn(`Failed to delete old gregorian event ${eventId}:`, err);
+            }
           }
         }
       }
       if (oldEventIds.hebrew && Array.isArray(oldEventIds.hebrew)) {
         for (const eventId of oldEventIds.hebrew) {
           try {
-            await calendar.events.delete({ calendarId: 'primary', eventId });
-          } catch (err) {
-            functions.logger.warn(`Failed to delete old hebrew event ${eventId}:`, err);
+            await calendar.events.delete({ calendarId: calendarId, eventId });
+            functions.logger.log(`Deleted hebrew event ${eventId} from calendar ${calendarId}`);
+          } catch (err: any) {
+            if (err.code !== 404) {
+              functions.logger.warn(`Failed to delete old hebrew event ${eventId}:`, err);
+            }
           }
         }
       }
     } else if (birthday.googleCalendarEventId) {
+      // מחיקה רק אם eventId קיים במסמך
       try {
-        await calendar.events.delete({ calendarId: 'primary', eventId: birthday.googleCalendarEventId });
-      } catch (err) {
-        functions.logger.warn(`Failed to delete old event ${birthday.googleCalendarEventId}:`, err);
+        await calendar.events.delete({ calendarId: calendarId, eventId: birthday.googleCalendarEventId });
+        functions.logger.log(`Deleted event ${birthday.googleCalendarEventId} from calendar ${calendarId}`);
+      } catch (err: any) {
+        if (err.code !== 404) {
+          functions.logger.warn(`Failed to delete old event ${birthday.googleCalendarEventId}:`, err);
+        }
       }
     }
 
@@ -877,7 +900,7 @@ export const syncBirthdayToGoogleCalendar = functions.https.onCall(async (data, 
         };
 
         const response = await calendar.events.insert({
-          calendarId: 'primary',
+          calendarId: calendarId,
           requestBody: event
         });
 
@@ -925,7 +948,7 @@ export const syncBirthdayToGoogleCalendar = functions.https.onCall(async (data, 
         };
 
         const response = await calendar.events.insert({
-          calendarId: 'primary',
+          calendarId: calendarId,
           requestBody: event
         });
 
@@ -1082,6 +1105,7 @@ export const removeBirthdayFromGoogleCalendar = functions.https.onCall(async (da
     }
 
     const accessToken = await getValidAccessToken(context.auth.uid);
+    const calendarId = await getCalendarId(context.auth.uid);
 
     const oauth2Client = new google.auth.OAuth2();
     oauth2Client.setCredentials({ access_token: accessToken });
@@ -1090,14 +1114,16 @@ export const removeBirthdayFromGoogleCalendar = functions.https.onCall(async (da
 
     let deletedCount = 0;
 
+    // מחיקה רק של אירועים שנוצרו על ידי האפליקציה (שנשמרו ב-Firestore)
     if (birthday.googleCalendarEventIds) {
       const eventIds = birthday.googleCalendarEventIds;
 
       if (eventIds.gregorian && Array.isArray(eventIds.gregorian)) {
         for (const eventId of eventIds.gregorian) {
           try {
-            await calendar.events.delete({ calendarId: 'primary', eventId });
+            await calendar.events.delete({ calendarId: calendarId, eventId });
             deletedCount++;
+            functions.logger.log(`Deleted gregorian event ${eventId} from calendar ${calendarId}`);
           } catch (err: any) {
             if (err.code !== 404) {
               functions.logger.warn(`Failed to delete gregorian event ${eventId}:`, err);
@@ -1109,8 +1135,9 @@ export const removeBirthdayFromGoogleCalendar = functions.https.onCall(async (da
       if (eventIds.hebrew && Array.isArray(eventIds.hebrew)) {
         for (const eventId of eventIds.hebrew) {
           try {
-            await calendar.events.delete({ calendarId: 'primary', eventId });
+            await calendar.events.delete({ calendarId: calendarId, eventId });
             deletedCount++;
+            functions.logger.log(`Deleted hebrew event ${eventId} from calendar ${calendarId}`);
           } catch (err: any) {
             if (err.code !== 404) {
               functions.logger.warn(`Failed to delete hebrew event ${eventId}:`, err);
@@ -1119,9 +1146,11 @@ export const removeBirthdayFromGoogleCalendar = functions.https.onCall(async (da
         }
       }
     } else if (birthday.googleCalendarEventId) {
+      // מחיקה רק אם eventId קיים במסמך
       try {
-        await calendar.events.delete({ calendarId: 'primary', eventId: birthday.googleCalendarEventId });
+        await calendar.events.delete({ calendarId: calendarId, eventId: birthday.googleCalendarEventId });
         deletedCount++;
+        functions.logger.log(`Deleted event ${birthday.googleCalendarEventId} from calendar ${calendarId}`);
       } catch (err: any) {
         if (err.code !== 404) {
           throw err;
@@ -1171,6 +1200,7 @@ export const deleteAllSyncedEventsFromGoogleCalendar = functions.https.onCall(as
 
   try {
     const accessToken = await getValidAccessToken(context.auth.uid);
+    const calendarId = await getCalendarId(context.auth.uid);
 
     const oauth2Client = new google.auth.OAuth2();
     oauth2Client.setCredentials({ access_token: accessToken });
@@ -1189,14 +1219,16 @@ export const deleteAllSyncedEventsFromGoogleCalendar = functions.https.onCall(as
     for (const doc of birthdaysSnapshot.docs) {
       const birthday = doc.data();
 
+      // מחיקה רק של אירועים שנוצרו על ידי האפליקציה (שנשמרו ב-Firestore)
       if (birthday.googleCalendarEventIds) {
         const eventIds = birthday.googleCalendarEventIds;
 
         if (eventIds.gregorian && Array.isArray(eventIds.gregorian)) {
           for (const eventId of eventIds.gregorian) {
             try {
-              await calendar.events.delete({ calendarId: 'primary', eventId });
+              await calendar.events.delete({ calendarId: calendarId, eventId });
               totalDeleted++;
+              functions.logger.log(`Deleted gregorian event ${eventId} from calendar ${calendarId}`);
             } catch (err: any) {
               if (err.code !== 404) {
                 failedCount++;
@@ -1209,8 +1241,9 @@ export const deleteAllSyncedEventsFromGoogleCalendar = functions.https.onCall(as
         if (eventIds.hebrew && Array.isArray(eventIds.hebrew)) {
           for (const eventId of eventIds.hebrew) {
             try {
-              await calendar.events.delete({ calendarId: 'primary', eventId });
+              await calendar.events.delete({ calendarId: calendarId, eventId });
               totalDeleted++;
+              functions.logger.log(`Deleted hebrew event ${eventId} from calendar ${calendarId}`);
             } catch (err: any) {
               if (err.code !== 404) {
                 failedCount++;
@@ -1226,9 +1259,11 @@ export const deleteAllSyncedEventsFromGoogleCalendar = functions.https.onCall(as
           lastSyncedAt: admin.firestore.FieldValue.delete()
         });
       } else if (birthday.googleCalendarEventId) {
+        // מחיקה רק אם eventId קיים במסמך
         try {
-          await calendar.events.delete({ calendarId: 'primary', eventId: birthday.googleCalendarEventId });
+          await calendar.events.delete({ calendarId: calendarId, eventId: birthday.googleCalendarEventId });
           totalDeleted++;
+          functions.logger.log(`Deleted event ${birthday.googleCalendarEventId} from calendar ${calendarId}`);
         } catch (err: any) {
           if (err.code !== 404) {
             failedCount++;
@@ -1324,5 +1359,140 @@ export const getGoogleAccountInfo = functions.https.onCall(async (data: any, con
     }
 
     throw new functions.https.HttpsError('internal', 'שגיאה בקבלת מידע על חשבון Google');
+  }
+});
+
+export const createGoogleCalendar = functions.https.onCall(async (data: any, context: any) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'חובה להיות מחובר למערכת');
+  }
+
+  const { name } = data;
+  if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    throw new functions.https.HttpsError('invalid-argument', 'שם יומן חסר או לא תקין');
+  }
+
+  try {
+    const accessToken = await getValidAccessToken(context.auth.uid);
+
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: accessToken });
+
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+    // יצירת יומן חדש
+    const calendarResponse = await calendar.calendars.insert({
+      requestBody: {
+        summary: name.trim(),
+        description: 'יומן ימי הולדת - נוצר על ידי אפליקציית ימי הולדת עבריים'
+      }
+    });
+
+    if (!calendarResponse.data.id) {
+      throw new Error('לא התקבל מזהה יומן מ-Google');
+    }
+
+    const calendarId = calendarResponse.data.id;
+    const calendarName = calendarResponse.data.summary || name.trim();
+
+    // עדכון הטוקן עם פרטי היומן החדש
+    await db.collection('googleCalendarTokens').doc(context.auth.uid).update({
+      calendarId: calendarId,
+      calendarName: calendarName,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    functions.logger.log(`Created Google Calendar ${calendarId} for user ${context.auth.uid}`);
+
+    return {
+      success: true,
+      calendarId: calendarId,
+      calendarName: calendarName,
+      message: 'יומן נוצר בהצלחה'
+    };
+  } catch (error: any) {
+    functions.logger.error('Error creating Google Calendar:', error);
+
+    if (error.code === 401 || error.code === 403) {
+      throw new functions.https.HttpsError('permission-denied', 'אין הרשאת גישה. אנא התחבר מחדש');
+    }
+
+    throw new functions.https.HttpsError('internal', 'שגיאה ביצירת יומן Google. אנא נסה שנית');
+  }
+});
+
+export const updateGoogleCalendarSelection = functions.https.onCall(async (data: any, context: any) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'חובה להיות מחובר למערכת');
+  }
+
+  const { calendarId, calendarName } = data;
+  if (!calendarId || typeof calendarId !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'מזהה יומן חסר או לא תקין');
+  }
+
+  try {
+    // עדכון הטוקן עם פרטי היומן הנבחר
+    await db.collection('googleCalendarTokens').doc(context.auth.uid).update({
+      calendarId: calendarId,
+      calendarName: calendarName || (calendarId === 'primary' ? 'יומן ראשי' : 'יומן מותאם אישית'),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    functions.logger.log(`Updated calendar selection to ${calendarId} for user ${context.auth.uid}`);
+
+    return {
+      success: true,
+      message: 'בחירת יומן עודכנה בהצלחה'
+    };
+  } catch (error: any) {
+    functions.logger.error('Error updating calendar selection:', error);
+    throw new functions.https.HttpsError('internal', 'שגיאה בעדכון בחירת יומן. אנא נסה שנית');
+  }
+});
+
+export const listGoogleCalendars = functions.https.onCall(async (data: any, context: any) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'חובה להיות מחובר למערכת');
+  }
+
+  try {
+    const accessToken = await getValidAccessToken(context.auth.uid);
+
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: accessToken });
+
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+    // קבלת רשימת יומנים
+    const calendarsList = await calendar.calendarList.list({
+      minAccessRole: 'writer' // רק יומנים שיש לנו הרשאה לכתוב בהם
+    });
+
+    const calendars = calendarsList.data.items || [];
+    
+    // מיפוי לרשימה פשוטה
+    const calendarsListFormatted = calendars.map((cal: any) => ({
+      id: cal.id,
+      summary: cal.summary || cal.id,
+      description: cal.description || '',
+      primary: cal.primary || false,
+      accessRole: cal.accessRole
+    }));
+
+    functions.logger.log(`Listed ${calendarsListFormatted.length} calendars for user ${context.auth.uid}`);
+
+    return {
+      success: true,
+      calendars: calendarsListFormatted
+    };
+  } catch (error: any) {
+    functions.logger.error('Error listing Google Calendars:', error);
+
+    if (error.code === 401 || error.code === 403) {
+      throw new functions.https.HttpsError('permission-denied', 'אין הרשאת גישה. אנא התחבר מחדש');
+    }
+
+    throw new functions.https.HttpsError('internal', 'שגיאה בקבלת רשימת יומנים. אנא נסה שנית');
   }
 });

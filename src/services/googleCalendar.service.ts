@@ -15,28 +15,53 @@ export const googleCalendarService = {
           return;
         }
 
+        let callbackCalled = false;
+        const timeout = setTimeout(() => {
+          if (!callbackCalled) {
+            logger.error('Google OAuth timeout - callback not called');
+            reject(new Error('תם הזמן לאימות. אנא נסה שוב'));
+          }
+        }, 120000); // 2 דקות timeout
+
+        // נשתמש ב-popup עם טיפול טוב יותר
         const client = window.google.accounts.oauth2.initTokenClient({
           client_id: GOOGLE_CLIENT_ID,
-          scope: 'https://www.googleapis.com/auth/calendar.events',
+          scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+          ux_mode: 'popup',
+          prompt: '',
           callback: (response: any) => {
+            callbackCalled = true;
+            clearTimeout(timeout);
+            
+            logger.log('Google OAuth callback received:', { 
+              hasToken: !!response.access_token, 
+              error: response.error,
+              errorDescription: response.error_description
+            });
+            
             if (response.access_token) {
               resolve({
                 accessToken: response.access_token,
                 expiresIn: response.expires_in || 3600
               });
             } else if (response.error) {
-              reject(new Error(`שגיאת Google: ${response.error}`));
+              logger.error('Google OAuth error in callback:', response.error, response.error_description);
+              reject(new Error(`שגיאת Google: ${response.error_description || response.error}`));
             } else {
+              logger.error('No token and no error in callback');
               reject(new Error('לא התקבל טוקן גישה מ-Google'));
             }
           },
           error_callback: (error: any) => {
-            logger.error('Google OAuth error:', error);
+            callbackCalled = true;
+            clearTimeout(timeout);
+            logger.error('Google OAuth error_callback:', error);
             reject(new Error('שגיאה באימות Google'));
           }
         });
 
         // Request access token synchronously, immediately after user interaction
+        logger.log('Requesting Google OAuth token...');
         client.requestAccessToken();
       } catch (error) {
         logger.error('Error initiating Google OAuth:', error);
@@ -58,7 +83,9 @@ export const googleCalendarService = {
         userId: user.uid,
         accessToken: accessToken,
         expiresAt: expiresAt,
-        scope: 'https://www.googleapis.com/auth/calendar.events',
+        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+        calendarId: 'primary',
+        calendarName: 'יומן ראשי',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
@@ -216,7 +243,10 @@ export const googleCalendarService = {
       return {
         isConnected: true,
         lastSyncTime: createdAt,
-        syncedBirthdaysCount: 0
+        syncedBirthdaysCount: 0,
+        userEmail: tokenData.userEmail || null,
+        calendarId: tokenData.calendarId || 'primary',
+        calendarName: tokenData.calendarName || 'יומן ראשי'
       };
     } catch (error: any) {
       logger.warn('Could not get token status (may not exist yet):', error?.message);
@@ -241,6 +271,13 @@ export const googleCalendarService = {
         return null;
       }
 
+      // שמירת המייל ב-Firestore
+      const user = auth.currentUser;
+      if (user && result.data.email) {
+        const tokenDoc = doc(db, 'googleCalendarTokens', user.uid);
+        await setDoc(tokenDoc, { userEmail: result.data.email }, { merge: true });
+      }
+
       return {
         email: result.data.email || '',
         name: result.data.name || '',
@@ -249,6 +286,70 @@ export const googleCalendarService = {
     } catch (error: any) {
       logger.error('Error getting Google account info:', error);
       return null;
+    }
+  },
+
+  async createCalendar(name: string): Promise<{ calendarId: string; calendarName: string }> {
+    try {
+      const createFunction = httpsCallable<
+        { name: string },
+        { success: boolean; calendarId: string; calendarName: string; message?: string }
+      >(functions, 'createGoogleCalendar');
+
+      const result = await createFunction({ name });
+
+      if (!result.data.success) {
+        throw new Error(result.data.message || 'שגיאה ביצירת יומן');
+      }
+
+      return {
+        calendarId: result.data.calendarId,
+        calendarName: result.data.calendarName
+      };
+    } catch (error: any) {
+      logger.error('Error creating calendar:', error);
+      throw new Error(error.message || 'שגיאה ביצירת יומן Google');
+    }
+  },
+
+  async updateCalendarSelection(calendarId: string, calendarName: string): Promise<void> {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('משתמש לא מחובר');
+      }
+
+      const tokenDoc = doc(db, 'googleCalendarTokens', user.uid);
+      await setDoc(tokenDoc, {
+        calendarId: calendarId,
+        calendarName: calendarName,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      logger.log('Successfully updated calendar selection');
+    } catch (error: any) {
+      logger.error('Error updating calendar selection:', error);
+      throw new Error(error.message || 'שגיאה בעדכון בחירת יומן');
+    }
+  },
+
+  async listCalendars(): Promise<Array<{ id: string; summary: string; description: string; primary: boolean }>> {
+    try {
+      const listFunction = httpsCallable<
+        void,
+        { success: boolean; calendars: Array<{ id: string; summary: string; description: string; primary: boolean; accessRole: string }> }
+      >(functions, 'listGoogleCalendars');
+
+      const result = await listFunction();
+
+      if (!result.data.success) {
+        throw new Error('שגיאה בקבלת רשימת יומנים');
+      }
+
+      return result.data.calendars || [];
+    } catch (error: any) {
+      logger.error('Error listing calendars:', error);
+      throw new Error(error.message || 'שגיאה בקבלת רשימת יומנים');
     }
   }
 };

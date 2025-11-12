@@ -28,6 +28,9 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
   const [isConnected, setIsConnected] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [calendarId, setCalendarId] = useState<string | null>(null);
+  const [calendarName, setCalendarName] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -35,6 +38,9 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     } else {
       setIsConnected(false);
       setLastSyncTime(null);
+      setUserEmail(null);
+      setCalendarId(null);
+      setCalendarName(null);
     }
   }, [user]);
 
@@ -47,6 +53,59 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
 
       if (status.lastSyncTime) {
         setLastSyncTime(new Date(status.lastSyncTime));
+      }
+
+      if (status.userEmail) {
+        setUserEmail(status.userEmail);
+      }
+
+      if (status.calendarId) {
+        setCalendarId(status.calendarId);
+      }
+
+      if (status.calendarName) {
+        setCalendarName(status.calendarName);
+      }
+
+      // אם יש מייל ב-status, נשתמש בו
+      if (status.isConnected && status.userEmail && !userEmail) {
+        setUserEmail(status.userEmail);
+      }
+      
+      // אם מחובר אבל אין מייל, נטען את פרטי המשתמש - קריטי!
+      if (status.isConnected && !userEmail) {
+        try {
+          const accountInfo = await googleCalendarService.getGoogleAccountInfo();
+          if (accountInfo?.email) {
+            setUserEmail(accountInfo.email);
+            logger.log('User email loaded in refreshStatus:', accountInfo.email);
+          }
+        } catch (emailError: any) {
+          logger.error('Error loading user email in refreshStatus:', emailError);
+          
+          // אם הטוקן פג תוקף, ננתק את החיבור
+          if (emailError.message?.includes('פג תוקף') || emailError.message?.includes('permission-denied')) {
+            logger.warn('Token expired, disconnecting Google Calendar');
+            setIsConnected(false);
+            setUserEmail(null);
+            setCalendarId(null);
+            setCalendarName(null);
+            showToast('הטוקן פג תוקף. אנא התחבר מחדש ליומן Google', 'warning');
+            return;
+          }
+          
+          // ננסה שוב אחרי רגע רק אם זו לא שגיאת הרשאה
+          setTimeout(async () => {
+            try {
+              const accountInfo = await googleCalendarService.getGoogleAccountInfo();
+              if (accountInfo?.email) {
+                setUserEmail(accountInfo.email);
+              }
+            } catch (retryError) {
+              logger.error('Retry failed to load user email:', retryError);
+            }
+          }, 2000);
+        }
       }
     } catch (error) {
       logger.error('Error refreshing Google Calendar status:', error);
@@ -70,7 +129,36 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
 
       await googleCalendarService.saveAccessToken(tokenResponse.accessToken, tokenResponse.expiresIn);
 
+      // טעינת פרטי משתמש אחרי חיבור - קריטי!
+      try {
+        const accountInfo = await googleCalendarService.getGoogleAccountInfo();
+        if (accountInfo?.email) {
+          setUserEmail(accountInfo.email);
+          logger.log('User email loaded:', accountInfo.email);
+        } else {
+          logger.warn('No email received from Google account info');
+        }
+      } catch (emailError: any) {
+        logger.error('Error loading user email:', emailError);
+        // לא נזרוק שגיאה כאן, רק נוודא שהמייל יטען ב-refreshStatus
+      }
+
       await refreshStatus();
+
+      // אם עדיין אין מייל אחרי refreshStatus, ננסה שוב
+      // נבדוק את ה-state אחרי refreshStatus
+      const currentStatus = await googleCalendarService.getTokenStatus(user!.id);
+      if (currentStatus.isConnected && !currentStatus.userEmail) {
+        try {
+          const accountInfo = await googleCalendarService.getGoogleAccountInfo();
+          if (accountInfo?.email) {
+            setUserEmail(accountInfo.email);
+            logger.log('User email loaded in retry:', accountInfo.email);
+          }
+        } catch (retryError) {
+          logger.error('Retry failed to load user email:', retryError);
+        }
+      }
 
       showToast('החיבור ליומן Google הושלם בהצלחה', 'success');
     } catch (error: any) {
@@ -178,6 +266,9 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
 
       setIsConnected(false);
       setLastSyncTime(null);
+      setUserEmail(null);
+      setCalendarId(null);
+      setCalendarName(null);
       showToast('החיבור ליומן Google נותק בהצלחה', 'success');
     } catch (error: any) {
       logger.error('Error disconnecting:', error);
@@ -188,17 +279,89 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     }
   };
 
+  const createCalendar = async (name: string): Promise<{ calendarId: string; calendarName: string }> => {
+    if (!isConnected) {
+      showToast('יש להתחבר ליומן Google תחילה', 'error');
+      throw new Error('לא מחובר ליומן Google');
+    }
+
+    try {
+      setIsSyncing(true);
+      const result = await googleCalendarService.createCalendar(name);
+      
+      setCalendarId(result.calendarId);
+      setCalendarName(result.calendarName);
+      
+      showToast('יומן נוצר בהצלחה', 'success');
+      return result;
+    } catch (error: any) {
+      logger.error('Error creating calendar:', error);
+      showToast(error.message || 'שגיאה ביצירת יומן', 'error');
+      throw error;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const updateCalendarSelection = async (selectedCalendarId: string, selectedCalendarName: string): Promise<void> => {
+    if (!isConnected) {
+      showToast('יש להתחבר ליומן Google תחילה', 'error');
+      throw new Error('לא מחובר ליומן Google');
+    }
+
+    try {
+      setIsSyncing(true);
+      await googleCalendarService.updateCalendarSelection(selectedCalendarId, selectedCalendarName);
+      
+      setCalendarId(selectedCalendarId);
+      setCalendarName(selectedCalendarName);
+      
+      showToast('בחירת יומן עודכנה בהצלחה', 'success');
+    } catch (error: any) {
+      logger.error('Error updating calendar selection:', error);
+      showToast(error.message || 'שגיאה בעדכון בחירת יומן', 'error');
+      throw error;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const listCalendars = async (): Promise<Array<{ id: string; summary: string; description: string; primary: boolean }>> => {
+    if (!isConnected) {
+      showToast('יש להתחבר ליומן Google תחילה', 'error');
+      throw new Error('לא מחובר ליומן Google');
+    }
+
+    try {
+      setIsSyncing(true);
+      const calendars = await googleCalendarService.listCalendars();
+      return calendars;
+    } catch (error: any) {
+      logger.error('Error listing calendars:', error);
+      showToast(error.message || 'שגיאה בקבלת רשימת יומנים', 'error');
+      throw error;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const value: GoogleCalendarContextType = {
     isConnected,
     lastSyncTime,
     isSyncing,
+    userEmail,
+    calendarId,
+    calendarName,
     connectToGoogle,
     syncSingleBirthday,
     syncMultipleBirthdays,
     removeBirthdayFromCalendar,
     deleteAllSyncedEvents,
     disconnect,
-    refreshStatus
+    refreshStatus,
+    createCalendar,
+    updateCalendarSelection,
+    listCalendars
   };
 
   return (

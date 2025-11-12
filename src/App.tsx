@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import { TenantProvider } from './contexts/TenantContext';
 import { GroupFilterProvider } from './contexts/GroupFilterContext';
@@ -25,6 +26,25 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // טיפול ב-Google OAuth callback אם יש טוקן ב-URL hash
+  useEffect(() => {
+    if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+      // Google Identity Services מטפל אוטומטית ב-hash אם יש callback
+      // אבל נוודא שהדף נטען כראוי
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        // Google GSI אמור לטפל בזה אוטומטית, אבל נוודא שהדף לא תקוע
+        setTimeout(() => {
+          // אם יש טוקן ב-hash, Google אמור לקרוא ל-callback
+          // אם לא, ננקה את ה-hash
+          if (window.location.hash) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
+        }, 1000);
+      }
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
