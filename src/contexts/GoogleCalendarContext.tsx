@@ -345,6 +345,28 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     }
   };
 
+  const deleteCalendar = async (calendarIdToDelete: string): Promise<void> => {
+    if (!isConnected) {
+      showToast('יש להתחבר ליומן Google תחילה', 'error');
+      throw new Error('לא מחובר ליומן Google');
+    }
+
+    try {
+      setIsSyncing(true);
+      await googleCalendarService.deleteCalendar(calendarIdToDelete);
+      showToast('יומן נמחק בהצלחה', 'success');
+      
+      // רענון רשימת היומנים אחרי מחיקה
+      await listCalendars();
+    } catch (error: any) {
+      logger.error('Error deleting calendar:', error);
+      showToast(error.message || 'שגיאה במחיקת יומן', 'error');
+      throw error;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const value: GoogleCalendarContextType = {
     isConnected,
     lastSyncTime,
@@ -361,7 +383,8 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     refreshStatus,
     createCalendar,
     updateCalendarSelection,
-    listCalendars
+    listCalendars,
+    deleteCalendar
   };
 
   return (

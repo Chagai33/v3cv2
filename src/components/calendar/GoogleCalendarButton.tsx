@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { Calendar, Check, Loader, Trash2, User, LogOut, Plus, Settings, ChevronDown } from 'lucide-react';
 import { useGoogleCalendar } from '../../contexts/GoogleCalendarContext';
 import { useTenant } from '../../contexts/TenantContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { format } from 'date-fns';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
+import { CreatedCalendar } from '../../types';
 
 interface CalendarOption {
   id: string;
@@ -26,15 +30,21 @@ export const GoogleCalendarButton: React.FC = () => {
     disconnect, 
     createCalendar,
     updateCalendarSelection,
-    listCalendars
+    listCalendars,
+    deleteCalendar
   } = useGoogleCalendar();
   const { currentTenant } = useTenant();
+  const { user } = useAuth();
   const [showConfirm, setShowConfirm] = useState(false);
   const [showCreateCalendar, setShowCreateCalendar] = useState(false);
   const [showCalendarSelector, setShowCalendarSelector] = useState(false);
   const [newCalendarName, setNewCalendarName] = useState('');
   const [availableCalendars, setAvailableCalendars] = useState<CalendarOption[]>([]);
   const [loadingCalendars, setLoadingCalendars] = useState(false);
+  const [createdCalendars, setCreatedCalendars] = useState<CreatedCalendar[]>([]);
+  const [calendarToDelete, setCalendarToDelete] = useState<string | null>(null);
+  const [calendarToDeleteName, setCalendarToDeleteName] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleConnect = () => {
     // Call connectToGoogle synchronously from user click event
@@ -111,6 +121,67 @@ export const GoogleCalendarButton: React.FC = () => {
       loadAvailableCalendars();
     }
   }, [isConnected, showCalendarSelector]);
+
+  // טעינת createdCalendars מ-Firestore
+  useEffect(() => {
+    const loadCreatedCalendars = async () => {
+      if (!user || !isConnected) {
+        setCreatedCalendars([]);
+        return;
+      }
+
+      try {
+        const tokenDoc = await getDoc(doc(db, 'googleCalendarTokens', user.id));
+        if (tokenDoc.exists()) {
+          const tokenData = tokenDoc.data();
+          const calendars = tokenData.createdCalendars || [];
+          setCreatedCalendars(calendars);
+        }
+      } catch (error) {
+        console.error('Error loading created calendars:', error);
+      }
+    };
+
+    loadCreatedCalendars();
+  }, [user, isConnected, showCalendarSelector]);
+
+  const handleDeleteCalendar = async () => {
+    if (!calendarToDelete) return;
+
+    try {
+      await deleteCalendar(calendarToDelete);
+      setShowDeleteConfirm(false);
+      setCalendarToDelete(null);
+      setCalendarToDeleteName(null);
+      // רענון רשימת היומנים
+      await loadAvailableCalendars();
+      // רענון createdCalendars
+      if (user) {
+        const tokenDoc = await getDoc(doc(db, 'googleCalendarTokens', user.id));
+        if (tokenDoc.exists()) {
+          const tokenData = tokenDoc.data();
+          const calendars = tokenData.createdCalendars || [];
+          setCreatedCalendars(calendars);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting calendar:', error);
+    }
+  };
+
+  const isCreatedByApp = (calendarIdToCheck: string, calendarDescription?: string): boolean => {
+    // בדיקה ראשונה: האם היומן נמצא ב-createdCalendars (יומנים שנוצרו אחרי הוספת הפיצ'ר)
+    if (createdCalendars.some(cal => cal.calendarId === calendarIdToCheck)) {
+      return true;
+    }
+    
+    // בדיקה שנייה: האם היומן נוצר על ידי האפליקציה לפי description (יומנים שנוצרו לפני הוספת הפיצ'ר)
+    if (calendarDescription && calendarDescription.includes('יומן ימי הולדת - נוצר על ידי אפליקציית ימי הולדת עבריים')) {
+      return true;
+    }
+    
+    return false;
+  };
 
   if (isConnected) {
     return (
@@ -201,6 +272,46 @@ export const GoogleCalendarButton: React.FC = () => {
         </div>
 
         {/* מודלים - מוצגים מחוץ לקרד הראשי */}
+        {/* מודל מחיקת יומן - מוצג לפני רשימת היומנים */}
+        {showDeleteConfirm && calendarToDelete && (
+          <div className="mb-2 w-full sm:w-96 sm:ml-auto bg-gradient-to-br from-red-50 to-orange-50 border border-red-200 rounded-lg sm:rounded-xl shadow-lg p-4 sm:p-5 z-50 relative">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
+                <Trash2 className="w-4 h-4 text-white" />
+              </div>
+              <h3 className="text-sm sm:text-base font-semibold text-red-900">
+                מחיקת יומן
+              </h3>
+            </div>
+            <p className="text-sm text-red-800 font-medium mb-2">
+              האם אתה בטוח שברצונך למחוק את היומן <strong>"{calendarToDeleteName || 'זה'}"</strong>?
+            </p>
+            <p className="text-xs sm:text-sm text-red-700 mb-4 leading-relaxed">
+              פעולה זו תמחק את היומן מ-Google Calendar. ניתן למחוק רק יומנים שנוצרו על ידי האפליקציה, שאינם נוכחיים, וללא אירועים. פעולה זו אינה ניתנת לביטול.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={handleDeleteCalendar}
+                disabled={isSyncing}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors shadow-sm"
+              >
+                {isSyncing ? 'מוחק...' : 'כן, מחק'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setCalendarToDelete(null);
+                  setCalendarToDeleteName(null);
+                }}
+                disabled={isSyncing}
+                className="flex-1 sm:flex-initial px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 text-sm font-medium transition-colors"
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
+        )}
+
         {showCreateCalendar && (
           <div className="mt-2 w-full sm:w-96 sm:ml-auto bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-lg sm:rounded-xl shadow-lg p-4 sm:p-5">
             <div className="flex items-center gap-2 mb-3">
@@ -286,26 +397,59 @@ export const GoogleCalendarButton: React.FC = () => {
                 {/* יומנים מותאמים אישית */}
                 {availableCalendars
                   .filter(cal => cal.id !== 'primary' && !cal.primary)
-                  .map((calendar) => (
-                    <button
-                      key={calendar.id}
-                      onClick={() => handleSelectCalendar(calendar)}
-                      disabled={isSyncing || calendarId === calendar.id}
-                      className={`w-full text-right px-3 py-2.5 rounded-lg text-sm transition-all ${
-                        calendarId === calendar.id
-                          ? 'bg-purple-200 text-purple-900 font-medium shadow-sm'
-                          : 'bg-white text-purple-800 hover:bg-purple-100 border border-purple-200'
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{calendar.summary}</span>
-                        {calendarId === calendar.id && <Check className="w-4 h-4 text-purple-600" />}
+                  .map((calendar) => {
+                    const isCreated = isCreatedByApp(calendar.id, calendar.description);
+                    const isCurrent = calendarId === calendar.id;
+                    const canDelete = isCreated && !isCurrent;
+                    
+                    // Debug logging
+                    if (isCreated) {
+                      console.log('Calendar found as created by app:', {
+                        id: calendar.id,
+                        name: calendar.summary,
+                        isCurrent,
+                        canDelete,
+                        description: calendar.description
+                      });
+                    }
+
+                    return (
+                      <div key={calendar.id} className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleSelectCalendar(calendar)}
+                          disabled={isSyncing || isCurrent}
+                          className={`flex-1 text-right px-3 py-2.5 rounded-lg text-sm transition-all ${
+                            isCurrent
+                              ? 'bg-purple-200 text-purple-900 font-medium shadow-sm'
+                              : 'bg-white text-purple-800 hover:bg-purple-100 border border-purple-200'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{calendar.summary}</span>
+                            {isCurrent && <Check className="w-4 h-4 text-purple-600" />}
+                          </div>
+                          {calendar.description && (
+                            <div className="text-xs text-purple-600 mt-1 text-right">{calendar.description}</div>
+                          )}
+                        </button>
+                        {canDelete && (
+                          <button
+                            onClick={() => {
+                              setCalendarToDelete(calendar.id);
+                              setCalendarToDeleteName(calendar.summary);
+                              setShowDeleteConfirm(true);
+                              setShowCalendarSelector(false); // סגירת רשימת היומנים כשפותחים את מודל המחיקה
+                            }}
+                            disabled={isSyncing}
+                            className="flex-shrink-0 p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                            title="מחק יומן"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
-                      {calendar.description && (
-                        <div className="text-xs text-purple-600 mt-1 text-right">{calendar.description}</div>
-                      )}
-                    </button>
-                  ))}
+                    );
+                  })}
               </div>
             )}
             <button

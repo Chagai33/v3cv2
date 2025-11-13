@@ -351,5 +351,25 @@ export const googleCalendarService = {
       logger.error('Error listing calendars:', error);
       throw new Error(error.message || 'שגיאה בקבלת רשימת יומנים');
     }
+  },
+
+  async deleteCalendar(calendarId: string): Promise<void> {
+    try {
+      const deleteFunction = httpsCallable<
+        { calendarId: string },
+        { success: boolean; message?: string }
+      >(functions, 'deleteGoogleCalendar');
+
+      const result = await deleteFunction({ calendarId });
+
+      if (!result.data.success) {
+        throw new Error(result.data.message || 'שגיאה במחיקת יומן');
+      }
+
+      logger.log('Successfully deleted Google Calendar');
+    } catch (error: any) {
+      logger.error('Error deleting calendar:', error);
+      throw new Error(error.message || 'שגיאה במחיקת יומן Google');
+    }
   }
 };

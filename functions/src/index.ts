@@ -1395,10 +1395,31 @@ export const createGoogleCalendar = functions.https.onCall(async (data: any, con
     const calendarId = calendarResponse.data.id;
     const calendarName = calendarResponse.data.summary || name.trim();
 
-    // עדכון הטוקן עם פרטי היומן החדש
+    // קריאת המסמך הנוכחי כדי לקבל את createdCalendars הקיים
+    const tokenDoc = await db.collection('googleCalendarTokens').doc(context.auth.uid).get();
+    const tokenData = tokenDoc.data();
+    const existingCreatedCalendars = tokenData?.createdCalendars || [];
+
+    // בדיקה שהיומן לא קיים כבר ברשימה
+    const calendarExists = existingCreatedCalendars.some((cal: any) => cal.calendarId === calendarId);
+    if (calendarExists) {
+      functions.logger.warn(`Calendar ${calendarId} already exists in createdCalendars`);
+    }
+
+    // הוספת היומן החדש לרשימה
+    const newCalendarEntry = {
+      calendarId: calendarId,
+      calendarName: calendarName,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    const updatedCreatedCalendars = [...existingCreatedCalendars, newCalendarEntry];
+
+    // עדכון הטוקן עם פרטי היומן החדש והוספה ל-createdCalendars
     await db.collection('googleCalendarTokens').doc(context.auth.uid).update({
       calendarId: calendarId,
       calendarName: calendarName,
+      createdCalendars: updatedCreatedCalendars,
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
@@ -1494,5 +1515,127 @@ export const listGoogleCalendars = functions.https.onCall(async (data: any, cont
     }
 
     throw new functions.https.HttpsError('internal', 'שגיאה בקבלת רשימת יומנים. אנא נסה שנית');
+  }
+});
+
+export const deleteGoogleCalendar = functions.https.onCall(async (data: any, context: any) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'חובה להיות מחובר למערכת');
+  }
+
+  const { calendarId } = data;
+  if (!calendarId || typeof calendarId !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'מזהה יומן חסר או לא תקין');
+  }
+
+  try {
+    const accessToken = await getValidAccessToken(context.auth.uid);
+
+    // קריאת המסמך כדי לבדוק את createdCalendars וה-calendarId הנוכחי
+    const tokenDoc = await db.collection('googleCalendarTokens').doc(context.auth.uid).get();
+    if (!tokenDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'לא נמצא חיבור ליומן Google');
+    }
+
+    const tokenData = tokenDoc.data();
+    const createdCalendars = tokenData?.createdCalendars || [];
+    const currentCalendarId = tokenData?.calendarId;
+
+    // בדיקה שה-calendarId נמצא ב-createdCalendars (יומנים שנוצרו אחרי הוספת הפיצ'ר)
+    let calendarEntry = createdCalendars.find((cal: any) => cal.calendarId === calendarId);
+    
+    // אם לא נמצא ב-createdCalendars, נבדוק לפי description (יומנים שנוצרו לפני הוספת הפיצ'ר)
+    if (!calendarEntry) {
+      try {
+        const oauth2Client = new google.auth.OAuth2();
+        oauth2Client.setCredentials({ access_token: accessToken });
+        const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+        
+        // קבלת פרטי היומן מ-Google Calendar API
+        const calendarInfo = await calendar.calendars.get({
+          calendarId: calendarId
+        });
+        
+        // בדיקה שה-description מכיל את הטקסט שמזהה יומנים שנוצרו על ידי האפליקציה
+        const description = calendarInfo.data.description || '';
+        if (!description.includes('יומן ימי הולדת - נוצר על ידי אפליקציית ימי הולדת עבריים')) {
+          throw new functions.https.HttpsError('permission-denied', 'לא ניתן למחוק יומן שלא נוצר על ידי האפליקציה');
+        }
+        
+        // אם הגענו לכאן, היומן נוצר על ידי האפליקציה (לפי description)
+        functions.logger.log(`Calendar ${calendarId} verified as created by app via description check`);
+      } catch (error: any) {
+        if (error instanceof functions.https.HttpsError) {
+          throw error;
+        }
+        // אם יש שגיאה בקבלת פרטי היומן, נזרוק שגיאה
+        if (error.code === 404) {
+          throw new functions.https.HttpsError('not-found', 'יומן לא נמצא');
+        }
+        throw new functions.https.HttpsError('permission-denied', 'לא ניתן למחוק יומן שלא נוצר על ידי האפליקציה');
+      }
+    }
+
+    // בדיקה שההיומן לא נוכחי
+    if (currentCalendarId === calendarId) {
+      throw new functions.https.HttpsError('failed-precondition', 'לא ניתן למחוק את היומן הנוכחי. אנא בחר יומן אחר תחילה');
+    }
+
+    // אם היומן נמצא ב-createdCalendars, נסיר אותו מהרשימה אחרי המחיקה
+    const shouldRemoveFromCreatedCalendars = !!calendarEntry;
+
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: accessToken });
+
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+    // בדיקה אם יש אירועים ביומן
+    const eventsResponse = await calendar.events.list({
+      calendarId: calendarId,
+      maxResults: 1,
+      singleEvents: true,
+      orderBy: 'startTime'
+    });
+
+    if (eventsResponse.data.items && eventsResponse.data.items.length > 0) {
+      throw new functions.https.HttpsError('failed-precondition', 'לא ניתן למחוק יומן שיש בו אירועים. אנא מחק את כל האירועים תחילה');
+    }
+
+    // מחיקת היומן מ-Google Calendar API
+    await calendar.calendars.delete({
+      calendarId: calendarId
+    });
+
+    // הסרת היומן מ-createdCalendars (רק אם הוא היה שם)
+    if (shouldRemoveFromCreatedCalendars) {
+      const updatedCreatedCalendars = createdCalendars.filter((cal: any) => cal.calendarId !== calendarId);
+      await db.collection('googleCalendarTokens').doc(context.auth.uid).update({
+        createdCalendars: updatedCreatedCalendars,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    functions.logger.log(`Deleted Google Calendar ${calendarId} for user ${context.auth.uid}`);
+
+    return {
+      success: true,
+      message: 'יומן נמחק בהצלחה'
+    };
+  } catch (error: any) {
+    functions.logger.error('Error deleting Google Calendar:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    if (error.code === 401 || error.code === 403) {
+      throw new functions.https.HttpsError('permission-denied', 'אין הרשאת גישה. אנא התחבר מחדש');
+    }
+
+    if (error.code === 404) {
+      throw new functions.https.HttpsError('not-found', 'יומן לא נמצא');
+    }
+
+    throw new functions.https.HttpsError('internal', 'שגיאה במחיקת יומן Google. אנא נסה שנית');
   }
 });

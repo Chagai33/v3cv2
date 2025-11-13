@@ -205,6 +205,12 @@ export interface ValidationResult {
   isDuplicate: boolean;
 }
 
+export interface CreatedCalendar {
+  calendarId: string;
+  calendarName: string;
+  createdAt: string;
+}
+
 export interface GoogleCalendarToken {
   id: string;
   userId: string;
@@ -214,6 +220,7 @@ export interface GoogleCalendarToken {
   userEmail?: string;
   calendarId?: string;
   calendarName?: string;
+  createdCalendars?: CreatedCalendar[];
   createdAt: string;
   updatedAt: string;
 }
@@ -262,4 +269,5 @@ export interface GoogleCalendarContextType {
   createCalendar: (name: string) => Promise<{ calendarId: string; calendarName: string }>;
   updateCalendarSelection: (calendarId: string, calendarName: string) => Promise<void>;
   listCalendars: () => Promise<Array<{ id: string; summary: string; description: string; primary: boolean }>>;
+  deleteCalendar: (calendarId: string) => Promise<void>;
 }
