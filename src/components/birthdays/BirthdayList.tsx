@@ -285,7 +285,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
             placeholder={t('common.search')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full ps-9 sm:ps-10 pe-8 sm:pe-10 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full ps-9 sm:ps-10 pe-8 sm:pe-10 py-1.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           {searchTerm && (
             <button
@@ -319,7 +319,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-2 sm:px-4 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="px-2 sm:px-4 py-1.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="upcoming">{t('sort.upcomingSoonest', 'Next Birthday (Soonest)')}</option>
             <option value="upcoming-latest">{t('sort.upcomingLatest', 'Next Birthday (Latest)')}</option>
