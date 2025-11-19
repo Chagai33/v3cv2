@@ -80,7 +80,7 @@ export const GroupsPanel = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
-  const [deletingGroup, setDeletingGroup] = useState<{ id: string; name: string } | null>(null);
+  const [deletingGroup, setDeletingGroup] = useState<{ id: string; name: string; tenant_id: string } | null>(null);
   const [deleteRecordCount, setDeleteRecordCount] = useState(0);
   const [formData, setFormData] = useState<{
     name: string;
@@ -227,9 +227,9 @@ export const GroupsPanel = () => {
 
   const handleDeleteClick = async (group: Group) => {
     try {
-      const count = await groupService.getGroupBirthdaysCount(group.id);
+      const count = await groupService.getGroupBirthdaysCount(group.id, group.tenant_id);
       setDeleteRecordCount(count);
-      setDeletingGroup({ id: group.id, name: group.name });
+      setDeletingGroup({ id: group.id, name: group.name, tenant_id: group.tenant_id });
     } catch (err) {
       error(t('common.error'));
       logger.error('Error getting birthdays count:', err);
@@ -242,6 +242,7 @@ export const GroupsPanel = () => {
     try {
       await deleteGroup.mutateAsync({
         groupId: deletingGroup.id,
+        tenantId: deletingGroup.tenant_id,
         deleteBirthdays,
       });
       success(t('groups.groupDeleted'));

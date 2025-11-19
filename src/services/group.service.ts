@@ -125,15 +125,19 @@ export const groupService = {
     await updateDoc(doc(db, 'groups', groupId), updateData);
   },
 
-  async deleteGroup(groupId: string, deleteBirthdays: boolean = false): Promise<void> {
+  async deleteGroup(groupId: string, tenantId: string, deleteBirthdays: boolean = false): Promise<void> {
     if (!groupId) {
       throw new Error('Group ID is required');
+    }
+    if (!tenantId) {
+      throw new Error('Tenant ID is required');
     }
 
     if (deleteBirthdays) {
       const birthdaysQuery = query(
         collection(db, 'birthdays'),
-        where('group_id', '==', groupId)
+        where('group_id', '==', groupId),
+        where('tenant_id', '==', tenantId)
       );
       const birthdaysSnapshot = await getDocs(birthdaysQuery);
       const deletePromises = birthdaysSnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
@@ -141,7 +145,8 @@ export const groupService = {
     } else {
       const birthdaysQuery = query(
         collection(db, 'birthdays'),
-        where('group_id', '==', groupId)
+        where('group_id', '==', groupId),
+        where('tenant_id', '==', tenantId)
       );
       const birthdaysSnapshot = await getDocs(birthdaysQuery);
       const updatePromises = birthdaysSnapshot.docs.map(docSnap =>
@@ -153,10 +158,11 @@ export const groupService = {
     await deleteDoc(doc(db, 'groups', groupId));
   },
 
-  async getGroupBirthdaysCount(groupId: string): Promise<number> {
+  async getGroupBirthdaysCount(groupId: string, tenantId: string): Promise<number> {
     const q = query(
       collection(db, 'birthdays'),
-      where('group_id', '==', groupId)
+      where('group_id', '==', groupId),
+      where('tenant_id', '==', tenantId)
     );
     const snapshot = await getDocs(q);
     return snapshot.size;

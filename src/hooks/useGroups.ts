@@ -112,8 +112,8 @@ export const useDeleteGroup = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ groupId, deleteBirthdays }: { groupId: string; deleteBirthdays: boolean }) =>
-      groupService.deleteGroup(groupId, deleteBirthdays),
+    mutationFn: ({ groupId, tenantId, deleteBirthdays }: { groupId: string; tenantId: string; deleteBirthdays: boolean }) =>
+      groupService.deleteGroup(groupId, tenantId, deleteBirthdays),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       queryClient.invalidateQueries({ queryKey: ['childGroups'] });
@@ -122,14 +122,14 @@ export const useDeleteGroup = () => {
   });
 };
 
-export const useGroupBirthdaysCount = (groupId: string | null) => {
+export const useGroupBirthdaysCount = (groupId: string | null, tenantId: string | null) => {
   return useQuery({
-    queryKey: ['groupBirthdaysCount', groupId],
+    queryKey: ['groupBirthdaysCount', groupId, tenantId],
     queryFn: () => {
-      if (!groupId) return Promise.resolve(0);
-      return groupService.getGroupBirthdaysCount(groupId);
+      if (!groupId || !tenantId) return Promise.resolve(0);
+      return groupService.getGroupBirthdaysCount(groupId, tenantId);
     },
-    enabled: !!groupId,
+    enabled: !!groupId && !!tenantId,
   });
 };
 
