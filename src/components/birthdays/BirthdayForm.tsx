@@ -249,7 +249,7 @@ export const BirthdayForm = ({
                   {...register('firstName', {
                     required: t('validation.required'),
                   })}
-                  className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-base sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 {errors.firstName && (
                   <p className="text-red-500 text-xs mt-0.5 sm:mt-1">{errors.firstName.message}</p>
@@ -264,7 +264,7 @@ export const BirthdayForm = ({
                   {...register('lastName', {
                     required: t('validation.required'),
                   })}
-                  className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-base sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 {errors.lastName && (
                   <p className="text-red-500 text-xs mt-0.5 sm:mt-1">{errors.lastName.message}</p>
@@ -283,7 +283,7 @@ export const BirthdayForm = ({
                   required: t('validation.required'),
                   valueAsDate: true,
                 })}
-                className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-base sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               {errors.birthDateGregorian && (
                 <p className="text-red-500 text-xs mt-0.5 sm:mt-1">
@@ -299,7 +299,7 @@ export const BirthdayForm = ({
               <div className="flex gap-1.5 sm:gap-2">
                 <select
                   {...register('groupId', { required: t('validation.required') })}
-                  className="flex-1 px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-1 px-2 sm:px-4 py-1.5 sm:py-2 text-base sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">{t('birthday.selectGroup')}</option>
                   {rootGroups.map((root) => {
@@ -382,7 +382,7 @@ export const BirthdayForm = ({
                 )}
                 <select
                   {...register('calendarPreferenceOverride')}
-                  className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-base sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">{t('birthday.useGroupDefault', 'Use group default')}</option>
                   <option value="gregorian">{t('birthday.gregorianOnly')}</option>
@@ -402,7 +402,7 @@ export const BirthdayForm = ({
               <textarea
                 {...register('notes')}
                 rows={1}
-                className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-base sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
             </div>
 
