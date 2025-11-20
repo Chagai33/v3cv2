@@ -215,30 +215,30 @@ export const GoogleCalendarButton: React.FC = () => {
   if (isConnected) {
     return (
       <>
-        {/* קרד מידע על החיבור */}
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-lg sm:rounded-xl shadow-sm overflow-hidden w-full sm:w-auto">
-          <div className="p-3 sm:p-4">
-            <div className="flex items-start gap-3 mb-3">
-              <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-green-500 rounded-lg flex items-center justify-center shadow-md">
-                <Check className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+        {/* קרד מידע על החיבור - קומפקטי */}
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-lg shadow-sm overflow-hidden w-full sm:w-auto">
+          <div className="p-2 sm:p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 bg-green-500 rounded-lg flex items-center justify-center shadow-sm">
+                <Check className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-green-900 text-sm sm:text-base mb-1">
+                <div className="font-semibold text-green-900 text-xs sm:text-sm mb-0.5">
                   {t('googleCalendar.connected')}
                 </div>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-                  <div className="flex items-center gap-1.5 text-green-700 bg-green-100/50 px-2 py-1 rounded-md">
-                    <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                    <span className="truncate font-medium">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs">
+                  <div className="flex items-center gap-1 text-green-700 bg-green-100/50 px-1.5 py-0.5 rounded">
+                    <User className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate font-medium max-w-[120px] sm:max-w-none">
                       {userEmail || (isSyncing ? t('common.loading') : t('googleCalendar.notAvailable'))}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-green-700 bg-green-100/50 px-2 py-1 rounded-md">
-                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <div className="flex items-center gap-1 text-green-700 bg-green-100/50 px-1.5 py-0.5 rounded">
+                    <Calendar className="w-3 h-3 flex-shrink-0" />
                     <button
                       onClick={() => setShowCalendarSelector(!showCalendarSelector)}
                       disabled={isSyncing}
-                      className="flex items-center gap-1 hover:underline disabled:opacity-50 truncate max-w-[200px] sm:max-w-none font-medium"
+                      className="flex items-center gap-1 hover:underline disabled:opacity-50 truncate max-w-[150px] sm:max-w-none font-medium"
                       title={t('googleCalendar.selectCalendar')}
                     >
                       <span className="truncate">{calendarName || t('googleCalendar.primaryCalendar')}</span>
@@ -246,7 +246,7 @@ export const GoogleCalendarButton: React.FC = () => {
                     </button>
                   </div>
                   {lastSyncTime && (
-                    <div className="text-green-600 text-xs px-2">
+                    <div className="text-green-600 text-xs">
                       {t('googleCalendar.lastSync')}: {format(lastSyncTime, 'dd/MM/yyyy HH:mm')}
                     </div>
                   )}
@@ -254,57 +254,52 @@ export const GoogleCalendarButton: React.FC = () => {
               </div>
             </div>
             
-            {/* כפתורי פעולה */}
-            <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-3 pt-3 border-t border-green-200">
+            {/* כפתורי פעולה - קומפקטיים */}
+            <div className="flex flex-wrap gap-1 sm:gap-1.5 mt-2 pt-2 border-t border-green-200">
               <button
                 onClick={() => setShowCreateCalendar(true)}
                 disabled={isSyncing}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50 font-medium"
+                className="flex items-center gap-1 px-2 py-1 text-xs text-blue-700 bg-blue-50 hover:bg-blue-100 rounded transition-colors disabled:opacity-50 font-medium"
                 title={t('googleCalendar.createCalendar')}
               >
-                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Plus className="w-3 h-3" />
                 <span className="hidden sm:inline">{t('googleCalendar.createCalendar')}</span>
-                <span className="sm:hidden">{t('googleCalendar.createCalendar')}</span>
               </button>
               <button
                 onClick={() => setShowCalendarSelector(!showCalendarSelector)}
                 disabled={isSyncing}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors disabled:opacity-50 font-medium"
+                className="flex items-center gap-1 px-2 py-1 text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 rounded transition-colors disabled:opacity-50 font-medium"
                 title={t('googleCalendar.selectCalendar')}
               >
-                <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Settings className="w-3 h-3" />
                 <span className="hidden sm:inline">{t('googleCalendar.selectCalendar')}</span>
-                <span className="sm:hidden">{t('googleCalendar.selectCalendar')}</span>
               </button>
               <button
                 onClick={handleCleanupOrphans}
                 disabled={isSyncing}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors disabled:opacity-50 font-medium"
+                className="flex items-center gap-1 px-2 py-1 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 rounded transition-colors disabled:opacity-50 font-medium"
                 title={t('googleCalendar.cleanupOrphans')}
               >
-                <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <RefreshCw className="w-3 h-3" />
                 <span className="hidden sm:inline">{t('googleCalendar.cleanupOrphansShort')}</span>
-                <span className="sm:hidden">{t('googleCalendar.cleanupOrphansShortMobile')}</span>
               </button>
               <button
                 onClick={handlePreviewDeletion}
                 disabled={isSyncing}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 font-medium"
+                className="flex items-center gap-1 px-2 py-1 text-xs text-red-700 bg-red-50 hover:bg-red-100 rounded transition-colors disabled:opacity-50 font-medium"
                 title={t('googleCalendar.deleteAllEvents')}
               >
-                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Trash2 className="w-3 h-3" />
                 <span className="hidden sm:inline">{t('googleCalendar.deleteAllEventsShort')}</span>
-                <span className="sm:hidden">{t('googleCalendar.deleteAllEventsShortMobile')}</span>
               </button>
               <button
                 onClick={handleDisconnect}
                 disabled={isSyncing}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 font-medium"
+                className="flex items-center gap-1 px-2 py-1 text-xs text-gray-700 bg-gray-50 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 font-medium"
                 title={t('googleCalendar.disconnectCalendar')}
               >
-                <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <LogOut className="w-3 h-3" />
                 <span className="hidden sm:inline">{t('googleCalendar.disconnectCalendarShort')}</span>
-                <span className="sm:hidden">{t('googleCalendar.disconnectCalendarShort')}</span>
               </button>
             </div>
           </div>

@@ -336,154 +336,198 @@ export const Dashboard = () => {
 
   return (
     <Layout>
-      <div className="space-y-3 sm:space-y-6">
-        <button
-          onClick={() => setIsStatsExpanded(!isStatsExpanded)}
-          className="w-full flex items-center justify-between px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-all duration-200 group"
-        >
-          <div className="flex items-center gap-2 text-gray-700 group-hover:text-blue-600 transition-colors">
-            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-sm font-medium">{t('dashboard.statistics', 'סטטיסטיקה')}</span>
-          </div>
-          {isStatsExpanded ? (
-            <ChevronUp className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
-          )}
-        </button>
-
-        <div
-          className={`grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 transition-all duration-300 ease-in-out overflow-hidden ${
-            isStatsExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0 !m-0'
-          }`}
-        >
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg sm:rounded-xl shadow-sm sm:shadow-md border border-blue-200 p-2 sm:p-4 hover:shadow-xl transition-all hover:scale-105">
-            <div className="flex flex-row items-center justify-between gap-1 sm:gap-2">
-              <div className="w-7 h-7 sm:w-12 sm:h-12 bg-blue-600 rounded-md sm:rounded-lg flex items-center justify-center shadow-lg flex-shrink-0">
-                <Users className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
-              </div>
-              <div className="text-right min-w-0">
-                <p className="text-[9px] leading-tight sm:text-sm text-blue-700 font-medium mb-0.5 truncate">
-                  {t('dashboard.totalBirthdays')}
-                </p>
-                <p className="text-lg sm:text-3xl font-bold text-blue-900">{stats.totalBirthdays}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg sm:rounded-xl shadow-sm sm:shadow-md border border-green-200 p-2 sm:p-4 hover:shadow-xl transition-all hover:scale-105">
-            <div className="flex flex-row items-center justify-between gap-1 sm:gap-2">
-              <div className="w-7 h-7 sm:w-12 sm:h-12 bg-green-600 rounded-md sm:rounded-lg flex items-center justify-center shadow-lg flex-shrink-0">
-                <TrendingUp className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
-              </div>
-              <div className="text-right min-w-0">
-                <p className="text-[9px] leading-tight sm:text-sm text-green-700 font-medium mb-0.5 truncate">
-                  {t('dashboard.upcomingThisWeek')}
-                </p>
-                <p className="text-lg sm:text-3xl font-bold text-green-900">
-                  {stats.upcomingThisWeek}
-                </p>
+      <div className="space-y-3 sm:space-y-4">
+        {/* Divider עדין מעל הסטטיסטיקה */}
+        <div className="border-t border-gray-200"></div>
+        
+        {/* שורה עם חץ קטן וכרטיסי סטטיסטיקה */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsStatsExpanded(!isStatsExpanded)}
+            className="flex items-center gap-1.5 flex-shrink-0 px-2 py-1 text-gray-500 hover:text-gray-700 transition-colors text-xs"
+            title={isStatsExpanded ? t('common.collapse', 'סגור') : t('common.expand', 'פתח')}
+          >
+            {isStatsExpanded ? (
+              <ChevronUp className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" />
+            )}
+            {!isStatsExpanded && (
+              <span className="font-medium">{t('dashboard.statistics', 'סטטיסטיקה')}</span>
+            )}
+          </button>
+          
+          <div
+            className={`flex-1 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 transition-all duration-300 ease-in-out overflow-hidden ${
+              isStatsExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-sm border border-blue-200 p-1.5 sm:p-2.5 hover:shadow-md transition-all">
+              <div className="flex flex-row items-center justify-between gap-1">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-600 rounded-md flex items-center justify-center shadow-sm flex-shrink-0">
+                  <Users className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                </div>
+                <div className="text-right min-w-0">
+                  <p className="text-[8px] leading-tight sm:text-xs text-blue-700 font-medium mb-0.5 truncate">
+                    {t('dashboard.totalBirthdays')}
+                  </p>
+                  <p className="text-base sm:text-2xl font-bold text-blue-900">{stats.totalBirthdays}</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg sm:rounded-xl shadow-sm sm:shadow-md border border-orange-200 p-2 sm:p-4 hover:shadow-xl transition-all hover:scale-105">
-            <div className="flex flex-row items-center justify-between gap-1 sm:gap-2">
-              <div className="w-7 h-7 sm:w-12 sm:h-12 bg-orange-600 rounded-md sm:rounded-lg flex items-center justify-center shadow-lg flex-shrink-0">
-                <Calendar className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
-              </div>
-              <div className="text-right min-w-0">
-                <p className="text-[9px] leading-tight sm:text-sm text-orange-700 font-medium mb-0.5 truncate">
-                  {t('dashboard.upcomingThisMonth')}
-                </p>
-                <p className="text-lg sm:text-3xl font-bold text-orange-900">
-                  {stats.upcomingThisMonth}
-                </p>
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-sm border border-green-200 p-1.5 sm:p-2.5 hover:shadow-md transition-all">
+              <div className="flex flex-row items-center justify-between gap-1">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-600 rounded-md flex items-center justify-center shadow-sm flex-shrink-0">
+                  <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                </div>
+                <div className="text-right min-w-0">
+                  <p className="text-[8px] leading-tight sm:text-xs text-green-700 font-medium mb-0.5 truncate">
+                    {t('dashboard.upcomingThisWeek')}
+                  </p>
+                  <p className="text-base sm:text-2xl font-bold text-green-900">
+                    {stats.upcomingThisWeek}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg sm:rounded-xl shadow-sm sm:shadow-md border border-pink-200 p-2 sm:p-4 hover:shadow-xl transition-all hover:scale-105 relative group">
-            <button
-              onClick={() => setShowZodiacStats(true)}
-              className="absolute top-2 left-2 p-1 text-pink-400 hover:text-pink-600 hover:bg-pink-200 rounded-full transition-colors"
-              title={t('zodiac.statsTitle', 'סטטיסטיקת מזלות')}
-            >
-              <Info className="w-4 h-4" />
-            </button>
-            <div className="flex flex-row items-center justify-between gap-1 sm:gap-2">
-              <div className="w-7 h-7 sm:w-12 sm:h-12 bg-pink-600 rounded-md sm:rounded-lg flex items-center justify-center shadow-lg flex-shrink-0">
-                <Cake className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg shadow-sm border border-orange-200 p-1.5 sm:p-2.5 hover:shadow-md transition-all">
+              <div className="flex flex-row items-center justify-between gap-1">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-orange-600 rounded-md flex items-center justify-center shadow-sm flex-shrink-0">
+                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                </div>
+                <div className="text-right min-w-0">
+                  <p className="text-[8px] leading-tight sm:text-xs text-orange-700 font-medium mb-0.5 truncate">
+                    {t('dashboard.upcomingThisMonth')}
+                  </p>
+                  <p className="text-base sm:text-2xl font-bold text-orange-900">
+                    {stats.upcomingThisMonth}
+                  </p>
+                </div>
               </div>
-              <div className="text-right min-w-0">
-                <p className="text-[9px] leading-tight sm:text-sm text-pink-700 font-medium mb-0.5 truncate">{t('dashboard.statistics')}</p>
-                <p className="text-base sm:text-2xl font-bold text-pink-900">
-                  {stats.maleCount}M / {stats.femaleCount}F
-                </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg shadow-sm border border-pink-200 p-1.5 sm:p-2.5 hover:shadow-md transition-all relative group">
+              <button
+                onClick={() => setShowZodiacStats(true)}
+                className="absolute top-1 left-1 p-0.5 text-pink-400 hover:text-pink-600 hover:bg-pink-200 rounded-full transition-colors"
+                title={t('zodiac.statsTitle', 'סטטיסטיקת מזלות')}
+              >
+                <Info className="w-3 h-3" />
+              </button>
+              <div className="flex flex-row items-center justify-between gap-1">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-pink-600 rounded-md flex items-center justify-center shadow-sm flex-shrink-0">
+                  <Cake className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                </div>
+                <div className="text-right min-w-0">
+                  <p className="text-[8px] leading-tight sm:text-xs text-pink-700 font-medium mb-0.5 truncate">{t('dashboard.statistics')}</p>
+                  <p className="text-sm sm:text-xl font-bold text-pink-900">
+                    {stats.maleCount}M / {stats.femaleCount}F
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="space-y-3 sm:space-y-4">
-          {/* שורת כפתורים ראשית - מוסתרת במובייל, מוצגת בדסקטופ */}
-          <div className="hidden sm:flex flex-col sm:flex-row w-full gap-2 sm:gap-2.5 items-start">
-            {i18n.language === 'he' ? (
-              <>
-                <button
-                  onClick={() => setShowForm(true)}
-                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg sm:rounded-xl font-medium transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0 w-full sm:w-auto"
-                  title={t('birthday.addBirthday')}
-                >
-                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="hidden sm:inline">{t('birthday.addBirthday')}</span>
-                  <span className="sm:hidden">הוסף</span>
-                </button>
-                <label className="flex items-center justify-center gap-1.5 px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg sm:rounded-xl font-medium transition-all shadow-md hover:shadow-lg cursor-pointer text-sm sm:text-base flex-shrink-0 w-full sm:w-auto">
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCSVImport}
-                    className="hidden"
-                    ref={fileInputRef}
-                  />
-                  <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="hidden sm:inline">{t('birthday.importCSV', 'Import CSV')}</span>
-                  <span className="sm:hidden">ייבא CSV</span>
-                </label>
-                <div className="w-full sm:w-auto">
-                  <GoogleCalendarButton />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="w-full sm:w-auto">
-                  <GoogleCalendarButton />
-                </div>
-                <label className="flex items-center justify-center gap-1.5 px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg sm:rounded-xl font-medium transition-all shadow-md hover:shadow-lg cursor-pointer text-sm sm:text-base flex-shrink-0 w-full sm:w-auto">
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCSVImport}
-                    className="hidden"
-                    ref={fileInputRef}
-                  />
-                  <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="hidden sm:inline">{t('birthday.importCSV', 'Import CSV')}</span>
-                  <span className="sm:hidden">Import</span>
-                </label>
-                <button
-                  onClick={() => setShowForm(true)}
-                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg sm:rounded-xl font-medium transition-all shadow-md hover:shadow-lg text-sm sm:text-base flex-shrink-0 w-full sm:w-auto"
-                  title={t('birthday.addBirthday')}
-                >
-                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="hidden sm:inline">{t('birthday.addBirthday')}</span>
-                  <span className="sm:hidden">Add</span>
-                </button>
-              </>
-            )}
+        {/* Divider עדין מעל אזור הפעולות */}
+        <div className="border-t border-gray-200"></div>
+        
+        {/* Toolbar קומפקטי לכפתורים */}
+        <div className="hidden sm:flex items-center gap-2 sm:gap-3 py-2">
+          {i18n.language === 'he' ? (
+            <>
+              {/* קבוצה 1: פעולות ראשיות */}
+              <button
+                onClick={() => setShowForm(true)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md text-sm"
+                title={t('birthday.addBirthday')}
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t('birthday.addBirthday')}</span>
+              </button>
+              <label className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md cursor-pointer text-sm">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCSVImport}
+                  className="hidden"
+                  ref={fileInputRef}
+                />
+                <Upload className="w-4 h-4" />
+                <span>{t('birthday.importCSV', 'Import CSV')}</span>
+              </label>
+              
+              {/* Separator */}
+              <div className="h-8 w-px bg-gray-300 mx-1" />
+              
+              {/* קבוצה 2: Google Calendar */}
+              <div className="flex items-center">
+                <GoogleCalendarButton />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* קבוצה 1: Google Calendar */}
+              <div className="flex items-center">
+                <GoogleCalendarButton />
+              </div>
+              
+              {/* Separator */}
+              <div className="h-8 w-px bg-gray-300 mx-1" />
+              
+              {/* קבוצה 2: פעולות ראשיות */}
+              <label className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md cursor-pointer text-sm">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCSVImport}
+                  className="hidden"
+                  ref={fileInputRef}
+                />
+                <Upload className="w-4 h-4" />
+                <span>{t('birthday.importCSV', 'Import CSV')}</span>
+              </label>
+              <button
+                onClick={() => setShowForm(true)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md text-sm"
+                title={t('birthday.addBirthday')}
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t('birthday.addBirthday')}</span>
+              </button>
+            </>
+          )}
+        </div>
+        
+        {/* כפתורים למובייל - נשאר כמו שהיה */}
+        <div className="sm:hidden space-y-2">
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg text-sm w-full"
+            title={t('birthday.addBirthday')}
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t('birthday.addBirthday')}</span>
+          </button>
+          <label className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg cursor-pointer text-sm w-full">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleCSVImport}
+              className="hidden"
+              ref={fileInputRef}
+            />
+            <Upload className="w-4 h-4" />
+            <span>{t('birthday.importCSV', 'Import CSV')}</span>
+          </label>
+          <div className="w-full">
+            <GoogleCalendarButton />
           </div>
+        </div>
+        
+        <div className="space-y-3 sm:space-y-4">
 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">

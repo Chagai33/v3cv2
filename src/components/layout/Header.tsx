@@ -91,94 +91,105 @@ export const Header: React.FC = () => {
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-12 sm:h-16">
-          <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex justify-between items-center h-14 sm:h-16 gap-4">
+          {/* שמאל - כותרת ומידע */}
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button
               onClick={() => navigate('/')}
-              className="text-base sm:text-xl font-bold text-blue-600 hover:text-blue-700 transition-colors"
+              className="text-lg sm:text-xl font-bold text-blue-600 hover:text-blue-700 transition-colors truncate"
             >
               {t('birthday.birthdays')}
             </button>
-            <div className="hidden sm:flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2 text-xs text-gray-500">
               <a
                 href="https://www.linkedin.com/in/chagai-yechiel/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                className="hover:text-gray-700 transition-colors"
               >
                 {t('common.developedBy')} {i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}
               </a>
-              <span className="text-xs text-gray-400">•</span>
-              <span className="text-xs text-gray-500">
+              <span className="text-gray-400">•</span>
+              <span>
                 {t('common.version')} 1.0
               </span>
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
+          {/* ימין - כפתורים עם separators */}
+          <div className="hidden md:flex items-center gap-2">
             {user && (
-              <span className="text-sm text-gray-600">
-                {user.display_name || user.email}
-              </span>
+              <>
+                <span className="text-sm text-gray-600 px-2">
+                  {user.display_name || user.email}
+                </span>
+                <div className="h-6 w-px bg-gray-300" />
+              </>
             )}
 
             {user && location.pathname === '/' && (
-              <div className="relative">
+              <>
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      if (selectedGroupIds.length > 0) {
+                        clearGroupFilters();
+                        setShowGroupFilter(false);
+                      } else {
+                        setShowGroupFilter(!showGroupFilter);
+                      }
+                    }}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                      selectedGroupIds.length > 0
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Filter className="w-4 h-4" />
+                    <span>{t('groups.filterByGroup')}</span>
+                    {selectedGroupIds.length > 0 && (
+                      <span className="ml-1 px-1.5 py-0.5 bg-white text-blue-600 text-xs font-bold rounded-full">
+                        {selectedGroupIds.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {showGroupFilter && (
+                    <GroupFilterDropdown
+                      allGroups={allGroups}
+                      selectedGroupIds={selectedGroupIds}
+                      toggleGroupFilter={toggleGroupFilter}
+                      clearGroupFilters={clearGroupFilters}
+                      countsByGroup={countsByGroup}
+                      onClose={() => setShowGroupFilter(false)}
+                    />
+                  )}
+                </div>
+                <div className="h-6 w-px bg-gray-300" />
+              </>
+            )}
+
+            {user && (
+              <>
                 <button
                   onClick={() => {
-                    if (selectedGroupIds.length > 0) {
-                      clearGroupFilters();
-                      setShowGroupFilter(false);
+                    if (location.pathname === '/groups') {
+                      navigate('/');
                     } else {
-                      setShowGroupFilter(!showGroupFilter);
+                      navigate('/groups');
                     }
                   }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                    selectedGroupIds.length > 0
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
+                    location.pathname === '/groups'
                       ? 'bg-blue-600 text-white'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  <Filter className="w-4 h-4" />
-                  <span className="text-sm">{t('groups.filterByGroup')}</span>
-                  {selectedGroupIds.length > 0 && (
-                    <span className="ml-1 px-2 py-0.5 bg-white text-blue-600 text-xs font-bold rounded-full">
-                      {selectedGroupIds.length}
-                    </span>
-                  )}
+                  <FolderTree className="w-4 h-4" />
+                  <span>{t('groups.manageGroups')}</span>
                 </button>
-
-                {showGroupFilter && (
-                  <GroupFilterDropdown
-                    allGroups={allGroups}
-                    selectedGroupIds={selectedGroupIds}
-                    toggleGroupFilter={toggleGroupFilter}
-                    clearGroupFilters={clearGroupFilters}
-                    countsByGroup={countsByGroup}
-                    onClose={() => setShowGroupFilter(false)}
-                  />
-                )}
-              </div>
-            )}
-
-            {user && (
-              <button
-                onClick={() => {
-                  if (location.pathname === '/groups') {
-                    navigate('/');
-                  } else {
-                    navigate('/groups');
-                  }
-                }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                  location.pathname === '/groups'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <FolderTree className="w-4 h-4" />
-                <span className="text-sm">{t('groups.manageGroups')}</span>
-              </button>
+                <div className="h-6 w-px bg-gray-300" />
+              </>
             )}
 
             <button
@@ -190,13 +201,16 @@ export const Header: React.FC = () => {
             </button>
 
             {user && (
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="text-sm">{t('auth.signOut')}</span>
-              </button>
+              <>
+                <div className="h-6 w-px bg-gray-300" />
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center gap-2 px-3 py-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>{t('auth.signOut')}</span>
+                </button>
+              </>
             )}
           </div>
         </div>
