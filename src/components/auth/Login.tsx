@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { Mail, Lock, LogIn, Globe } from 'lucide-react';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
+import { authService } from '../../services/auth.service';
 
 export const Login: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -14,6 +16,7 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const from = (location.state as any)?.from?.pathname || '/';
 
@@ -31,9 +34,22 @@ export const Login: React.FC = () => {
     try {
       await signIn(email, password);
       // Don't navigate here - let AuthContext's onAuthStateChanged handle it
-      // The ProtectedRoute will automatically redirect when user is loaded
     } catch (err: any) {
-      setError(err.message || t('common.error'));
+      // Check if user has Google account
+      if (err.message.includes('שגויים') || err.message.includes('credentials')) {
+        try {
+          const methods = await authService.checkSignInMethods(email);
+          if (methods.includes('google.com')) {
+            setError(t('auth.useGoogleOrReset', 'חשבון זה מקושר ל-Google. התחבר למטה או אפס סיסמה כדי להשתמש גם באימייל.'));
+          } else {
+            setError(err.message || t('common.error'));
+          }
+        } catch {
+          setError(err.message || t('common.error'));
+        }
+      } else {
+        setError(err.message || t('common.error'));
+      }
       setIsSubmitting(false);
     }
   };
@@ -114,6 +130,15 @@ export const Login: React.FC = () => {
                 required
               />
             </div>
+            <div className="flex justify-end mt-1">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-xs text-blue-600 hover:text-blue-700"
+              >
+                {t('auth.forgotPassword', 'שכחת סיסמה?')}
+              </button>
+            </div>
           </div>
 
           <button
@@ -185,6 +210,12 @@ export const Login: React.FC = () => {
           </a>
         </p>
       </div>
+
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        email={email}
+      />
     </div>
   );
 };

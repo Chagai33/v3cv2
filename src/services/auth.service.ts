@@ -4,7 +4,9 @@ import {
   signOut as firebaseSignOut,
   updateProfile as firebaseUpdateProfile,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  sendPasswordResetEmail,
+  fetchSignInMethodsForEmail
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
@@ -153,4 +155,26 @@ export const authService = {
 
     await updateDoc(doc(db, 'profiles', userId), updateData);
   },
+
+  async resetPassword(email: string): Promise<void> {
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found') {
+        throw new Error('לא נמצא משתמש עם כתובת אימייל זו');
+      } else if (error.code === 'auth/invalid-email') {
+        throw new Error('כתובת האימייל לא תקינה');
+      }
+      throw error;
+    }
+  },
+
+  async checkSignInMethods(email: string): Promise<string[]> {
+    try {
+      return await fetchSignInMethodsForEmail(auth, email);
+    } catch (error) {
+      console.error('Error checking sign in methods:', error);
+      return [];
+    }
+  }
 };

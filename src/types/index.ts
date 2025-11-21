@@ -89,7 +89,6 @@ export interface Birthday {
     hebrew?: string[];
   } | null;
   lastSyncedAt?: string | null;
-  syncedDataHash?: string | null;
   created_at: string;
   created_by: string;
   updated_at: string;
@@ -137,7 +136,6 @@ export interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
-  signInWithGoogle: () => Promise<{ isNewUser: boolean }>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<AppUser>) => Promise<void>;
 }
@@ -178,8 +176,6 @@ export interface BirthdayCalculations {
   daysUntilGregorianBirthday: number;
   daysUntilHebrewBirthday: number | null;
   nextBirthdayType: 'gregorian' | 'hebrew' | 'same';
-  gregorianSign?: string;
-  hebrewSign?: string;
 }
 
 export interface EnrichedBirthday extends Birthday {
@@ -194,10 +190,8 @@ export interface CSVBirthdayRow {
   afterSunset: boolean;
   gender?: Gender;
   groupId?: string;
-  groupName?: string;
   notes?: string;
   calendarPreference?: CalendarPreference;
-  wishlist?: string;
   validationErrors?: string[];
   warnings?: string[];
   isDuplicate?: boolean;
