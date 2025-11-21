@@ -90,6 +90,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // setLoading is handled by onAuthStateChanged
   };
 
+  const signInWithGoogle = async () => {
+    return await authService.signInWithGoogle();
+  };
+
   const signOut = async () => {
     await authService.signOut();
   };
@@ -108,6 +112,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     signIn,
     signUp,
+    signInWithGoogle,
     signOut,
     updateProfile,
   };

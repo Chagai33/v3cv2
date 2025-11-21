@@ -2,7 +2,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
-  updateProfile as firebaseUpdateProfile
+  updateProfile as firebaseUpdateProfile,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
@@ -49,6 +51,60 @@ export const authService = {
       } else if (error.code === 'auth/too-many-requests') {
         throw new Error('יותר מדי ניסיונות כושלים - נסה שוב מאוחר יותר');
       }
+      throw error;
+    }
+  },
+
+  async signInWithGoogle(): Promise<{ isNewUser: boolean }> {
+    const provider = new GoogleAuthProvider();
+    try {
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
+      let isNewUser = false;
+      
+      // Create profile if not exists
+      const profileRef = doc(db, 'profiles', user.uid);
+      const profileDoc = await getDoc(profileRef);
+      
+      if (!profileDoc.exists()) {
+        isNewUser = true;
+        await setDoc(profileRef, {
+          id: user.uid,
+          email: user.email,
+          display_name: user.displayName || user.email?.split('@')[0] || 'User',
+          phone_number: user.phoneNumber || null,
+          photo_url: user.photoURL || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      } else {
+        // Update existing profile with Google data if missing
+        const data = profileDoc.data();
+        const updates: any = {
+          updated_at: new Date().toISOString()
+        };
+        
+        if (!data.photo_url && user.photoURL) {
+          updates.photo_url = user.photoURL;
+        }
+        if (!data.display_name && user.displayName) {
+          updates.display_name = user.displayName;
+        }
+        
+        if (Object.keys(updates).length > 1) {
+          await updateDoc(profileRef, updates);
+        }
+      }
+      
+      await user.getIdToken(true);
+      return { isNewUser };
+    } catch (error: any) {
+      if (error.code === 'auth/popup-closed-by-user') {
+        throw new Error('ההתחברות בוטלה');
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
+        throw new Error('קיים חשבון עם כתובת אימייל זו. אנא התחבר באמצעות אימייל וסיסמה.');
+      }
+      console.error('Google Sign-In error:', error);
       throw error;
     }
   },
