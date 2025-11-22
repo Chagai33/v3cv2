@@ -1,9 +1,10 @@
-import React from 'react';
-import { X, Globe, Trash2, MessageSquare, LogOut } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Globe, Trash2, MessageSquare, LogOut, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { FloatingBackButton } from '../common/FloatingBackButton';
+import { TenantSettings } from '../settings/TenantSettings';
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
   const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [showSettings, setShowSettings] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -66,6 +68,16 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               <span className="text-sm font-medium">{t('common.switchLanguage')}</span>
             </button>
 
+            {user && (
+              <button
+                onClick={() => setShowSettings(true)}
+                className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors w-full text-start"
+              >
+                <Settings className="w-5 h-5 text-gray-600" />
+                <span className="text-sm font-medium">{t('tenant.settings')}</span>
+              </button>
+            )}
+
             <Link
               to="/terms"
               onClick={onClose}
@@ -111,6 +123,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         </div>
       </div>
       <FloatingBackButton onClick={onClose} position="bottom-left" />
+      {showSettings && <TenantSettings onClose={() => setShowSettings(false)} />}
     </div>
   );
 };

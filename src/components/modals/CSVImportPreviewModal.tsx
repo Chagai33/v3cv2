@@ -188,24 +188,24 @@ export const CSVImportPreviewModal = ({
         </div>
 
         <div className="px-6 py-3 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-4 text-sm flex-wrap">
+            <div className="flex items-center gap-1.5 whitespace-nowrap">
               <FileText className="w-3.5 h-3.5 text-blue-600" />
               <span className="text-gray-600">{t('csvImport.totalRows', 'סך הכל שורות')}:</span>
               <span className="font-semibold text-gray-900">{data.length}</span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 whitespace-nowrap">
               <CheckCircle className="w-3.5 h-3.5 text-green-600" />
               <span className="text-gray-600">{t('csvImport.validRows', 'שורות תקינות')}:</span>
               <span className="font-semibold text-green-700">{validCount}</span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 whitespace-nowrap">
               <AlertCircle className="w-3.5 h-3.5 text-red-600" />
               <span className="text-gray-600">{t('csvImport.invalidRows', 'שורות לא תקינות')}:</span>
               <span className="font-semibold text-red-700">{invalidCount}</span>
             </div>
             {duplicateCount > 0 && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
                 <AlertCircle className="w-3.5 h-3.5 text-yellow-600" />
                 <span className="text-gray-600">{t('csvImport.duplicates', 'כפילויות אפשריות')}:</span>
                 <span className="font-semibold text-yellow-700">{duplicateCount}</span>

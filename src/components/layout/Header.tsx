@@ -6,7 +6,7 @@ import { useTenant } from '../../contexts/TenantContext';
 import { useGroupFilter } from '../../contexts/GroupFilterContext';
 import { useGroups } from '../../hooks/useGroups';
 import { useBirthdays } from '../../hooks/useBirthdays';
-import { LogOut, Globe, Menu, X, FolderTree, Filter, Settings } from 'lucide-react';
+import { LogOut, Globe, Menu, X, FolderTree, Filter, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTranslatedRootGroupName } from '../../utils/groupNameTranslator';
 import { TenantSettings } from '../settings/TenantSettings';
 
@@ -59,23 +59,23 @@ export const Header: React.FC = () => {
               >
                 {t('birthday.birthdays')}
               </button>
-              <div className="hidden sm:flex items-center gap-2">
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <a
                   href="https://www.linkedin.com/in/chagai-yechiel/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                  className="text-[10px] sm:text-xs text-gray-500 hover:text-gray-700 transition-colors whitespace-nowrap"
                 >
                   {t('common.developedBy')} {i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}
                 </a>
-                <span className="text-xs text-gray-400">•</span>
-                <span className="text-xs text-gray-500">
+                <span className="hidden sm:inline text-xs text-gray-400">•</span>
+                <span className="hidden sm:inline text-xs text-gray-500">
                   {t('common.version')} 1.0
                 </span>
               </div>
-            </div>
-
-            <div className="flex items-center gap-3">
               <button
                 onClick={toggleLanguage}
                 className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -102,24 +102,161 @@ export const Header: React.FC = () => {
             >
               {t('birthday.birthdays')}
             </button>
-            <div className="hidden sm:flex items-center gap-2 text-xs text-gray-500">
+          </div>
+
+          {/* ימין - כפתורים עם separators */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-xs text-gray-500">
               <a
                 href="https://www.linkedin.com/in/chagai-yechiel/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-gray-700 transition-colors"
+                className="text-[10px] sm:text-xs hover:text-gray-700 transition-colors whitespace-nowrap"
               >
                 {t('common.developedBy')} {i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}
               </a>
-              <span className="text-gray-400">•</span>
-              <span>
+              <span className="hidden sm:inline text-gray-400">•</span>
+              <span className="hidden sm:inline">
                 {t('common.version')} 1.0
               </span>
             </div>
-          </div>
 
-          {/* ימין - כפתורים עם separators */}
-          <div className="hidden md:flex items-center gap-2">
+            {/* תפריט ביניים (Tablet/Small Laptop) */}
+            <div className="hidden sm:flex md:hidden relative">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1"
+              >
+                <span className="text-sm font-medium text-gray-700">
+                  {t('common.menu')}
+                </span>
+                {mobileMenuOpen ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </button>
+
+              {/* Dropdown Menu */}
+              {mobileMenuOpen && (
+                <div className="absolute top-full mt-2 end-0 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50 w-64">
+                  {user && (
+                    <div className="px-4 py-2 border-b border-gray-200 mb-2">
+                      <span className="text-sm font-semibold text-gray-700 block truncate">
+                        {user.display_name || user.email}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="px-2 flex flex-col gap-1">
+                    {user && location.pathname === '/' && (
+                      <div className="relative">
+                        <button
+                          onClick={() => {
+                            if (selectedGroupIds.length > 0) {
+                              clearGroupFilters();
+                              setShowGroupFilter(false);
+                            } else {
+                              setShowGroupFilter(!showGroupFilter);
+                            }
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors text-sm ${
+                            selectedGroupIds.length > 0
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Filter className="w-4 h-4" />
+                            <span>{t('groups.filterByGroup')}</span>
+                          </div>
+                          {selectedGroupIds.length > 0 ? (
+                            <span className="bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
+                              {selectedGroupIds.length}
+                            </span>
+                          ) : (
+                            <ChevronDown className={`w-3 h-3 transition-transform ${showGroupFilter ? 'rotate-180' : ''}`} />
+                          )}
+                        </button>
+                        
+                        {showGroupFilter && (
+                          <div className="mt-1 pl-4 border-l-2 border-gray-100 ml-2">
+                            <GroupFilterDropdown
+                              allGroups={allGroups}
+                              selectedGroupIds={selectedGroupIds}
+                              toggleGroupFilter={toggleGroupFilter}
+                              clearGroupFilters={clearGroupFilters}
+                              countsByGroup={countsByGroup}
+                              onClose={() => setShowGroupFilter(false)}
+                              isMobile={true}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {user && (
+                      <button
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          if (location.pathname === '/groups') {
+                            navigate('/');
+                          } else {
+                            navigate('/groups');
+                          }
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm ${
+                          location.pathname === '/groups'
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <FolderTree className="w-4 h-4" />
+                        <span>{t('groups.manageGroups')}</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        toggleLanguage();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Globe className="w-4 h-4" />
+                      <span>
+                        {i18n.language === 'he' ? t('common.switchToEnglish') : t('common.switchToHebrew')}
+                      </span>
+                    </button>
+
+                    {user && (
+                      <>
+                        <div className="h-px bg-gray-100 my-1" />
+                        <button
+                          onClick={() => {
+                            setShowSettings(true);
+                            setMobileMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <Settings className="w-4 h-4" />
+                          <span>{t('tenant.settings')}</span>
+                        </button>
+                        <button
+                          onClick={handleSignOut}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm text-red-600 hover:bg-red-50"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>{t('auth.signOut')}</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="hidden md:flex items-center gap-2">
             {user && (
               <>
                 <span className="text-sm text-gray-600 px-2">
@@ -204,7 +341,6 @@ export const Header: React.FC = () => {
 
             {user && (
               <>
-                <div className="h-6 w-px bg-gray-300" />
                 <button
                   onClick={() => setShowSettings(true)}
                   className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -225,7 +361,8 @@ export const Header: React.FC = () => {
           </div>
         </div>
       </div>
-      {showSettings && <TenantSettings onClose={() => setShowSettings(false)} />}
+    </div>
+    {showSettings && <TenantSettings onClose={() => setShowSettings(false)} />}
     </header>
   );
 };
@@ -237,6 +374,7 @@ interface GroupFilterDropdownProps {
   clearGroupFilters: () => void;
   countsByGroup: Map<string, number>;
   onClose: () => void;
+  isMobile?: boolean;
 }
 
 const GroupFilterDropdown: React.FC<GroupFilterDropdownProps> = ({
@@ -246,6 +384,7 @@ const GroupFilterDropdown: React.FC<GroupFilterDropdownProps> = ({
   clearGroupFilters,
   countsByGroup,
   onClose,
+  isMobile = false,
 }) => {
   const { t } = useTranslation();
   const rootGroups = allGroups.filter(g => g.is_root);
@@ -256,24 +395,30 @@ const GroupFilterDropdown: React.FC<GroupFilterDropdownProps> = ({
     return <span className="text-xs font-semibold text-gray-500 uppercase">{translatedName}</span>;
   };
 
+  const containerClasses = isMobile
+    ? "relative w-full bg-gray-50 rounded-lg mt-1"
+    : "absolute top-full mt-2 start-0 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50 min-w-[280px] max-h-[400px] overflow-y-auto";
+
   return (
-    <div className="absolute top-full mt-2 start-0 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50 min-w-[280px] max-h-[400px] overflow-y-auto">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
-        <span className="text-sm font-semibold text-gray-700">
-          {t('groups.filterByGroup')}
-        </span>
-        {selectedGroupIds.length > 0 && (
-          <button
-            onClick={() => {
-              clearGroupFilters();
-              onClose();
-            }}
-            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-          >
-            {t('common.clear', 'נקה הכל')}
-          </button>
-        )}
-      </div>
+    <div className={containerClasses}>
+      {!isMobile && (
+        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
+          <span className="text-sm font-semibold text-gray-700">
+            {t('groups.filterByGroup')}
+          </span>
+          {selectedGroupIds.length > 0 && (
+            <button
+              onClick={() => {
+                clearGroupFilters();
+                onClose();
+              }}
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+            >
+              {t('common.clear', 'נקה הכל')}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="py-2">
         {rootGroups.map((root) => {

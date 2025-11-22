@@ -39,7 +39,8 @@
     "linkedInProfile": "LinkedIn Profile",
     "day": "Day",
     "month": "Month",
-    "year": "Year"
+    "year": "Year",
+    "menu": "Menu"
   },
   "googleCalendar": {
     "title": "Google Calendar",
@@ -367,7 +368,14 @@
   "settings": {
     "note1": "This setting applies to all groups in this tenant by default",
     "note2": "Groups can override this with their own preference",
-    "note3": "Individual records can override group preferences"
+    "note3": "Individual records can override group preferences",
+    "dangerZone": "Danger Zone",
+    "deleteAccount": "Delete Account",
+    "deleteAccountDescription": "Permanently delete your account and all data",
+    "deleteAccountConfirmTitle": "Are you absolutely sure?",
+    "deleteAccountConfirmDescription": "This action cannot be undone. This will permanently delete your account and remove your data from our servers.",
+    "summaryOfData": "Summary of data to be deleted:",
+    "confirmDelete": "Yes, delete account"
   },
   "footer": {
     "termsOfUse": "Terms of Use",

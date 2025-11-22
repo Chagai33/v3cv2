@@ -501,27 +501,8 @@ export const Dashboard = () => {
           )}
         </div>
         
-        {/* כפתורים למובייל - נשאר כמו שהיה */}
+        {/* כפתורים למובייל - רק Google Calendar נשאר כי האחרים ב-FloatingDock */}
         <div className="sm:hidden space-y-2">
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg text-sm w-full"
-            title={t('birthday.addBirthday')}
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('birthday.addBirthday')}</span>
-          </button>
-          <label className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg cursor-pointer text-sm w-full">
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleCSVImport}
-              className="hidden"
-              ref={fileInputRef}
-            />
-            <Upload className="w-4 h-4" />
-            <span>{t('birthday.importCSV', 'Import CSV')}</span>
-          </label>
           <div className="w-full">
             <GoogleCalendarButton />
           </div>

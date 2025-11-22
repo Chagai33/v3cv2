@@ -101,7 +101,8 @@
     "linkedInProfile": "פרופיל LinkedIn",
     "day": "יום",
     "month": "חודש",
-    "year": "שנה"
+    "year": "שנה",
+    "menu": "תפריט"
   },
   "auth": {
     "signIn": "התחבר",
@@ -166,6 +167,18 @@
     "settings": "הגדרות",
     "defaultCalendarPreference": "העדפת לוח שנה ברירת מחדל",
     "preferenceDescription": "זה משפיע על אופן הצגת ימי ההולדת במערכת"
+  },
+  "settings": {
+    "note1": "הגדרה זו חלה כברירת מחדל על כל הקבוצות",
+    "note2": "קבוצות יכולות לעקוף הגדרה זו",
+    "note3": "רשומות בודדות יכולות לעקוף הגדרות קבוצה",
+    "dangerZone": "אזור סכנה",
+    "deleteAccount": "מחיקת חשבון",
+    "deleteAccountDescription": "מחק את החשבון שלך ואת כל הנתונים לצמיתות",
+    "deleteAccountConfirmTitle": "האם אתה בטוח לחלוטין?",
+    "deleteAccountConfirmDescription": "פעולה זו אינה הפיכה. היא תמחק לצמיתות את חשבונך ותסיר את הנתונים שלך מהשרתים שלנו.",
+    "summaryOfData": "סיכום הנתונים שיימחקו:",
+    "confirmDelete": "כן, מחק חשבון"
   },
   "sort": {
     "upcomingSoonest": "יום הולדת הבא (הקרוב ביותר)",
