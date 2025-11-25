@@ -3,7 +3,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { useTranslation } from 'react-i18next';
 import { googleCalendarService } from '../services/googleCalendar.service';
 import { useAuth } from './AuthContext';
-import { GoogleCalendarContextType, SyncResult, BulkSyncResult, CleanupOrphansResult, PreviewDeletionResult } from '../types';
+import { GoogleCalendarContextType, SyncResult, BulkSyncResult, CleanupOrphansResult, PreviewDeletionResult, SyncHistoryItem } from '../types';
 import { logger } from '../utils/logger';
 import { useToast } from './ToastContext';
 
@@ -33,6 +33,8 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [calendarId, setCalendarId] = useState<string | null>(null);
   const [calendarName, setCalendarName] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'IDLE' | 'IN_PROGRESS'>('IDLE');
+  const [recentActivity, setRecentActivity] = useState<SyncHistoryItem[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -43,6 +45,8 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
       setUserEmail(null);
       setCalendarId(null);
       setCalendarName(null);
+      setSyncStatus('IDLE');
+      setRecentActivity([]);
     }
   }, [user]);
 
@@ -50,65 +54,27 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     if (!user) return;
 
     try {
-      const status = await googleCalendarService.getTokenStatus(user.id);
-      setIsConnected(status.isConnected);
-
-      if (status.lastSyncTime) {
-        setLastSyncTime(new Date(status.lastSyncTime));
-      }
-
-      if (status.userEmail) {
-        setUserEmail(status.userEmail);
-      }
-
-      if (status.calendarId) {
-        setCalendarId(status.calendarId);
-      }
-
-      if (status.calendarName) {
-        setCalendarName(status.calendarName);
-      }
-
-      // אם יש מייל ב-status, נשתמש בו
-      if (status.isConnected && status.userEmail && !userEmail) {
-        setUserEmail(status.userEmail);
-      }
+      const status = await googleCalendarService.getStatus(user.id);
       
-      // אם מחובר אבל אין מייל, נטען את פרטי המשתמש - קריטי!
-      if (status.isConnected && !userEmail) {
-        try {
-          const accountInfo = await googleCalendarService.getGoogleAccountInfo();
-          if (accountInfo?.email) {
-            setUserEmail(accountInfo.email);
-            logger.log('User email loaded in refreshStatus:', accountInfo.email);
-          }
-        } catch (emailError: any) {
-          logger.error('Error loading user email in refreshStatus:', emailError);
-          
-          // אם הטוקן פג תוקף, ננתק את החיבור
-          if (emailError.message?.includes('פג תוקף') || emailError.message?.includes('permission-denied')) {
-            logger.warn('Token expired, disconnecting Google Calendar');
-            setIsConnected(false);
-            setUserEmail(null);
-            setCalendarId(null);
-            setCalendarName(null);
-            showToast(t('googleCalendar.connectFirst'), 'warning');
-            return;
-          }
-          
-          // ננסה שוב אחרי רגע רק אם זו לא שגיאת הרשאה
-          setTimeout(async () => {
-            try {
-              const accountInfo = await googleCalendarService.getGoogleAccountInfo();
-              if (accountInfo?.email) {
-                setUserEmail(accountInfo.email);
-              }
-            } catch (retryError) {
-              logger.error('Retry failed to load user email:', retryError);
-            }
-          }, 2000);
-        }
+      if (!status) {
+        logger.warn('Received empty status from Google Calendar service');
+        return;
       }
+
+      setIsConnected(!!status.isConnected);
+      setSyncStatus(status.syncStatus || 'IDLE');
+      setRecentActivity(Array.isArray(status.recentActivity) ? status.recentActivity : []);
+
+      if (status.lastSyncStart) {
+        setLastSyncTime(new Date(status.lastSyncStart));
+      } else {
+        setLastSyncTime(null);
+      }
+
+      setUserEmail(status.email || null);
+      setCalendarId(status.calendarId || null);
+      setCalendarName(status.calendarName || null);
+      
     } catch (error) {
       logger.error('Error refreshing Google Calendar status:', error);
     }
@@ -129,38 +95,10 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
         throw new Error(t('googleCalendar.noToken'));
       }
 
-      await googleCalendarService.saveAccessToken(tokenResponse.accessToken, tokenResponse.expiresIn);
-
-      // טעינת פרטי משתמש אחרי חיבור - קריטי!
-      try {
-        const accountInfo = await googleCalendarService.getGoogleAccountInfo();
-        if (accountInfo?.email) {
-          setUserEmail(accountInfo.email);
-          logger.log('User email loaded:', accountInfo.email);
-        } else {
-          logger.warn('No email received from Google account info');
-        }
-      } catch (emailError: any) {
-        logger.error('Error loading user email:', emailError);
-        // לא נזרוק שגיאה כאן, רק נוודא שהמייל יטען ב-refreshStatus
-      }
+      // Removed redundant saveAccessToken call - the server already saves it properly with refresh token.
+      // await googleCalendarService.saveAccessToken(tokenResponse.accessToken, tokenResponse.expiresIn);
 
       await refreshStatus();
-
-      // אם עדיין אין מייל אחרי refreshStatus, ננסה שוב
-      // נבדוק את ה-state אחרי refreshStatus
-      const currentStatus = await googleCalendarService.getTokenStatus(user!.id);
-      if (currentStatus.isConnected && !currentStatus.userEmail) {
-        try {
-          const accountInfo = await googleCalendarService.getGoogleAccountInfo();
-          if (accountInfo?.email) {
-            setUserEmail(accountInfo.email);
-            logger.log('User email loaded in retry:', accountInfo.email);
-          }
-        } catch (retryError) {
-          logger.error('Retry failed to load user email:', retryError);
-        }
-      }
 
       showToast(t('googleCalendar.connected'), 'success');
     } catch (error: any) {
@@ -185,6 +123,7 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
       if (result.success) {
         setLastSyncTime(new Date());
         showToast(t('googleCalendar.syncSuccess'), 'success');
+        refreshStatus(); // Refresh to update history
       } else {
         showToast(result.error || t('googleCalendar.syncError'), 'error');
       }
@@ -208,51 +147,22 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     try {
       setIsSyncing(true);
       
-      // Chunk processing to chunks of 5
-      const chunkSize = 5;
-      const results: SyncResult[] = [];
-      let successCount = 0;
-      let failureCount = 0;
-      
-      for (let i = 0; i < birthdayIds.length; i += chunkSize) {
-        const chunk = birthdayIds.slice(i, i + chunkSize);
-        
-        try {
-             // Process chunk
-             const chunkResult = await googleCalendarService.syncMultipleBirthdays(chunk);
-             if (chunkResult.results) {
-                 results.push(...chunkResult.results);
-             }
-             successCount += chunkResult.successCount;
-             failureCount += chunkResult.failureCount;
-             
-             // Add small delay between chunks if needed, or just continue
-        } catch (chunkError) {
-            logger.error(`Error syncing chunk ${i/chunkSize}:`, chunkError);
-            // Mark all in chunk as failed if the bulk call itself failed completely
-            failureCount += chunk.length;
-            chunk.forEach(id => {
-                results.push({
-                    success: false,
-                    birthdayId: id,
-                    error: 'Batch sync failed'
-                });
-            });
-        }
-      }
+      // Pass all IDs to the service which calls the Cloud Function (enqueuer)
+      const result = await googleCalendarService.syncMultipleBirthdays(birthdayIds);
 
       setLastSyncTime(new Date());
+      setSyncStatus('IN_PROGRESS'); // Optimistic update
       
-      const finalResult: BulkSyncResult = {
-          totalAttempted: birthdayIds.length,
-          successCount,
-          failureCount,
-          results
-      };
+      if (result.status === 'queued') {
+          showToast(t('googleCalendar.syncStarted', { count: birthdayIds.length }), 'success');
+      } else {
+          showToast(t('googleCalendar.syncedCount', { count: result.successCount || 0 }), 'success');
+      }
 
-      showToast(t('googleCalendar.syncedCount', { count: successCount }), 'success');
+      // Schedule a few refreshes to check status update
+      setTimeout(refreshStatus, 5000);
 
-      return finalResult;
+      return result;
     } catch (error: any) {
       logger.error('Error syncing multiple birthdays:', error);
       showToast(error.message || t('googleCalendar.syncError'), 'error');
@@ -262,7 +172,7 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     }
   };
 
-  const cleanupOrphanEvents = async (tenantId: string): Promise<CleanupOrphansResult> => {
+  const cleanupOrphanEvents = async (tenantId: string, dryRun: boolean = false): Promise<CleanupOrphansResult> => {
     if (!isConnected) {
       showToast(t('googleCalendar.connectFirst'), 'error');
       throw new Error('Not connected to Google Calendar');
@@ -270,8 +180,10 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
 
     try {
       setIsSyncing(true);
-      const result = await googleCalendarService.cleanupOrphanEvents(tenantId);
-      showToast(t('googleCalendar.cleanupSuccess', { count: result.deletedCount }), 'success');
+      const result = await googleCalendarService.cleanupOrphanEvents(tenantId, dryRun);
+      if (!dryRun) {
+          showToast(t('googleCalendar.cleanupSuccess', { count: result.deletedCount }), 'success');
+      }
       return result;
     } catch (error: any) {
       logger.error('Error cleaning orphans:', error);
@@ -350,6 +262,8 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
       setUserEmail(null);
       setCalendarId(null);
       setCalendarName(null);
+      setSyncStatus('IDLE');
+      setRecentActivity([]);
       showToast(t('googleCalendar.disconnectedSuccess'), 'success');
     } catch (error: any) {
       logger.error('Error disconnecting:', error);
@@ -448,6 +362,21 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     }
   };
 
+  const resetBirthdaySyncData = async (birthdayId: string): Promise<void> => {
+      if (!isConnected) {
+          showToast(t('googleCalendar.connectFirst'), 'error');
+          throw new Error('Not connected');
+      }
+      try {
+          await googleCalendarService.resetBirthdaySyncData(birthdayId);
+          showToast(t('googleCalendar.syncDataReset'), 'success');
+      } catch (error: any) {
+          logger.error('Error resetting sync data:', error);
+          showToast(error.message, 'error');
+          throw error;
+      }
+  };
+
   const value: GoogleCalendarContextType = {
     isConnected,
     lastSyncTime,
@@ -455,6 +384,8 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     userEmail,
     calendarId,
     calendarName,
+    syncStatus,
+    recentActivity,
     connectToGoogle,
     syncSingleBirthday,
     syncMultipleBirthdays,
@@ -467,7 +398,8 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     listCalendars,
     deleteCalendar,
     cleanupOrphanEvents,
-    previewDeletion
+    previewDeletion,
+    resetBirthdaySyncData
   };
 
   return (

@@ -36,14 +36,26 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAccount = exports.getAccountDeletionSummary = exports.previewDeletion = exports.cleanupOrphanEvents = exports.deleteGoogleCalendar = exports.listGoogleCalendars = exports.updateGoogleCalendarSelection = exports.createGoogleCalendar = exports.getGoogleAccountInfo = exports.disconnectGoogleCalendar = exports.deleteAllSyncedEventsFromGoogleCalendar = exports.removeBirthdayFromGoogleCalendar = exports.syncMultipleBirthdaysToGoogleCalendar = exports.syncBirthdayToGoogleCalendar = exports.onUserCreate = exports.migrateExistingUsers = exports.fixAllBirthdaysHebrewYear = exports.fixExistingBirthdays = exports.updateNextBirthdayScheduled = exports.refreshBirthdayHebrewData = exports.onBirthdayWrite = void 0;
+exports.deleteAccount = exports.getAccountDeletionSummary = exports.previewDeletion = exports.cleanupOrphanEvents = exports.deleteGoogleCalendar = exports.listGoogleCalendars = exports.updateGoogleCalendarSelection = exports.createGoogleCalendar = exports.getGoogleAccountInfo = exports.getGoogleCalendarStatus = exports.disconnectGoogleCalendar = exports.deleteAllSyncedEventsFromGoogleCalendar = exports.resetBirthdaySyncData = exports.removeBirthdayFromGoogleCalendar = exports.syncBirthdayToGoogleCalendar = exports.syncMultipleBirthdaysToGoogleCalendar = exports.processCalendarSyncJob = exports.exchangeGoogleAuthCode = exports.onUserCreate = exports.migrateExistingUsers = exports.fixAllBirthdaysHebrewYear = exports.fixExistingBirthdays = exports.updateNextBirthdayScheduled = exports.refreshBirthdayHebrewData = exports.onBirthdayWrite = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const node_fetch_1 = __importDefault(require("node-fetch"));
 const googleapis_1 = require("googleapis");
-const crypto = __importStar(require("crypto"));
+const calendar_utils_1 = require("./utils/calendar-utils");
+const tasks_1 = require("@google-cloud/tasks");
 admin.initializeApp();
 const db = admin.firestore();
+const PROJECT_ID = JSON.parse(process.env.FIREBASE_CONFIG || '{}').projectId;
+const LOCATION = 'us-central1'; // Adjust if your functions are in a different region
+const QUEUE = 'calendar-sync'; // Ensure this queue is created in Google Cloud Console
+// Google Client Credentials from Firebase Config
+const GOOGLE_CLIENT_ID = functions.config().google?.client_id || '';
+const GOOGLE_CLIENT_SECRET = functions.config().google?.client_secret || '';
+const GOOGLE_REDIRECT_URI = functions.config().google?.redirect_uri || 'postmessage';
+if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    functions.logger.warn('Missing Google Client Credentials in functions.config()!');
+}
+const tasksClient = new tasks_1.CloudTasksClient();
 async function fetchHebcalData(gregorianDate, afterSunset) {
     const year = gregorianDate.getFullYear();
     const month = String(gregorianDate.getMonth() + 1).padStart(2, '0');
@@ -84,6 +96,7 @@ async function getCurrentHebrewYear() {
         gm: month,
         gd: day,
         g2h: '1',
+        lg: 's',
     });
     try {
         const response = await (0, node_fetch_1.default)(`https://www.hebcal.com/converter?${params.toString()}`);
@@ -130,7 +143,6 @@ function getGregorianZodiacSign(date) {
 function getHebrewZodiacSign(hebrewMonth) {
     if (!hebrewMonth)
         return null;
-    // Hebrew months from Hebcal: Nisan, Iyyar, Sivan, Tamuz, Av, Elul, Tishrei, Cheshvan, Kislev, Tevet, Sh'vat, Adar, Adar I, Adar II
     switch (hebrewMonth) {
         case 'Nisan': return 'aries';
         case 'Iyyar': return 'taurus';
@@ -695,7 +707,54 @@ exports.onUserCreate = functions.auth.user().onCreate(async (user) => {
         throw error;
     }
 });
-async function getValidAccessToken(userId) {
+// --- New Auth & Token Management ---
+exports.exchangeGoogleAuthCode = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'auth.signIn');
+    }
+    const { code } = data;
+    if (!code) {
+        throw new functions.https.HttpsError('invalid-argument', 'Authorization code required');
+    }
+    try {
+        const oauth2Client = new googleapis_1.google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
+        const { tokens } = await oauth2Client.getToken(code);
+        // Save tokens to Firestore
+        const userId = context.auth.uid;
+        // Fetch existing token data to preserve preferences (calendarId, createdCalendars, etc.)
+        const tokenDoc = await db.collection('googleCalendarTokens').doc(userId).get();
+        const existingData = tokenDoc.exists ? tokenDoc.data() : {};
+        const tokenData = {
+            userId,
+            accessToken: tokens.access_token,
+            expiresAt: tokens.expiry_date || (Date.now() + 3600 * 1000),
+            scope: tokens.scope,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            // Explicitly preserve these fields if they exist
+            calendarId: existingData?.calendarId,
+            calendarName: existingData?.calendarName,
+            createdCalendars: existingData?.createdCalendars
+        };
+        // Remove undefined fields to avoid Firestore errors or unintended behavior
+        Object.keys(tokenData).forEach(key => tokenData[key] === undefined && delete tokenData[key]);
+        // Only save refresh token if we got one (we should if access_type=offline)
+        if (tokens.refresh_token) {
+            tokenData.refreshToken = tokens.refresh_token;
+        }
+        // Update or Set (merge to keep other fields like calendarId)
+        await db.collection('googleCalendarTokens').doc(userId).set(tokenData, { merge: true });
+        functions.logger.log(`Exchanged code for tokens for user ${userId}. Got Refresh Token: ${!!tokens.refresh_token}`);
+        return {
+            accessToken: tokens.access_token,
+            expiresIn: 3600 // Approximate, client uses it for basic state
+        };
+    }
+    catch (error) {
+        functions.logger.error('Error exchanging auth code:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to exchange authorization code');
+    }
+});
+async function getValidAccessToken(userId, minValidityMillis = 60000) {
     const tokenDoc = await db.collection('googleCalendarTokens').doc(userId).get();
     if (!tokenDoc.exists) {
         throw new functions.https.HttpsError('not-found', 'googleCalendar.connectFirst');
@@ -705,11 +764,38 @@ async function getValidAccessToken(userId) {
         throw new functions.https.HttpsError('not-found', 'googleCalendar.syncError');
     }
     const now = Date.now();
+    // Add buffer based on minValidityMillis parameter
     const expiresAt = tokenData.expiresAt || 0;
-    if (now >= expiresAt) {
+    // If token is valid (with buffer), return it
+    if (now < expiresAt - minValidityMillis) {
+        return tokenData.accessToken;
+    }
+    // If expired, try to refresh
+    functions.logger.log(`Token for user ${userId} expired, attempting refresh...`);
+    if (!tokenData.refreshToken) {
+        functions.logger.warn(`No refresh token found for user ${userId}, forcing re-auth`);
         throw new functions.https.HttpsError('permission-denied', 'googleCalendar.connectFirst');
     }
-    return tokenData.accessToken;
+    try {
+        const oauth2Client = new googleapis_1.google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
+        oauth2Client.setCredentials({
+            refresh_token: tokenData.refreshToken
+        });
+        const { credentials } = await oauth2Client.refreshAccessToken();
+        const newExpiresAt = credentials.expiry_date || (Date.now() + 3600 * 1000);
+        await tokenDoc.ref.update({
+            accessToken: credentials.access_token,
+            expiresAt: newExpiresAt,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        functions.logger.log(`Successfully refreshed access token for user ${userId}`);
+        return credentials.access_token;
+    }
+    catch (error) {
+        functions.logger.error(`Failed to refresh access token for user ${userId}:`, error);
+        // If refresh fails (e.g. revoked), we must ask user to re-connect
+        throw new functions.https.HttpsError('permission-denied', 'googleCalendar.connectFirst');
+    }
 }
 async function getCalendarId(userId) {
     const tokenDoc = await db.collection('googleCalendarTokens').doc(userId).get();
@@ -719,374 +805,153 @@ async function getCalendarId(userId) {
     const tokenData = tokenDoc.data();
     return tokenData?.calendarId || 'primary';
 }
-exports.syncBirthdayToGoogleCalendar = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'auth.signIn');
+async function getCalendarName(userId) {
+    const tokenDoc = await db.collection('googleCalendarTokens').doc(userId).get();
+    if (!tokenDoc.exists) {
+        return 'Unknown Calendar'; // Should ideally be localized on client
     }
-    const { birthdayId } = data;
-    if (!birthdayId) {
-        throw new functions.https.HttpsError('invalid-argument', 'validation.required');
+    const tokenData = tokenDoc.data();
+    return tokenData?.calendarName || 'Primary Calendar'; // Fallback
+}
+async function checkUserQuota(userId, newEventsCount) {
+    // Stub: Always return true for now.
+    // Future implementation: Check user plan and current usage.
+    return true;
+}
+// --- Job Status Helpers ---
+async function createSyncJob(userId, totalItems) {
+    const jobRef = db.collection('calendar_sync_jobs').doc();
+    await jobRef.set({
+        userId,
+        status: 'pending',
+        totalItems,
+        processedItems: 0,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        errors: []
+    });
+    return jobRef.id;
+}
+async function updateSyncJob(jobId, increment, error) {
+    const jobRef = db.collection('calendar_sync_jobs').doc(jobId);
+    const updateData = {
+        processedItems: admin.firestore.FieldValue.increment(increment),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    if (error) {
+        updateData.errors = admin.firestore.FieldValue.arrayUnion({
+            message: error.message,
+            itemId: error.itemId || null,
+            itemName: error.itemName || 'Unknown',
+            timestamp: new Date().toISOString()
+        });
     }
-    const rateLimitRef = db.collection('rate_limits').doc(`${context.auth.uid}_calendar_sync`);
-    const rateLimitDoc = await rateLimitRef.get();
-    const now = Date.now();
-    const windowMs = 60000;
-    const maxRequests = 30;
-    if (rateLimitDoc.exists) {
-        const rateLimitData = rateLimitDoc.data();
-        const requests = rateLimitData?.requests || [];
-        const recentRequests = requests.filter((timestamp) => now - timestamp < windowMs);
-        if (recentRequests.length >= maxRequests) {
-            throw new functions.https.HttpsError('resource-exhausted', 'auth.errors.tooManyRequests');
-        }
-        await rateLimitRef.update({ requests: [...recentRequests, now] });
-    }
-    else {
-        await rateLimitRef.set({ requests: [now] });
+    await jobRef.update(updateData);
+}
+async function completeSyncJob(jobId) {
+    const jobRef = db.collection('calendar_sync_jobs').doc(jobId);
+    await jobRef.update({
+        status: 'completed',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+}
+async function failSyncJob(jobId, error) {
+    const jobRef = db.collection('calendar_sync_jobs').doc(jobId);
+    await jobRef.update({
+        status: 'failed',
+        failureReason: error,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+}
+// New Task Handler Function
+exports.processCalendarSyncJob = functions.runWith({
+    timeoutSeconds: 540,
+    memory: '256MB'
+}).https.onRequest(async (req, res) => {
+    if (req.method !== 'POST') {
+        res.status(405).send('Method Not Allowed');
+        return;
     }
     try {
-        const birthdayDoc = await db.collection('birthdays').doc(birthdayId).get();
-        if (!birthdayDoc.exists) {
-            throw new functions.https.HttpsError('not-found', 'Birthday not found');
+        const payload = req.body;
+        const { birthdayIds, userId, jobId } = payload; // jobId added
+        if (!birthdayIds || !Array.isArray(birthdayIds) || !userId) {
+            res.status(400).send('Invalid Payload');
+            return;
         }
-        const birthday = birthdayDoc.data();
-        if (!birthday) {
-            throw new functions.https.HttpsError('not-found', 'Birthday data invalid');
-        }
-        const accessToken = await getValidAccessToken(context.auth.uid);
-        const calendarId = await getCalendarId(context.auth.uid);
-        const oauth2Client = new googleapis_1.google.auth.OAuth2();
-        oauth2Client.setCredentials({ access_token: accessToken });
-        const calendar = googleapis_1.google.calendar({ version: 'v3', auth: oauth2Client });
-        // --- Phase 1: Cleanup Old Events (Best Effort) ---
-        if (birthday.googleCalendarEventIds) {
-            const oldEventIds = birthday.googleCalendarEventIds;
-            const allOldIds = [
-                ...(oldEventIds.gregorian || []),
-                ...(oldEventIds.hebrew || [])
-            ];
-            for (const eventId of allOldIds) {
-                try {
-                    await calendar.events.delete({ calendarId, eventId });
-                    functions.logger.log(`Deleted old event ${eventId}`);
-                }
-                catch (err) {
-                    if (err.code !== 404 && err.code !== 410) {
-                        functions.logger.warn(`Failed to delete old event ${eventId}:`, err);
-                    }
-                }
-            }
-        }
-        else if (birthday.googleCalendarEventId) {
+        functions.logger.log(`Processing batch of ${birthdayIds.length} birthdays for user ${userId} (Job: ${jobId || 'none'})`);
+        let successes = 0;
+        let failures = 0;
+        // Process birthdays SEQUENTIALLY to avoid Rate Limit Exceeded on per-user quota
+        for (const birthdayId of birthdayIds) {
             try {
-                await calendar.events.delete({ calendarId, eventId: birthday.googleCalendarEventId });
-                functions.logger.log(`Deleted old event ${birthday.googleCalendarEventId}`);
-            }
-            catch (err) {
-                if (err.code !== 404 && err.code !== 410) {
-                    functions.logger.warn(`Failed to delete old event ${birthday.googleCalendarEventId}:`, err);
+                await performSmartSync(birthdayId, userId);
+                successes++;
+                // Update Job Status (Progress)
+                if (jobId) {
+                    await updateSyncJob(jobId, 1);
                 }
             }
-        }
-        // --- Phase 2: Determine Preferences & Calculate Data ---
-        const tenantDoc = await db.collection('tenants').doc(birthday.tenant_id).get();
-        const tenant = tenantDoc.data();
-        const language = (tenant?.default_language || 'he');
-        let groupDoc = null;
-        let group = null;
-        let parentGroup = null;
-        if (birthday.group_id) {
-            groupDoc = await db.collection('groups').doc(birthday.group_id).get();
-            if (groupDoc.exists) {
-                group = groupDoc.data();
-                // טעינת קבוצת העל אם קיימת
-                if (group?.parent_id) {
-                    const parentGroupDoc = await db.collection('groups').doc(group.parent_id).get();
-                    if (parentGroupDoc.exists) {
-                        parentGroup = parentGroupDoc.data();
+            catch (error) {
+                failures++;
+                functions.logger.error(`Error syncing birthday ${birthdayId}:`, error);
+                // Try to get name for error log
+                let itemName = 'Unknown';
+                try {
+                    const doc = await db.collection('birthdays').doc(birthdayId).get();
+                    if (doc.exists) {
+                        const d = doc.data();
+                        itemName = `${d?.first_name || ''} ${d?.last_name || ''}`.trim() || 'Unknown';
                     }
                 }
-            }
-        }
-        const calendarPreference = birthday.calendar_preference_override ||
-            group?.calendar_preference ||
-            tenant?.default_calendar_preference ||
-            'both';
-        const shouldSyncHebrew = calendarPreference === 'hebrew' || calendarPreference === 'both';
-        const shouldSyncGregorian = calendarPreference === 'gregorian' || calendarPreference === 'both';
-        // טעינת wishlist items
-        const wishlistSnapshot = await db.collection('wishlist_items')
-            .where('birthday_id', '==', birthdayId)
-            .where('tenant_id', '==', birthday.tenant_id)
-            .get();
-        const wishlistItems = wishlistSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                item_name: data.item_name,
-                description: data.description || '',
-                priority: data.priority
-            };
-        });
-        // מיון לפי priority
-        const priorityOrder = { high: 1, medium: 2, low: 3 };
-        wishlistItems.sort((a, b) => {
-            const priorityDiff = (priorityOrder[a.priority] || 99) - (priorityOrder[b.priority] || 99);
-            if (priorityDiff !== 0)
-                return priorityDiff;
-            return 0;
-        });
-        let futureHebrewBirthdays = birthday.future_hebrew_birthdays || [];
-        // Smart Logic: If Hebrew is needed but missing, fetch on-the-fly
-        if (shouldSyncHebrew && (!futureHebrewBirthdays || futureHebrewBirthdays.length === 0)) {
-            functions.logger.log(`Missing Hebrew data for ${birthdayId}, fetching on-the-fly...`);
-            const birthDate = new Date(birthday.birth_date_gregorian);
-            const afterSunset = birthday.after_sunset || false;
-            let hebrewMonth = birthday.birth_date_hebrew_month;
-            let hebrewDay = birthday.birth_date_hebrew_day;
-            if (!hebrewMonth || !hebrewDay) {
-                const hebcalData = await fetchHebcalData(birthDate, afterSunset);
-                hebrewMonth = hebcalData.hm;
-                hebrewDay = hebcalData.hd;
-            }
-            const currentHebrewYear = await getCurrentHebrewYear();
-            const fetchedDates = await fetchNextHebrewBirthdays(currentHebrewYear, hebrewMonth, hebrewDay, 10);
-            futureHebrewBirthdays = fetchedDates.map((item) => ({
-                gregorian: `${item.gregorianDate.getFullYear()}-${String(item.gregorianDate.getMonth() + 1).padStart(2, '0')}-${String(item.gregorianDate.getDate()).padStart(2, '0')}`,
-                hebrewYear: item.hebrewYear
-            }));
-        }
-        // --- Phase 3: Prepare Events ---
-        const eventsToCreate = [];
-        const currentYear = new Date().getFullYear();
-        let description = '';
-        // הוספת wishlist אם יש
-        if (wishlistItems.length > 0) {
-            if (language === 'en') {
-                description += 'Wishlist:\n';
-            }
-            else {
-                description += 'רשימת משאלות:\n';
-            }
-            wishlistItems.forEach((item, index) => {
-                description += `${index + 1}. ${item.item_name}`;
-                if (item.description) {
-                    description += ` - ${item.description}`;
-                }
-                description += '\n';
-            });
-            description += '\n';
-        }
-        // תיאור תאריכי לידה
-        if (language === 'en') {
-            description += `Gregorian Birth Date: ${birthday.birth_date_gregorian}\n`;
-            description += `Hebrew Birth Date: ${birthday.birth_date_hebrew_string || ''}\n`;
-        }
-        else {
-            description += `תאריך לידה לועזי: ${birthday.birth_date_gregorian}\n`;
-            description += `תאריך לידה עברי: ${birthday.birth_date_hebrew_string || ''}\n`;
-        }
-        if (birthday.after_sunset) {
-            if (language === 'en') {
-                description += '⚠️ After Sunset\n';
-            }
-            else {
-                description += '⚠️ לאחר השקיעה\n';
-            }
-        }
-        // הוספת מידע על הקבוצה
-        if (group) {
-            if (parentGroup) {
-                description += `\n(${parentGroup.name}: ${group.name})`;
-            }
-            else {
-                description += `\n(${group.name})`;
-            }
-        }
-        if (birthday.notes) {
-            if (language === 'en') {
-                description += `\n\nNotes: ${birthday.notes}`;
-            }
-            else {
-                description += `\n\nהערות: ${birthday.notes}`;
-            }
-        }
-        const extendedProperties = {
-            private: {
-                createdByApp: 'hebbirthday',
-                tenantId: birthday.tenant_id,
-                birthdayId: birthdayId
-            }
-        };
-        // חישוב מזלות
-        const gregorianSign = getGregorianZodiacSign(new Date(birthday.birth_date_gregorian));
-        const hebrewSign = birthday.hebrew_month ? getHebrewZodiacSign(birthday.hebrew_month) : null;
-        // תיאור בסיסי לכל האירועים
-        const baseDescription = description;
-        if (shouldSyncGregorian) {
-            const birthDate = new Date(birthday.birth_date_gregorian);
-            const birthYear = birthDate.getFullYear();
-            // תיאור לאירוע לועזי - כולל מזל לועזי
-            let gregorianDescription = baseDescription;
-            if (gregorianSign) {
-                const signName = language === 'en'
-                    ? getZodiacSignNameEn(gregorianSign)
-                    : getZodiacSignNameHe(gregorianSign);
-                if (language === 'en') {
-                    gregorianDescription += `\n\nZodiac Sign: ${signName}`;
-                }
-                else {
-                    gregorianDescription += `\n\nמזל: ${signName}`;
+                catch (e) { /* ignore */ }
+                // Update Job Status (Error)
+                if (jobId) {
+                    await updateSyncJob(jobId, 1, {
+                        message: error.message || String(error),
+                        itemId: birthdayId,
+                        itemName
+                    });
                 }
             }
-            for (let year = currentYear; year <= currentYear + 10; year++) {
-                const eventDate = new Date(year, birthDate.getMonth(), birthDate.getDate());
-                const age = year - birthYear;
-                const startDate = new Date(eventDate);
-                startDate.setHours(0, 0, 0, 0);
-                const endDate = new Date(startDate);
-                endDate.setDate(endDate.getDate() + 1);
-                const title = language === 'en'
-                    ? `${birthday.first_name} ${birthday.last_name} | ${age} | Birthday 🎂`
-                    : `${birthday.first_name} ${birthday.last_name} | ${age} | יום הולדת לועזי 🎂`;
-                eventsToCreate.push({
-                    summary: title,
-                    description: gregorianDescription,
-                    start: { date: startDate.toISOString().split('T')[0] },
-                    end: { date: endDate.toISOString().split('T')[0] },
-                    extendedProperties,
-                    reminders: {
-                        useDefault: false,
-                        overrides: [
-                            { method: 'popup', minutes: 24 * 60 },
-                            { method: 'popup', minutes: 60 }
-                        ]
-                    },
-                    _type: 'gregorian'
+        }
+        functions.logger.log(`Batch processed: ${successes} succeeded, ${failures} failed`);
+        if (jobId) {
+            const jobDoc = await db.collection('calendar_sync_jobs').doc(jobId).get();
+            const jobData = jobDoc.data();
+            if (jobData && jobData.processedItems >= jobData.totalItems) {
+                await completeSyncJob(jobId);
+                // LOG HISTORY
+                const errors = jobData.errors || [];
+                const total = jobData.totalItems;
+                const failedCount = errors.length;
+                const successCount = total - failedCount;
+                await db.collection('users').doc(userId).collection('sync_history').add({
+                    type: 'BATCH',
+                    status: failedCount === 0 ? 'SUCCESS' : (successCount > 0 ? 'PARTIAL' : 'FAILED'),
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    total,
+                    successCount,
+                    failedCount,
+                    failedItems: errors.map((e) => ({
+                        name: e.itemName || 'Unknown',
+                        reason: e.message
+                    })).slice(0, 20) // Limit to 20 errors to prevent huge docs
                 });
+                // Update Token Status
+                await db.collection('googleCalendarTokens').doc(userId).set({
+                    syncStatus: 'IDLE'
+                }, { merge: true });
             }
         }
-        if (shouldSyncHebrew) {
-            // תיאור לאירוע עברי - כולל מזל עברי
-            let hebrewDescription = baseDescription;
-            if (hebrewSign) {
-                const signName = language === 'en'
-                    ? getZodiacSignNameEn(hebrewSign)
-                    : getZodiacSignNameHe(hebrewSign);
-                if (language === 'en') {
-                    hebrewDescription += `\n\nZodiac Sign: ${signName}`;
-                }
-                else {
-                    hebrewDescription += `\n\nמזל: ${signName}`;
-                }
-            }
-            const slicedFuture = futureHebrewBirthdays.slice(0, 10);
-            for (const item of slicedFuture) {
-                let hebrewDate;
-                let hebrewYear;
-                if (typeof item === 'string') {
-                    hebrewDate = item;
-                    hebrewYear = 0;
-                }
-                else {
-                    hebrewDate = item.gregorian;
-                    hebrewYear = item.hebrewYear;
-                }
-                const startDate = new Date(hebrewDate);
-                startDate.setHours(0, 0, 0, 0);
-                const endDate = new Date(startDate);
-                endDate.setDate(endDate.getDate() + 1);
-                const age = hebrewYear && birthday.hebrew_year ? hebrewYear - birthday.hebrew_year : 0;
-                const title = language === 'en'
-                    ? `${birthday.first_name} ${birthday.last_name} | ${age} | Hebrew Birthday 🎂`
-                    : `${birthday.first_name} ${birthday.last_name} | ${age} | יום הולדת עברי 🎂`;
-                eventsToCreate.push({
-                    summary: title,
-                    description: hebrewDescription,
-                    start: { date: startDate.toISOString().split('T')[0] },
-                    end: { date: endDate.toISOString().split('T')[0] },
-                    extendedProperties,
-                    reminders: {
-                        useDefault: false,
-                        overrides: [
-                            { method: 'popup', minutes: 24 * 60 },
-                            { method: 'popup', minutes: 60 }
-                        ]
-                    },
-                    _type: 'hebrew'
-                });
-            }
-        }
-        // --- Phase 4: Execute Creation with Rollback ---
-        const createdEventIds = [];
-        try {
-            for (const event of eventsToCreate) {
-                const { _type, ...eventBody } = event;
-                const response = await calendar.events.insert({
-                    calendarId,
-                    requestBody: eventBody
-                });
-                if (response.data.id) {
-                    createdEventIds.push({ id: response.data.id, type: _type });
-                }
-            }
-        }
-        catch (creationError) {
-            functions.logger.error(`Error creating events for ${birthdayId}, rolling back...`, creationError);
-            // Rollback: Delete all created events
-            for (const { id } of createdEventIds) {
-                try {
-                    await calendar.events.delete({ calendarId, eventId: id });
-                    functions.logger.log(`Rolled back event ${id}`);
-                }
-                catch (rollbackError) {
-                    functions.logger.warn(`Failed to rollback event ${id}:`, rollbackError);
-                }
-            }
-            if (creationError.code === 401 || creationError.code === 403) {
-                throw new functions.https.HttpsError('permission-denied', 'googleCalendar.connectFirst');
-            }
-            throw new functions.https.HttpsError('internal', 'googleCalendar.syncError');
-        }
-        // --- Phase 5: Finalize & Update Firestore ---
-        const eventIds = {};
-        const gregorianIds = createdEventIds.filter(e => e.type === 'gregorian').map(e => e.id);
-        const hebrewIds = createdEventIds.filter(e => e.type === 'hebrew').map(e => e.id);
-        if (gregorianIds.length > 0)
-            eventIds.gregorian = gregorianIds;
-        if (hebrewIds.length > 0)
-            eventIds.hebrew = hebrewIds;
-        // חישוב hash של הנתונים המסונכרנים
-        const hashData = `${birthday.first_name}|${birthday.last_name}|${birthday.notes || ''}|${birthday.group_id || ''}|${birthday.calendar_preference_override || ''}`;
-        const syncedDataHash = crypto.createHash('sha256').update(hashData).digest('hex');
-        const updateData = {
-            googleCalendarEventIds: eventIds,
-            googleCalendarEventId: admin.firestore.FieldValue.delete(),
-            lastSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
-            syncedDataHash: syncedDataHash
-        };
-        if (shouldSyncHebrew && (!birthday.future_hebrew_birthdays || birthday.future_hebrew_birthdays.length === 0)) {
-            updateData.future_hebrew_birthdays = futureHebrewBirthdays;
-        }
-        await db.collection('birthdays').doc(birthdayId).update(updateData);
-        functions.logger.log(`Synced birthday ${birthdayId}. Gregorian: ${gregorianIds.length}, Hebrew: ${hebrewIds.length}`);
-        return {
-            success: true,
-            eventIds: eventIds,
-            birthdayId: birthdayId,
-            message: language === 'en' ? `Added ${createdEventIds.length} events to Google Calendar` : `נוספו ${createdEventIds.length} אירועים ליומן Google`
-        };
+        res.status(200).send({ success: true, successes, failures });
     }
     catch (error) {
-        functions.logger.error(`Error syncing birthday ${birthdayId}:`, error);
-        if (error instanceof functions.https.HttpsError) {
-            throw error;
-        }
-        if (error.code === 401 || error.code === 403) {
-            throw new functions.https.HttpsError('permission-denied', 'googleCalendar.connectFirst');
-        }
-        throw new functions.https.HttpsError('internal', 'googleCalendar.syncError');
+        functions.logger.error('Error processing calendar sync job:', error);
+        res.status(500).send(error.message);
     }
 });
+// Updated Sync Function (Enqueuer)
 exports.syncMultipleBirthdaysToGoogleCalendar = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'auth.signIn');
@@ -1095,58 +960,451 @@ exports.syncMultipleBirthdaysToGoogleCalendar = functions.https.onCall(async (da
     if (!birthdayIds || !Array.isArray(birthdayIds) || birthdayIds.length === 0) {
         throw new functions.https.HttpsError('invalid-argument', 'validation.required');
     }
-    if (birthdayIds.length > 50) {
-        throw new functions.https.HttpsError('invalid-argument', 'googleCalendar.syncError');
+    // Rate limiting / Quota check
+    const userId = context.auth.uid;
+    // Preemptive Token Refresh:
+    // Ensure token is valid for at least 10 minutes (600,000ms) before starting the batch.
+    // This prevents multiple workers from trying to refresh the token simultaneously (Race Condition).
+    try {
+        await getValidAccessToken(userId, 600000);
     }
-    const rateLimitRef = db.collection('rate_limits').doc(`${context.auth.uid}_bulk_sync`);
-    const rateLimitDoc = await rateLimitRef.get();
-    const now = Date.now();
-    const windowMs = 300000;
-    const maxRequests = 3;
-    if (rateLimitDoc.exists) {
-        const rateLimitData = rateLimitDoc.data();
-        const requests = rateLimitData?.requests || [];
-        const recentRequests = requests.filter((timestamp) => now - timestamp < windowMs);
-        if (recentRequests.length >= maxRequests) {
-            throw new functions.https.HttpsError('resource-exhausted', 'auth.errors.tooManyRequests');
+    catch (error) {
+        functions.logger.warn(`Preemptive token refresh failed for user ${userId}`, error);
+        // We throw a user-friendly error so they know they need to re-authenticate.
+        throw new functions.https.HttpsError('permission-denied', 'googleCalendar.connectFirst');
+    }
+    // STRICT MODE: Block syncing to Primary Calendar
+    const calendarId = await getCalendarId(userId);
+    if (calendarId === 'primary') {
+        throw new functions.https.HttpsError('failed-precondition', 'googleCalendar.primaryNotAllowed');
+    }
+    const hasQuota = await checkUserQuota(userId, birthdayIds.length);
+    if (!hasQuota) {
+        throw new functions.https.HttpsError('resource-exhausted', 'Quota exceeded');
+    }
+    // Create Job Status Document
+    const jobId = await createSyncJob(userId, birthdayIds.length);
+    // Update Token Status to IN_PROGRESS
+    await db.collection('googleCalendarTokens').doc(userId).set({
+        syncStatus: 'IN_PROGRESS',
+        lastSyncStart: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    const project = PROJECT_ID;
+    const queue = QUEUE;
+    const location = LOCATION;
+    const url = `https://${location}-${project}.cloudfunctions.net/processCalendarSyncJob`;
+    const serviceAccountEmail = `${project}@appspot.gserviceaccount.com`;
+    const parent = tasksClient.queuePath(project, location, queue);
+    // Split into batches of 5 for Cloud Tasks
+    const CHUNK_SIZE = 5;
+    const chunks = [];
+    for (let i = 0; i < birthdayIds.length; i += CHUNK_SIZE) {
+        chunks.push(birthdayIds.slice(i, i + CHUNK_SIZE));
+    }
+    try {
+        const promises = chunks.map(async (chunk) => {
+            const payload = { birthdayIds: chunk, userId, jobId }; // Pass jobId
+            const task = {
+                httpRequest: {
+                    httpMethod: 'POST',
+                    url,
+                    body: Buffer.from(JSON.stringify(payload)).toString('base64'),
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    oidcToken: {
+                        serviceAccountEmail,
+                    },
+                },
+            };
+            const [response] = await tasksClient.createTask({ parent, task });
+            return response.name;
+        });
+        await Promise.all(promises);
+        functions.logger.log(`Enqueued ${chunks.length} tasks for ${birthdayIds.length} birthdays. Job ID: ${jobId}`);
+        return {
+            success: true,
+            message: 'Sync started in background',
+            totalQueued: birthdayIds.length,
+            jobId // Return Job ID to client
+        };
+    }
+    catch (error) {
+        functions.logger.error('Failed to enqueue tasks:', error);
+        await failSyncJob(jobId, error.message || 'Failed to enqueue tasks'); // Update job status
+        throw new functions.https.HttpsError('internal', 'Failed to start background sync');
+    }
+});
+// Single Sync (Direct call for immediate feedback, or reuse logic)
+exports.syncBirthdayToGoogleCalendar = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'auth.signIn');
+    }
+    const { birthdayId } = data;
+    // STRICT MODE: Block syncing to Primary Calendar
+    const userId = context.auth.uid;
+    const calendarId = await getCalendarId(userId);
+    if (calendarId === 'primary') {
+        throw new functions.https.HttpsError('failed-precondition', 'googleCalendar.primaryNotAllowed');
+    }
+    try {
+        const { stats } = await performSmartSync(birthdayId, userId);
+        // LOG HISTORY for Single Sync
+        await db.collection('users').doc(userId).collection('sync_history').add({
+            type: 'SINGLE',
+            status: 'SUCCESS',
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            total: 1,
+            successCount: 1,
+            failedCount: 0,
+            failedItems: []
+        });
+        return { success: true, stats };
+    }
+    catch (error) {
+        // LOG HISTORY for Single Sync Failure
+        // Need to fetch name if possible, but performSmartSync failed.
+        let itemName = 'Unknown';
+        try {
+            const doc = await db.collection('birthdays').doc(birthdayId).get();
+            if (doc.exists) {
+                const d = doc.data();
+                itemName = `${d?.first_name || ''} ${d?.last_name || ''}`.trim() || 'Unknown';
+            }
         }
-        await rateLimitRef.update({ requests: [...recentRequests, now] });
+        catch (e) { }
+        await db.collection('users').doc(userId).collection('sync_history').add({
+            type: 'SINGLE',
+            status: 'FAILED',
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            total: 1,
+            successCount: 0,
+            failedCount: 1,
+            failedItems: [{ name: itemName, reason: error.message }]
+        });
+        throw new functions.https.HttpsError('internal', error.message);
+    }
+});
+async function performSmartSync(birthdayId, userId) {
+    const accessToken = await getValidAccessToken(userId);
+    const calendarId = await getCalendarId(userId);
+    // STRICT MODE: Absolute block on Primary Calendar
+    if (calendarId === 'primary') {
+        throw new Error('Strict Mode: Syncing to Primary Calendar is not allowed. Please create a dedicated calendar.');
+    }
+    const oauth2Client = new googleapis_1.google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: accessToken });
+    const calendar = googleapis_1.google.calendar({ version: 'v3', auth: oauth2Client });
+    const birthdayRef = db.collection('birthdays').doc(birthdayId);
+    // Read snapshot first
+    const docSnap = await birthdayRef.get();
+    if (!docSnap.exists)
+        throw new Error('Birthday not found');
+    const birthdayData = docSnap.data();
+    const birthday = { id: birthdayId, ...birthdayData, syncedCalendarId: birthdayData.syncedCalendarId };
+    // STRICT MODE CHECK: Ensure we are syncing to the SAME calendar as before
+    if (birthday.syncedCalendarId && birthday.syncedCalendarId !== calendarId) {
+        throw new Error(`Mismatch: This birthday is synced to calendar ${birthday.syncedCalendarId}, but current selection is ${calendarId}. Please reset sync or switch calendar.`);
+    }
+    // 1. Calculate Expected Events
+    const eventsToSync = await calculateExpectedEvents(birthday);
+    const expectedMap = new Map();
+    eventsToSync.forEach(event => {
+        const key = (0, calendar_utils_1.generateEventKey)(event._type, event._year || 0);
+        expectedMap.set(key, event);
+    });
+    // 2. Fetch Actual Events (Snapshot)
+    // We fetch ALL events tagged with this birthdayId to ensure we see everything.
+    const actualEventsMap = new Map(); // Key -> EventId
+    let pageToken = undefined;
+    do {
+        const response = await (0, calendar_utils_1.withRetry)(() => calendar.events.list({
+            calendarId,
+            privateExtendedProperty: [`birthdayId=${birthdayId}`, 'createdByApp=hebbirthday'],
+            maxResults: 250, // Max allowed by Google
+            pageToken,
+            singleEvents: true
+        }));
+        const items = response.data.items || [];
+        for (const item of items) {
+            // Try to deduce key from extended properties or title/date if missing
+            // Ideally, we should store the key in extendedProperties too, but let's assume we can reconstruct it or rely on existing map if needed.
+            // Actually, we can't easily reconstruct "hebrew_5785" just from date without re-running hebrew logic.
+            // So we'll try to match by approximate date and content, OR better:
+            // We can assume if we found it via birthdayId, it belongs to this person.
+            // We need to know WHICH event it is (Hebrew 2025 vs Gregorian 2026).
+            // Strategy: Match against Expected Events by Date and Type (Implicit Matching)
+            // If an event from Google matches an Expected Event's Date + Type, we map it.
+            // If it doesn't match ANY expected event, it's an Orphan -> Delete.
+            // Let's try to find a match in expectedMap
+            let matchedKey = null;
+            for (const [key, expected] of expectedMap.entries()) {
+                if (item.start?.date === expected.start.date &&
+                    item.summary === expected.summary) {
+                    matchedKey = key;
+                    break;
+                }
+            }
+            if (matchedKey) {
+                if (actualEventsMap.has(matchedKey)) {
+                    // Duplicate found! Mark for deletion (the one we just found)
+                    // This handles the double-entry bug automatically.
+                    // We keep the one already in map, delete this new one.
+                    // OR better: keep the one that matches Hash better? No, simple is better.
+                    // We'll add to a "toDelete" list immediately.
+                    // But we can't modify 'deletes' array here easily.
+                    // Let's just overwrite? No, that hides the duplicate.
+                    // We will treat this as an "extra" event to delete.
+                    // For simplicity in this loop: If key already taken, this is a duplicate.
+                }
+                else {
+                    actualEventsMap.set(matchedKey, item.id);
+                    // Calculate hash of ACTUAL event to see if update needed
+                    // We need to construct a SyncEvent from the Google Event to hash it, 
+                    // or just compare fields directly.
+                    // Easier: We just assume we need to update if we don't know the hash.
+                    // Optimization: Check simple fields
+                    // For now, we will Force Update if mapped, to ensure consistency, 
+                    // OR use the extendedProperty hash if we stored it (we didn't).
+                }
+            }
+            else {
+                // Orphan (Old year, or changed logic) -> Will be deleted because it's not in expectedMap
+                // We add it to actualEventsMap with a unique fake key so it gets processed in the Diff phase?
+                // No, Diff logic is: 
+                // Iterate Expected -> if not in Actual -> Create
+                // Iterate Actual -> if not in Expected -> Delete
+                // So we need to store it in a way that we know it exists but matches nothing.
+                actualEventsMap.set(`orphan_${item.id}`, item.id);
+            }
+        }
+        pageToken = response.data.nextPageToken;
+    } while (pageToken);
+    // 3. Compute Diff
+    const creates = [];
+    const updates = [];
+    const deletes = [];
+    const finalMap = {}; // Map to save to DB
+    // A. Check Expected (Creates & Updates)
+    for (const [key, event] of expectedMap.entries()) {
+        const existingEventId = actualEventsMap.get(key);
+        const { _type, _year, ...resource } = event;
+        if (existingEventId) {
+            // Exists -> Update
+            updates.push({ key, eventId: existingEventId, resource });
+            finalMap[key] = existingEventId; // Keep existing ID
+            // Remove from actualEventsMap to mark as "Handled"
+            actualEventsMap.delete(key);
+        }
+        else {
+            // Missing -> Create
+            creates.push({ key, resource });
+            // ID will be added after creation
+        }
+    }
+    // B. Check Remaining Actuals (Deletes)
+    for (const eventId of actualEventsMap.values()) {
+        deletes.push(eventId);
+    }
+    // 4. Execute
+    const stats = { created: 0, updated: 0, deleted: 0 };
+    // Deletes first
+    if (deletes.length > 0) {
+        await (0, calendar_utils_1.rateLimitExecutor)(deletes.map(id => async () => {
+            await (0, calendar_utils_1.withRetry)(async () => {
+                try {
+                    await calendar.events.delete({ calendarId, eventId: id });
+                    stats.deleted++;
+                }
+                catch (e) {
+                    if (e.code !== 404 && e.code !== 410)
+                        throw e;
+                }
+            });
+        }), 1, 500); // Concurrency 1, Delay 500ms
+    }
+    // Updates
+    if (updates.length > 0) {
+        await (0, calendar_utils_1.rateLimitExecutor)(updates.map(item => async () => {
+            await (0, calendar_utils_1.withRetry)(async () => {
+                try {
+                    await calendar.events.patch({ calendarId, eventId: item.eventId, requestBody: item.resource });
+                    stats.updated++;
+                }
+                catch (e) {
+                    if (e.code === 404) {
+                        // Fallback to insert
+                        try {
+                            const res = await calendar.events.insert({ calendarId, requestBody: item.resource });
+                            if (res.data.id) {
+                                finalMap[item.key] = res.data.id;
+                                stats.created++;
+                            }
+                        }
+                        catch (e2) {
+                            throw e2;
+                        }
+                    }
+                    else {
+                        throw e;
+                    }
+                }
+            });
+        }), 1, 500); // Concurrency 1, Delay 500ms
+    }
+    // Creates
+    if (creates.length > 0) {
+        await (0, calendar_utils_1.rateLimitExecutor)(creates.map(item => async () => {
+            await (0, calendar_utils_1.withRetry)(async () => {
+                const res = await calendar.events.insert({ calendarId, requestBody: item.resource });
+                if (res.data.id) {
+                    finalMap[item.key] = res.data.id;
+                    stats.created++;
+                }
+            });
+        }), 1, 500); // Concurrency 1, Delay 500ms
+    }
+    // 5. Update DB Map
+    await db.collection('birthdays').doc(birthdayId).update({
+        googleCalendarEventsMap: finalMap, // Save the CORRECT map
+        googleCalendarEventIds: admin.firestore.FieldValue.delete(),
+        syncedCalendarId: calendarId, // STRICT MODE: Save the calendar ID this was synced to
+        lastSyncedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    return { stats, name: `${birthdayData.first_name} ${birthdayData.last_name}` };
+}
+async function calculateExpectedEvents(birthday) {
+    const events = [];
+    const tenantDoc = await db.collection('tenants').doc(birthday.tenant_id).get();
+    const tenant = tenantDoc.data();
+    const language = (tenant?.default_language || 'he');
+    let group = null;
+    let parentGroup = null;
+    if (birthday.group_id) {
+        const g = await db.collection('groups').doc(birthday.group_id).get();
+        if (g.exists) {
+            group = g.data();
+            if (group?.parent_id) {
+                const p = await db.collection('groups').doc(group.parent_id).get();
+                if (p.exists)
+                    parentGroup = p.data();
+            }
+        }
+    }
+    // --- Enhanced Description Logic ---
+    let description = '';
+    // Fetch Wishlist Items
+    let wishlistText = '';
+    try {
+        const wishlistSnapshot = await db.collection('wishlist_items')
+            .where('birthday_id', '==', birthday.id)
+            .get();
+        if (!wishlistSnapshot.empty) {
+            // Sort by priority: high > medium > low
+            const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+            const items = wishlistSnapshot.docs
+                .map(doc => doc.data())
+                .sort((a, b) => {
+                const pA = priorityOrder[a.priority] || 0;
+                const pB = priorityOrder[b.priority] || 0;
+                return pB - pA; // Descending
+            })
+                .map((item, index) => `${index + 1}. ${item.item_name}`); // Numbered list
+            if (items.length > 0) {
+                wishlistText = language === 'en' ? '🎁 Wishlist:\n' : '🎁 רשימת משאלות:\n';
+                wishlistText += items.join('\n') + '\n\n';
+            }
+        }
+    }
+    catch (error) {
+        functions.logger.warn(`Failed to fetch wishlist for birthday ${birthday.id}`, error);
+    }
+    if (language === 'en') {
+        description += wishlistText;
+        description += `Gregorian Birth Date: ${birthday.birth_date_gregorian}\n`;
+        description += `Hebrew Birth Date: ${birthday.birth_date_hebrew_string || ''}\n`;
     }
     else {
-        await rateLimitRef.set({ requests: [now] });
+        description += wishlistText;
+        description += `תאריך לידה לועזי: ${birthday.birth_date_gregorian}\n`;
+        description += `תאריך לידה עברי: ${birthday.birth_date_hebrew_string || ''}\n`;
     }
-    const results = [];
-    let successCount = 0;
-    let failureCount = 0;
-    for (const birthdayId of birthdayIds) {
-        try {
-            const result = await exports.syncBirthdayToGoogleCalendar.run({ birthdayId }, context);
-            results.push({
-                success: true,
-                eventId: result.eventId,
-                birthdayId: birthdayId
-            });
-            successCount++;
-        }
-        catch (error) {
-            results.push({
-                success: false,
-                error: error.message || 'Error',
-                birthdayId: birthdayId
-            });
-            failureCount++;
-            functions.logger.warn(`Failed to sync birthday ${birthdayId}:`, error);
-        }
+    if (birthday.after_sunset) {
+        description += language === 'en' ? '⚠️ After Sunset\n' : '⚠️ לאחר השקיעה\n';
     }
-    functions.logger.log(`Bulk sync completed: ${successCount} succeeded, ${failureCount} failed`);
-    return {
-        totalAttempted: birthdayIds.length,
-        successCount,
-        failureCount,
-        results,
-        message: 'googleCalendar.syncSuccess'
+    if (group) {
+        description += parentGroup ? `\n(${parentGroup.name}: ${group.name})` : `\n(${group.name})`;
+    }
+    if (birthday.notes) {
+        description += language === 'en' ? `\n\nNotes: ${birthday.notes}` : `\n\nהערות: ${birthday.notes}`;
+    }
+    const extendedProperties = {
+        private: {
+            createdByApp: 'hebbirthday',
+            tenantId: birthday.tenant_id,
+            birthdayId: birthday.id || 'unknown'
+        }
     };
-});
+    // Zodiacs
+    const gregorianSign = getGregorianZodiacSign(new Date(birthday.birth_date_gregorian));
+    const hebrewSign = birthday.birth_date_hebrew_month ? getHebrewZodiacSign(birthday.birth_date_hebrew_month) : null;
+    const prefs = birthday.calendar_preference_override || tenant?.default_calendar_preference || 'both';
+    const doHeb = prefs === 'hebrew' || prefs === 'both';
+    const doGreg = prefs === 'gregorian' || prefs === 'both';
+    // Helper for Event Object
+    const createEvent = (title, date, type, year, desc) => {
+        const start = new Date(date);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+        return {
+            summary: title,
+            description: desc,
+            start: { date: start.toISOString().split('T')[0] },
+            end: { date: end.toISOString().split('T')[0] },
+            extendedProperties,
+            reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 1440 }, { method: 'popup', minutes: 60 }] },
+            _type: type,
+            _year: year
+        };
+    };
+    if (doGreg) {
+        const bDate = new Date(birthday.birth_date_gregorian);
+        const curYear = new Date().getFullYear();
+        let gregDesc = description;
+        if (gregorianSign) {
+            const signName = language === 'en' ? getZodiacSignNameEn(gregorianSign) : getZodiacSignNameHe(gregorianSign);
+            gregDesc += language === 'en' ? `\n\nZodiac Sign: ${signName}` : `\n\nמזל: ${signName}`;
+        }
+        for (let i = 0; i <= 10; i++) {
+            const y = curYear + i;
+            const d = new Date(y, bDate.getMonth(), bDate.getDate());
+            const age = y - bDate.getFullYear();
+            const title = language === 'en'
+                ? `${birthday.first_name} ${birthday.last_name} | ${age} | Birthday 🎂`
+                : `${birthday.first_name} ${birthday.last_name} | ${age} | יום הולדת לועזי 🎂`;
+            events.push(createEvent(title, d, 'gregorian', y, gregDesc));
+        }
+    }
+    if (doHeb && birthday.future_hebrew_birthdays) {
+        let hebDesc = description;
+        if (hebrewSign) {
+            const signName = language === 'en' ? getZodiacSignNameEn(hebrewSign) : getZodiacSignNameHe(hebrewSign);
+            hebDesc += language === 'en' ? `\n\nZodiac Sign: ${signName}` : `\n\nמזל: ${signName}`;
+        }
+        birthday.future_hebrew_birthdays.slice(0, 10).forEach((item) => {
+            const dStr = typeof item === 'string' ? item : item.gregorian;
+            const hYear = typeof item === 'string' ? 0 : item.hebrewYear;
+            const d = new Date(dStr);
+            const age = (hYear && birthday.hebrew_year) ? hYear - birthday.hebrew_year : 0;
+            const title = language === 'en'
+                ? `${birthday.first_name} ${birthday.last_name} | ${age} | Hebrew Birthday 🎂`
+                : `${birthday.first_name} ${birthday.last_name} | ${age} | יום הולדת עברי 🎂`;
+            events.push(createEvent(title, d, 'hebrew', hYear, hebDesc));
+        });
+    }
+    return events;
+}
 exports.removeBirthdayFromGoogleCalendar = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'auth.signIn');
@@ -1178,7 +1436,7 @@ exports.removeBirthdayFromGoogleCalendar = functions.https.onCall(async (data, c
             throw new functions.https.HttpsError('not-found', 'Birthday not found');
         }
         const birthday = birthdayDoc.data();
-        if (!birthday || (!birthday.googleCalendarEventId && !birthday.googleCalendarEventIds)) {
+        if (!birthday || (!birthday.googleCalendarEventId && !birthday.googleCalendarEventIds && !birthday.googleCalendarEventsMap)) {
             throw new functions.https.HttpsError('not-found', 'Birthday not synced');
         }
         const accessToken = await getValidAccessToken(context.auth.uid);
@@ -1188,7 +1446,22 @@ exports.removeBirthdayFromGoogleCalendar = functions.https.onCall(async (data, c
         const calendar = googleapis_1.google.calendar({ version: 'v3', auth: oauth2Client });
         let deletedCount = 0;
         const deletedEventIds = new Set();
-        // מחיקה רק של אירועים שנוצרו על ידי האפליקציה (שנשמרו ב-Firestore)
+        // New Map Support
+        if (birthday.googleCalendarEventsMap) {
+            for (const key in birthday.googleCalendarEventsMap) {
+                const eid = birthday.googleCalendarEventsMap[key];
+                try {
+                    await calendar.events.delete({ calendarId, eventId: eid });
+                    deletedCount++;
+                    deletedEventIds.add(eid);
+                }
+                catch (e) {
+                    if (e.code !== 404 && e.code !== 410)
+                        functions.logger.warn('Del fail', eid);
+                }
+            }
+        }
+        // Legacy Support
         if (birthday.googleCalendarEventIds) {
             const eventIds = birthday.googleCalendarEventIds;
             if (eventIds.gregorian && Array.isArray(eventIds.gregorian)) {
@@ -1276,6 +1549,7 @@ exports.removeBirthdayFromGoogleCalendar = functions.https.onCall(async (data, c
         await db.collection('birthdays').doc(birthdayId).update({
             googleCalendarEventId: admin.firestore.FieldValue.delete(),
             googleCalendarEventIds: admin.firestore.FieldValue.delete(),
+            googleCalendarEventsMap: admin.firestore.FieldValue.delete(), // Cleanup map too
             lastSyncedAt: admin.firestore.FieldValue.delete()
         });
         functions.logger.log(`Removed ${deletedCount} events for birthday ${birthdayId} from Google Calendar`);
@@ -1287,6 +1561,7 @@ exports.removeBirthdayFromGoogleCalendar = functions.https.onCall(async (data, c
             await db.collection('birthdays').doc(birthdayId).update({
                 googleCalendarEventId: admin.firestore.FieldValue.delete(),
                 googleCalendarEventIds: admin.firestore.FieldValue.delete(),
+                googleCalendarEventsMap: admin.firestore.FieldValue.delete(),
                 lastSyncedAt: admin.firestore.FieldValue.delete()
             });
             return { success: true, message: 'googleCalendar.syncSuccess' };
@@ -1297,92 +1572,154 @@ exports.removeBirthdayFromGoogleCalendar = functions.https.onCall(async (data, c
         throw new functions.https.HttpsError('internal', 'googleCalendar.syncError');
     }
 });
-exports.deleteAllSyncedEventsFromGoogleCalendar = functions.https.onCall(async (data, context) => {
+exports.resetBirthdaySyncData = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'auth.signIn');
     }
-    const { tenantId } = data;
+    const { birthdayId } = data;
+    if (!birthdayId) {
+        throw new functions.https.HttpsError('invalid-argument', 'Birthday ID required');
+    }
+    try {
+        await db.collection('birthdays').doc(birthdayId).update({
+            googleCalendarEventsMap: admin.firestore.FieldValue.delete(),
+            googleCalendarEventId: admin.firestore.FieldValue.delete(),
+            googleCalendarEventIds: admin.firestore.FieldValue.delete(),
+            syncedCalendarId: admin.firestore.FieldValue.delete(),
+            lastSyncedAt: admin.firestore.FieldValue.delete()
+        });
+        return { success: true, message: 'Sync data reset successfully' };
+    }
+    catch (error) {
+        functions.logger.error('Error resetting sync data:', error);
+        throw new functions.https.HttpsError('internal', 'Failed to reset sync data');
+    }
+});
+exports.deleteAllSyncedEventsFromGoogleCalendar = functions.runWith({
+    timeoutSeconds: 540,
+    memory: '256MB'
+}).https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'auth.signIn');
+    }
+    const { tenantId, forceDBOnly } = data; // Add forceDBOnly param
     if (!tenantId) {
         throw new functions.https.HttpsError('invalid-argument', 'validation.required');
     }
     try {
         const accessToken = await getValidAccessToken(context.auth.uid);
         const calendarId = await getCalendarId(context.auth.uid);
-        const oauth2Client = new googleapis_1.google.auth.OAuth2();
-        oauth2Client.setCredentials({ access_token: accessToken });
-        const calendar = googleapis_1.google.calendar({ version: 'v3', auth: oauth2Client });
+        const calendarName = await getCalendarName(context.auth.uid); // Get name
         const birthdaysSnapshot = await db.collection('birthdays')
             .where('tenant_id', '==', tenantId)
             .get();
-        let totalDeleted = 0;
-        let failedCount = 0;
-        const deletedEventIds = new Set();
-        const batch = db.batch();
-        for (const doc of birthdaysSnapshot.docs) {
-            const birthday = doc.data();
-            // מחיקה רק של אירועים שנוצרו על ידי האפליקציה (שנשמרו ב-Firestore)
-            if (birthday.googleCalendarEventIds) {
-                const eventIds = birthday.googleCalendarEventIds;
-                if (eventIds.gregorian && Array.isArray(eventIds.gregorian)) {
-                    for (const eventId of eventIds.gregorian) {
-                        try {
-                            await calendar.events.delete({ calendarId: calendarId, eventId });
-                            totalDeleted++;
-                            deletedEventIds.add(eventId);
-                            functions.logger.log(`Deleted gregorian event ${eventId} from calendar ${calendarId}`);
-                        }
-                        catch (err) {
-                            if (err.code !== 404) {
-                                failedCount++;
-                                functions.logger.warn(`Failed to delete gregorian event ${eventId}:`, err);
-                            }
-                        }
-                    }
-                }
-                if (eventIds.hebrew && Array.isArray(eventIds.hebrew)) {
-                    for (const eventId of eventIds.hebrew) {
-                        try {
-                            await calendar.events.delete({ calendarId: calendarId, eventId });
-                            totalDeleted++;
-                            deletedEventIds.add(eventId);
-                            functions.logger.log(`Deleted hebrew event ${eventId} from calendar ${calendarId}`);
-                        }
-                        catch (err) {
-                            if (err.code !== 404) {
-                                failedCount++;
-                                functions.logger.warn(`Failed to delete hebrew event ${eventId}:`, err);
-                            }
-                        }
-                    }
-                }
+        // Strict Mode: Filter birthdays to only those synced to the current calendar
+        const docsToProcess = birthdaysSnapshot.docs.filter(doc => {
+            const data = doc.data();
+            return data.syncedCalendarId && data.syncedCalendarId === calendarId;
+        });
+        // If forceDBOnly is true, we just clean the DB (Reset Mode for Tenant)
+        if (forceDBOnly) {
+            const batch = db.batch();
+            docsToProcess.forEach(doc => {
                 batch.update(doc.ref, {
                     googleCalendarEventIds: admin.firestore.FieldValue.delete(),
                     googleCalendarEventId: admin.firestore.FieldValue.delete(),
+                    googleCalendarEventsMap: admin.firestore.FieldValue.delete(),
+                    syncedCalendarId: admin.firestore.FieldValue.delete(),
                     lastSyncedAt: admin.firestore.FieldValue.delete()
                 });
+            });
+            await batch.commit();
+            functions.logger.log(`Force DB Clean performed for tenant ${tenantId} on calendar ${calendarId}`);
+            return { success: true, message: 'DB Sync data cleared', totalDeleted: 0, calendarName };
+        }
+        // Regular deletion flow continues...
+        const oauth2Client = new googleapis_1.google.auth.OAuth2();
+        oauth2Client.setCredentials({ access_token: accessToken });
+        const calendar = googleapis_1.google.calendar({ version: 'v3', auth: oauth2Client });
+        // ... rest of the function ...
+        // איסוף כל ה-Event IDs למחיקה
+        const allEventIdsToDelete = [];
+        for (const doc of docsToProcess) {
+            const birthday = doc.data();
+            // Collect from Map
+            if (birthday.googleCalendarEventsMap) {
+                Object.values(birthday.googleCalendarEventsMap).forEach((eventId) => {
+                    allEventIdsToDelete.push({ eventId, birthdayId: doc.id });
+                });
+            }
+            // Legacy
+            if (birthday.googleCalendarEventIds) {
+                const eventIds = birthday.googleCalendarEventIds;
+                if (eventIds.gregorian && Array.isArray(eventIds.gregorian)) {
+                    eventIds.gregorian.forEach((eventId) => {
+                        allEventIdsToDelete.push({ eventId, birthdayId: doc.id });
+                    });
+                }
+                if (eventIds.hebrew && Array.isArray(eventIds.hebrew)) {
+                    eventIds.hebrew.forEach((eventId) => {
+                        allEventIdsToDelete.push({ eventId, birthdayId: doc.id });
+                    });
+                }
             }
             else if (birthday.googleCalendarEventId) {
-                // מחיקה רק אם eventId קיים במסמך
+                allEventIdsToDelete.push({ eventId: birthday.googleCalendarEventId, birthdayId: doc.id });
+            }
+        }
+        let totalDeleted = 0;
+        let failedCount = 0;
+        const deletedEventIds = new Set();
+        // Chunking + Parallel Processing + Throttling
+        const CHUNK_SIZE = 10;
+        const DELAY_BETWEEN_CHUNKS = 1000; // 1 second
+        for (let i = 0; i < allEventIdsToDelete.length; i += CHUNK_SIZE) {
+            const chunk = allEventIdsToDelete.slice(i, i + CHUNK_SIZE);
+            const deletePromises = chunk.map(async ({ eventId }) => {
                 try {
-                    await calendar.events.delete({ calendarId: calendarId, eventId: birthday.googleCalendarEventId });
-                    totalDeleted++;
-                    deletedEventIds.add(birthday.googleCalendarEventId);
-                    functions.logger.log(`Deleted event ${birthday.googleCalendarEventId} from calendar ${calendarId}`);
+                    await calendar.events.delete({ calendarId, eventId });
+                    deletedEventIds.add(eventId);
+                    return { success: true };
                 }
                 catch (err) {
-                    if (err.code !== 404) {
-                        failedCount++;
-                        functions.logger.warn(`Failed to delete event ${birthday.googleCalendarEventId}:`, err);
+                    if (err.code !== 404 && err.code !== 410) {
+                        functions.logger.warn(`Failed to delete event ${eventId}:`, err);
+                        return { success: false };
                     }
+                    deletedEventIds.add(eventId); // Count as deleted if not found
+                    return { success: true };
                 }
+            });
+            const results = await Promise.all(deletePromises);
+            results.forEach(result => {
+                if (result.success) {
+                    totalDeleted++;
+                }
+                else {
+                    failedCount++;
+                }
+            });
+            // Delay between chunks (except for the last one)
+            if (i + CHUNK_SIZE < allEventIdsToDelete.length) {
+                await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_CHUNKS));
+            }
+        }
+        // עדכון Firestore בבת אחת
+        const batch = db.batch();
+        for (const doc of docsToProcess) {
+            const birthday = doc.data();
+            if (birthday.googleCalendarEventIds || birthday.googleCalendarEventId || birthday.googleCalendarEventsMap || birthday.syncedCalendarId) {
                 batch.update(doc.ref, {
+                    googleCalendarEventIds: admin.firestore.FieldValue.delete(),
                     googleCalendarEventId: admin.firestore.FieldValue.delete(),
+                    googleCalendarEventsMap: admin.firestore.FieldValue.delete(),
+                    syncedCalendarId: admin.firestore.FieldValue.delete(), // Clear syncedCalendarId too
                     lastSyncedAt: admin.firestore.FieldValue.delete()
                 });
             }
         }
         await batch.commit();
-        // חיפוש נוסף לפי privateExtendedProperty למציאת כל האירועים שנוצרו על ידי האפליקציה
+        // חיפוש נוסף לפי privateExtendedProperty למציאת כל האירועים שנוצרו על ידי האפליקציה (Orphans)
         let pageToken = undefined;
         do {
             try {
@@ -1396,13 +1733,16 @@ exports.deleteAllSyncedEventsFromGoogleCalendar = functions.https.onCall(async (
                     singleEvents: true
                 });
                 const events = response.data.items || [];
-                for (const event of events) {
-                    if (event.id && !deletedEventIds.has(event.id)) {
+                const orphanEvents = events.filter((e) => e.id && !deletedEventIds.has(e.id));
+                // מחיקת אירועים יתומים ב-Chunks
+                for (let i = 0; i < orphanEvents.length; i += CHUNK_SIZE) {
+                    const chunk = orphanEvents.slice(i, i + CHUNK_SIZE);
+                    const deletePromises = chunk.map(async (event) => {
                         try {
                             await calendar.events.delete({ calendarId, eventId: event.id });
                             totalDeleted++;
                             deletedEventIds.add(event.id);
-                            functions.logger.log(`Deleted orphan event ${event.id} from calendar ${calendarId}`);
+                            functions.logger.log(`Deleted orphan event ${event.id}`);
                         }
                         catch (err) {
                             if (err.code !== 404 && err.code !== 410) {
@@ -1410,6 +1750,10 @@ exports.deleteAllSyncedEventsFromGoogleCalendar = functions.https.onCall(async (
                                 functions.logger.warn(`Failed to delete orphan event ${event.id}:`, err);
                             }
                         }
+                    });
+                    await Promise.all(deletePromises);
+                    if (i + CHUNK_SIZE < orphanEvents.length) {
+                        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_CHUNKS));
                     }
                 }
                 pageToken = response.data.nextPageToken || undefined;
@@ -1424,6 +1768,7 @@ exports.deleteAllSyncedEventsFromGoogleCalendar = functions.https.onCall(async (
             success: true,
             totalDeleted,
             failedCount,
+            calendarName, // Return calendar name
             message: 'googleCalendar.deleteAllSummary'
         };
     }
@@ -1435,30 +1780,87 @@ exports.deleteAllSyncedEventsFromGoogleCalendar = functions.https.onCall(async (
         throw new functions.https.HttpsError('internal', 'googleCalendar.syncError');
     }
 });
-exports.disconnectGoogleCalendar = functions.https.onCall(async (data, context) => {
+exports.disconnectGoogleCalendar = functions.runWith({
+    timeoutSeconds: 540,
+    memory: '256MB'
+}).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'auth.signIn');
     }
     try {
+        // Delete only the token document, preserving birthday data for safe reconnect
         await db.collection('googleCalendarTokens').doc(context.auth.uid).delete();
-        const birthdaysSnapshot = await db.collection('birthdays')
-            .where('created_by', '==', context.auth.uid)
-            .get();
-        const batch = db.batch();
-        birthdaysSnapshot.docs.forEach((doc) => {
-            batch.update(doc.ref, {
-                googleCalendarEventId: admin.firestore.FieldValue.delete(),
-                googleCalendarEventIds: admin.firestore.FieldValue.delete(),
-                lastSyncedAt: admin.firestore.FieldValue.delete()
-            });
-        });
-        await batch.commit();
         functions.logger.log(`Disconnected Google Calendar for user ${context.auth.uid}`);
         return { success: true, message: 'googleCalendar.disconnect' };
     }
     catch (error) {
         functions.logger.error('Error disconnecting Google Calendar:', error);
         throw new functions.https.HttpsError('internal', 'googleCalendar.syncError');
+    }
+});
+exports.getGoogleCalendarStatus = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'auth.signIn');
+    }
+    const userId = context.auth.uid;
+    try {
+        // 1. Check Token Existence & Validity
+        const tokenDoc = await db.collection('googleCalendarTokens').doc(userId).get();
+        if (!tokenDoc.exists) {
+            return { isConnected: false };
+        }
+        const tokenData = tokenDoc.data();
+        if (!tokenData || !tokenData.accessToken) {
+            return { isConnected: false };
+        }
+        // 2. Get Account Info (Email, etc.) from Google
+        // We use the stored token (refresh if needed via getValidAccessToken)
+        let email = '';
+        let name = '';
+        let picture = '';
+        try {
+            const accessToken = await getValidAccessToken(userId);
+            const oauth2Client = new googleapis_1.google.auth.OAuth2();
+            oauth2Client.setCredentials({ access_token: accessToken });
+            const oauth2 = googleapis_1.google.oauth2({ version: 'v2', auth: oauth2Client });
+            const userInfo = await oauth2.userinfo.get();
+            email = userInfo.data.email || '';
+            name = userInfo.data.name || '';
+            picture = userInfo.data.picture || '';
+        }
+        catch (e) {
+            functions.logger.warn(`Failed to fetch Google User Info for ${userId}`, e);
+            // Don't fail the whole status check, just mark as potentially disconnected if token invalid
+            // But getValidAccessToken should have thrown if invalid.
+        }
+        // 3. Get Sync History
+        const historySnapshot = await db.collection('users').doc(userId).collection('sync_history')
+            .orderBy('timestamp', 'desc')
+            .limit(5)
+            .get();
+        const recentActivity = historySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            timestamp: doc.data().timestamp?.toMillis() || 0
+        }));
+        return {
+            isConnected: true,
+            email,
+            name,
+            picture,
+            calendarId: tokenData.calendarId || 'primary',
+            calendarName: tokenData.calendarName || 'Primary Calendar',
+            syncStatus: tokenData.syncStatus || 'IDLE',
+            lastSyncStart: tokenData.lastSyncStart?.toMillis() || 0,
+            recentActivity
+        };
+    }
+    catch (error) {
+        functions.logger.error('Error getting calendar status:', error);
+        if (error.code === 401 || error.code === 403 || error.message === 'googleCalendar.connectFirst') {
+            return { isConnected: false };
+        }
+        throw new functions.https.HttpsError('internal', 'Failed to get status');
     }
 });
 exports.getGoogleAccountInfo = functions.https.onCall(async (data, context) => {
@@ -1499,20 +1901,23 @@ exports.createGoogleCalendar = functions.https.onCall(async (data, context) => {
         const oauth2Client = new googleapis_1.google.auth.OAuth2();
         oauth2Client.setCredentials({ access_token: accessToken });
         const calendar = googleapis_1.google.calendar({ version: 'v3', auth: oauth2Client });
-        // יצירת יומן חדש
-        const calendarResponse = await calendar.calendars.insert({
-            requestBody: {
-                summary: name.trim(),
-                description: 'Birthday Calendar - Created by Hebrew Birthday App / יומן ימי הולדת - נוצר על ידי אפליקציית ימי הולדת עבריים'
-            }
-        });
+        // יצירת יומן חדש וקריאת נתונים במקביל
+        const [calendarResponse, tokenDoc] = await Promise.all([
+            calendar.calendars.insert({
+                requestBody: {
+                    summary: name.trim(),
+                    description: 'Birthday Calendar - Created by Hebrew Birthday App / יומן ימי הולדת - נוצר על ידי אפליקציית ימי הולדת עבריים'
+                }
+            }),
+            db.collection('googleCalendarTokens').doc(context.auth.uid).get()
+        ]);
         if (!calendarResponse.data.id) {
             throw new Error('No calendar ID returned');
         }
         const calendarId = calendarResponse.data.id;
         const calendarName = calendarResponse.data.summary || name.trim();
         // קריאת המסמך הנוכחי כדי לקבל את createdCalendars הקיים
-        const tokenDoc = await db.collection('googleCalendarTokens').doc(context.auth.uid).get();
+        // const tokenDoc = await db.collection('googleCalendarTokens').doc(context.auth.uid).get(); // Fetched in parallel above
         const tokenData = tokenDoc.data();
         const existingCreatedCalendars = tokenData?.createdCalendars || [];
         // בדיקה שהיומן לא קיים כבר ברשימה
@@ -1558,11 +1963,15 @@ exports.updateGoogleCalendarSelection = functions.https.onCall(async (data, cont
     if (!calendarId || typeof calendarId !== 'string') {
         throw new functions.https.HttpsError('invalid-argument', 'validation.required');
     }
+    // Strict Mode: Block 'primary' selection
+    if (calendarId === 'primary') {
+        throw new functions.https.HttpsError('failed-precondition', 'googleCalendar.primaryNotAllowed');
+    }
     try {
         // עדכון הטוקן עם פרטי היומן הנבחר
         await db.collection('googleCalendarTokens').doc(context.auth.uid).update({
             calendarId: calendarId,
-            calendarName: calendarName || (calendarId === 'primary' ? 'Primary Calendar' : 'Custom Calendar'),
+            calendarName: calendarName || 'Custom Calendar',
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
         functions.logger.log(`Updated calendar selection to ${calendarId} for user ${context.auth.uid}`);
@@ -1713,22 +2122,27 @@ exports.deleteGoogleCalendar = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('internal', 'common.error');
     }
 });
-exports.cleanupOrphanEvents = functions.https.onCall(async (data, context) => {
+exports.cleanupOrphanEvents = functions.runWith({
+    timeoutSeconds: 540,
+    memory: '256MB'
+}).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'auth.signIn');
     }
-    const { tenantId } = data;
+    const { tenantId, dryRun } = data; // Added dryRun
     // Optional: validate tenantId if we want to restrict user to their tenant. 
     // For now, we rely on the user token to only access their calendar.
     try {
         const accessToken = await getValidAccessToken(context.auth.uid);
         const calendarId = await getCalendarId(context.auth.uid);
+        const calendarName = await getCalendarName(context.auth.uid); // Get name
         const oauth2Client = new googleapis_1.google.auth.OAuth2();
         oauth2Client.setCredentials({ access_token: accessToken });
         const calendar = googleapis_1.google.calendar({ version: 'v3', auth: oauth2Client });
         let pageToken = undefined;
         let deletedCount = 0;
         let failedCount = 0;
+        let foundCount = 0; // For dry run
         do {
             const response = await calendar.events.list({
                 calendarId,
@@ -1743,23 +2157,28 @@ exports.cleanupOrphanEvents = functions.https.onCall(async (data, context) => {
             const events = response.data.items || [];
             for (const event of events) {
                 if (event.id) {
-                    try {
-                        await calendar.events.delete({ calendarId, eventId: event.id });
-                        deletedCount++;
-                    }
-                    catch (error) {
-                        functions.logger.warn(`Failed to delete orphan event ${event.id}:`, error);
-                        failedCount++;
+                    foundCount++;
+                    if (!dryRun) {
+                        try {
+                            await calendar.events.delete({ calendarId, eventId: event.id });
+                            deletedCount++;
+                        }
+                        catch (error) {
+                            functions.logger.warn(`Failed to delete orphan event ${event.id}:`, error);
+                            failedCount++;
+                        }
                     }
                 }
             }
             pageToken = response.data.nextPageToken || undefined;
         } while (pageToken);
-        functions.logger.log(`Cleanup orphans for tenant ${tenantId || 'unknown'}: Deleted ${deletedCount}, Failed ${failedCount}`);
+        functions.logger.log(`Cleanup orphans for tenant ${tenantId || 'unknown'}: Found ${foundCount}, Deleted ${deletedCount}, Failed ${failedCount}`);
         return {
             success: true,
-            deletedCount,
+            deletedCount: dryRun ? foundCount : deletedCount, // Return found count as deletedCount in dryRun for simplicity or add separate field
+            foundCount, // Explicit count
             failedCount,
+            calendarName, // Return calendar name
             message: 'googleCalendar.cleanupOrphans'
         };
     }
@@ -1780,6 +2199,8 @@ exports.previewDeletion = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('invalid-argument', 'validation.required');
     }
     try {
+        const calendarId = await getCalendarId(context.auth.uid);
+        const calendarName = await getCalendarName(context.auth.uid);
         const birthdaysSnapshot = await db.collection('birthdays')
             .where('tenant_id', '==', tenantId)
             .get();
@@ -1787,6 +2208,23 @@ exports.previewDeletion = functions.https.onCall(async (data, context) => {
         let totalCount = 0;
         for (const doc of birthdaysSnapshot.docs) {
             const birthday = doc.data();
+            // Strict Mode: Check syncedCalendarId
+            if (!birthday.syncedCalendarId || birthday.syncedCalendarId !== calendarId) {
+                continue;
+            }
+            // Support Map
+            if (birthday.googleCalendarEventsMap) {
+                const count = Object.keys(birthday.googleCalendarEventsMap).length;
+                if (count > 0) {
+                    summary.push({
+                        name: `${birthday.first_name} ${birthday.last_name}`,
+                        hebrewEvents: count, // Simplified for summary
+                        gregorianEvents: 0
+                    });
+                    totalCount += count;
+                }
+                continue; // Skip legacy check if map exists
+            }
             const eventIds = birthday.googleCalendarEventIds;
             let hebrewCount = 0;
             let gregorianCount = 0;
@@ -1814,7 +2252,9 @@ exports.previewDeletion = functions.https.onCall(async (data, context) => {
         return {
             success: true,
             summary,
-            totalCount
+            totalCount,
+            calendarId, // Return calendar ID
+            calendarName // Return calendar name
         };
     }
     catch (error) {

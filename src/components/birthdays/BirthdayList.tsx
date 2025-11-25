@@ -23,6 +23,7 @@ interface BirthdayListProps {
   onEdit: (birthday: Birthday) => void;
   onAddToCalendar?: (birthday: Birthday) => void;
   duplicateIds?: Set<string>;
+  onOpenCalendarSettings?: () => void;
 }
 
 export const BirthdayList: React.FC<BirthdayListProps> = ({
@@ -30,6 +31,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   onEdit,
   onAddToCalendar,
   duplicateIds,
+  onOpenCalendarSettings,
 }) => {
   const { t, i18n } = useTranslation();
   const deleteBirthday = useDeleteBirthday();
@@ -37,7 +39,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   const { data: groups = [] } = useGroups();
   const { currentTenant } = useTenant();
   const { selectedGroupIds, toggleGroupFilter, clearGroupFilters } = useGroupFilter();
-  const { isConnected, syncSingleBirthday, syncMultipleBirthdays, removeBirthdayFromCalendar, isSyncing } = useGoogleCalendar();
+  const { isConnected, syncSingleBirthday, syncMultipleBirthdays, removeBirthdayFromCalendar, isSyncing, calendarId } = useGoogleCalendar();
   const { showToast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('birthday-search') || '');
@@ -249,6 +251,14 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
       return;
     }
 
+    // Strict Mode Check
+    if (calendarId === 'primary' || !calendarId) {
+      if (onOpenCalendarSettings) {
+        onOpenCalendarSettings();
+      }
+      return;
+    }
+
     try {
       const result = await syncSingleBirthday(birthdayId);
       if (result.success) {
@@ -278,14 +288,24 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
       return;
     }
 
+    // Strict Mode Check
+    if (calendarId === 'primary' || !calendarId) {
+      if (onOpenCalendarSettings) {
+        onOpenCalendarSettings();
+      }
+      return;
+    }
+
     const birthdaysToSync = Array.from(selectedIds);
 
     try {
       const result = await syncMultipleBirthdays(birthdaysToSync);
-      showToast(
-        `${result.successCount} מתוך ${result.totalAttempted} ימי הולדת סונכרנו בהצלחה`,
-        result.successCount > 0 ? 'success' : 'error'
-      );
+      if (result.status !== 'queued') {
+        showToast(
+          `${result.successCount} מתוך ${result.totalAttempted} ימי הולדת סונכרנו בהצלחה`,
+          result.successCount > 0 ? 'success' : 'error'
+        );
+      }
       setSelectedIds(new Set());
     } catch (error: any) {
       logger.error('Error bulk syncing birthdays:', error);

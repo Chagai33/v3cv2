@@ -13,20 +13,25 @@ import { CleanupOrphansResult, PreviewDeletionResult } from '../types';
 export const googleCalendarService = {
   // ... existing methods
 
-  async cleanupOrphanEvents(tenantId: string): Promise<CleanupOrphansResult> {
+  async cleanupOrphanEvents(tenantId: string, dryRun: boolean = false): Promise<CleanupOrphansResult> {
     try {
       const cleanupFunction = httpsCallable<
-        { tenantId: string },
+        { tenantId: string; dryRun: boolean },
         CleanupOrphansResult
-      >(functions, 'cleanupOrphanEvents');
+      >(functions, 'cleanupOrphanEvents', { timeout: 540000 }); // 9 minutes timeout
 
-      const result = await cleanupFunction({ tenantId });
+      const result = await cleanupFunction({ tenantId, dryRun });
 
       if (!result.data.success) {
         throw new Error(result.data.message || 'שגיאה בניקוי אירועים יתומים');
       }
 
-      logger.log(`Successfully cleaned up ${result.data.deletedCount} orphan events`);
+      if (dryRun) {
+          logger.log(`Dry run cleanup: Found ${result.data.foundCount} orphan events in calendar ${result.data.calendarName}`);
+      } else {
+          logger.log(`Successfully cleaned up ${result.data.deletedCount} orphan events from calendar ${result.data.calendarName}`);
+      }
+      
       return result.data;
     } catch (error: any) {
       logger.error('Error cleaning up orphan events:', error);
@@ -39,7 +44,7 @@ export const googleCalendarService = {
       const previewFunction = httpsCallable<
         { tenantId: string },
         PreviewDeletionResult
-      >(functions, 'previewDeletion');
+      >(functions, 'previewDeletion', { timeout: 540000 }); // 9 minutes timeout
 
       const result = await previewFunction({ tenantId });
 
@@ -71,33 +76,52 @@ export const googleCalendarService = {
           }
         }, 120000); // 2 דקות timeout
 
-        // נשתמש ב-popup עם טיפול טוב יותר
-        const client = window.google.accounts.oauth2.initTokenClient({
+        // נשתמש ב-code flow כדי לקבל refresh token
+        const client = window.google.accounts.oauth2.initCodeClient({
           client_id: GOOGLE_CLIENT_ID,
           scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
           ux_mode: 'popup',
-          prompt: '',
-          callback: (response: any) => {
+          access_type: 'offline', // קריטי לקבלת refresh_token
+          prompt: 'consent',      // מכריח את גוגל לשלוח refresh_token מחדש
+          callback: async (response: any) => {
             callbackCalled = true;
             clearTimeout(timeout);
             
-            logger.log('Google OAuth callback received:', { 
-              hasToken: !!response.access_token, 
+            logger.log('Google OAuth code received:', { 
+              hasCode: !!response.code, 
               error: response.error,
               errorDescription: response.error_description
             });
             
-            if (response.access_token) {
-              resolve({
-                accessToken: response.access_token,
-                expiresIn: response.expires_in || 3600
-              });
+            if (response.code) {
+              // אנחנו צריכים להחליף את ה-code ב-tokens בשרת
+              // אבל כדי לשמור על תאימות לזרימה הנוכחית, נבצע את ההחלפה כאן או בשרת.
+              // גישה מומלצת: לשלוח את ה-code לפונקציה בשרת שתבצע את ההחלפה ותשמור את הטוקנים.
+              
+              try {
+                // נקרא לפונקציה חדשה שתטפל בהחלפת הקוד
+                const exchangeFunction = httpsCallable<
+                  { code: string },
+                  { accessToken: string; expiresIn: number }
+                >(functions, 'exchangeGoogleAuthCode');
+
+                const result = await exchangeFunction({ code: response.code });
+                
+                resolve({
+                  accessToken: result.data.accessToken,
+                  expiresIn: result.data.expiresIn
+                });
+              } catch (err: any) {
+                logger.error('Error exchanging code for tokens:', err);
+                reject(new Error('שגיאה בהחלפת קוד אימות'));
+              }
+
             } else if (response.error) {
               logger.error('Google OAuth error in callback:', response.error, response.error_description);
               reject(new Error(`שגיאת Google: ${response.error_description || response.error}`));
             } else {
-              logger.error('No token and no error in callback');
-              reject(new Error('לא התקבל טוקן גישה מ-Google'));
+              logger.error('No code and no error in callback');
+              reject(new Error('לא התקבל קוד אימות מ-Google'));
             }
           },
           error_callback: (error: any) => {
@@ -108,9 +132,9 @@ export const googleCalendarService = {
           }
         });
 
-        // Request access token synchronously, immediately after user interaction
-        logger.log('Requesting Google OAuth token...');
-        client.requestAccessToken();
+        // Request auth code
+        logger.log('Requesting Google OAuth code...');
+        client.requestCode();
       } catch (error) {
         logger.error('Error initiating Google OAuth:', error);
         reject(error);
@@ -132,11 +156,9 @@ export const googleCalendarService = {
         accessToken: accessToken,
         expiresAt: expiresAt,
         scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
-        calendarId: 'primary',
-        calendarName: 'יומן ראשי',
-        createdAt: serverTimestamp(),
+        // Removed calendarId overwrite to respect existing preference or server logic
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true }); // Added merge: true
 
       logger.log('Successfully saved access token to Firestore');
     } catch (error: any) {
@@ -177,19 +199,29 @@ export const googleCalendarService = {
     try {
       const syncFunction = httpsCallable<
         { birthdayIds: string[] },
-        { totalAttempted: number; successCount: number; failureCount: number; results: any[]; message: string }
-      >(functions, 'syncMultipleBirthdaysToGoogleCalendar');
+        { success: boolean; message: string; totalQueued: number }
+      >(functions, 'syncMultipleBirthdaysToGoogleCalendar', { timeout: 540000 }); // 9 minutes timeout
 
       const result = await syncFunction({ birthdayIds });
 
+      if (!result.data.success) {
+          throw new Error(result.data.message || 'Failed to start sync');
+      }
+
       return {
-        totalAttempted: result.data.totalAttempted,
-        successCount: result.data.successCount,
-        failureCount: result.data.failureCount,
-        results: result.data.results
+        totalAttempted: birthdayIds.length,
+        status: 'queued',
+        message: result.data.message || 'Sync started',
+        successCount: 0, // Not available yet
+        failureCount: 0, // Not available yet
+        results: []      // Not available yet
       };
     } catch (error: any) {
       logger.error('Error syncing multiple birthdays:', error);
+      // Handle strict mode error specifically
+      if (error.message?.includes('googleCalendar.primaryNotAllowed')) {
+          throw new Error('Strict Mode: Syncing to Primary Calendar is not allowed. Please create a dedicated calendar in settings.');
+      }
       throw new Error(error.message || 'שגיאה בסנכרון מרובה');
     }
   },
@@ -214,12 +246,12 @@ export const googleCalendarService = {
     }
   },
 
-  async deleteAllSyncedEvents(tenantId: string): Promise<{ totalDeleted: number; failedCount: number; message: string }> {
+  async deleteAllSyncedEvents(tenantId: string): Promise<{ totalDeleted: number; failedCount: number; message: string; calendarName?: string }> {
     try {
       const deleteFunction = httpsCallable<
         { tenantId: string },
-        { success: boolean; totalDeleted: number; failedCount: number; message: string }
-      >(functions, 'deleteAllSyncedEventsFromGoogleCalendar');
+        { success: boolean; totalDeleted: number; failedCount: number; message: string; calendarName?: string }
+      >(functions, 'deleteAllSyncedEventsFromGoogleCalendar', { timeout: 540000 }); // 9 minutes timeout
 
       const result = await deleteFunction({ tenantId });
 
@@ -227,7 +259,7 @@ export const googleCalendarService = {
         throw new Error(result.data.message || 'שגיאה במחיקה');
       }
 
-      logger.log(`Successfully deleted ${result.data.totalDeleted} events from Google Calendar`);
+      logger.log(`Successfully deleted ${result.data.totalDeleted} events from Google Calendar (${result.data.calendarName})`);
       return result.data;
     } catch (error: any) {
       logger.error('Error deleting all synced events:', error);
@@ -239,7 +271,8 @@ export const googleCalendarService = {
     try {
       const disconnectFunction = httpsCallable<void, { success: boolean; message: string }>(
         functions,
-        'disconnectGoogleCalendar'
+        'disconnectGoogleCalendar',
+        { timeout: 540000 } // 9 minutes timeout
       );
 
       const result = await disconnectFunction();
@@ -255,86 +288,69 @@ export const googleCalendarService = {
     }
   },
 
-  async getTokenStatus(userId: string): Promise<GoogleCalendarSyncStatus> {
+  async resetBirthdaySyncData(birthdayId: string): Promise<void> {
+    try {
+        const resetFunction = httpsCallable<{ birthdayId: string }, { success: boolean; message: string }>(
+            functions,
+            'resetBirthdaySyncData'
+        );
+        await resetFunction({ birthdayId });
+    } catch (error: any) {
+        logger.error('Error resetting sync data:', error);
+        throw new Error(error.message || 'Failed to reset sync data');
+    }
+  },
+
+  async getStatus(userId: string): Promise<GoogleCalendarStatus> {
     try {
       if (!userId) {
-        return {
-          isConnected: false,
-          lastSyncTime: null,
-          syncedBirthdaysCount: 0
-        };
+          throw new Error('User ID required');
       }
 
-      const tokenDoc = await getDoc(doc(db, 'googleCalendarTokens', userId));
-
-      if (!tokenDoc.exists()) {
-        return {
-          isConnected: false,
-          lastSyncTime: null,
-          syncedBirthdaysCount: 0
-        };
-      }
-
-      const tokenData = tokenDoc.data();
-      const createdAt = tokenData.createdAt?.toDate?.()?.toISOString() || null;
-      const expiresAt = tokenData.expiresAt || 0;
-      const now = Date.now();
-
-      if (now >= expiresAt) {
-        return {
-          isConnected: false,
-          lastSyncTime: null,
-          syncedBirthdaysCount: 0
-        };
-      }
-
-      return {
-        isConnected: true,
-        lastSyncTime: createdAt,
-        syncedBirthdaysCount: 0,
-        userEmail: tokenData.userEmail || null,
-        calendarId: tokenData.calendarId || 'primary',
-        calendarName: tokenData.calendarName || 'יומן ראשי'
-      };
+      const statusFunction = httpsCallable<void, GoogleCalendarStatus>(
+          functions,
+          'getGoogleCalendarStatus'
+      );
+      
+      const result = await statusFunction();
+      return result.data;
     } catch (error: any) {
-      logger.warn('Could not get token status (may not exist yet):', error?.message);
+      // logger.warn('Could not get status:', error); // Suppress detailed log for common connect check
       return {
         isConnected: false,
-        lastSyncTime: null,
-        syncedBirthdaysCount: 0
+        email: '',
+        name: '',
+        picture: '',
+        calendarId: 'primary',
+        calendarName: 'יומן ראשי',
+        syncStatus: 'IDLE',
+        lastSyncStart: 0,
+        recentActivity: []
       };
     }
   },
 
-  async getGoogleAccountInfo(): Promise<{ email: string; name: string; picture: string } | null> {
-    try {
-      const getInfoFunction = httpsCallable<
-        void,
-        { success: boolean; email: string; name: string; picture: string }
-      >(functions, 'getGoogleAccountInfo');
-
-      const result = await getInfoFunction();
-
-      if (!result.data.success) {
-        return null;
-      }
-
-      // שמירת המייל ב-Firestore
-      const user = auth.currentUser;
-      if (user && result.data.email) {
-        const tokenDoc = doc(db, 'googleCalendarTokens', user.uid);
-        await setDoc(tokenDoc, { userEmail: result.data.email }, { merge: true });
-      }
-
+  // Deprecated: Use getStatus instead
+  async getTokenStatus(userId: string): Promise<GoogleCalendarSyncStatus> {
+      const status = await this.getStatus(userId);
       return {
-        email: result.data.email || '',
-        name: result.data.name || '',
-        picture: result.data.picture || ''
+          isConnected: status.isConnected,
+          lastSyncTime: status.lastSyncStart ? new Date(status.lastSyncStart).toISOString() : null,
+          syncedBirthdaysCount: 0,
+          userEmail: status.email,
+          calendarId: status.calendarId,
+          calendarName: status.calendarName
       };
-    } catch (error: any) {
-      logger.error('Error getting Google account info:', error);
-      return null;
-    }
+  },
+
+  async getGoogleAccountInfo(): Promise<{ email: string; name: string; picture: string } | null> {
+    const status = await this.getStatus(auth.currentUser?.uid || '');
+    if (!status.isConnected) return null;
+    return {
+        email: status.email,
+        name: status.name,
+        picture: status.picture
+    };
   },
 
   async createCalendar(name: string): Promise<{ calendarId: string; calendarName: string }> {

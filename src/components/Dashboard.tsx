@@ -13,6 +13,7 @@ import { useBirthdays } from '../hooks/useBirthdays';
 import { useTenant } from '../contexts/TenantContext';
 import { useGroupFilter } from '../contexts/GroupFilterContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useGoogleCalendar } from '../contexts/GoogleCalendarContext';
 import { useRootGroups, useInitializeRootGroups, useGroups } from '../hooks/useGroups';
 import { Birthday, DashboardStats } from '../types';
 import { Plus, Users, Calendar, TrendingUp, Cake, Upload, Info, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
@@ -39,6 +40,7 @@ export const Dashboard = () => {
   const { data: rootGroups = [], isLoading: isLoadingGroups } = useRootGroups();
   const { data: allGroups = [] } = useGroups();
   const initializeRootGroups = useInitializeRootGroups();
+  const { calendarId, isConnected } = useGoogleCalendar();
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
   
@@ -51,6 +53,7 @@ export const Dashboard = () => {
   const [csvData, setCsvData] = useState<CSVBirthdayRow[]>([]);
   const [showZodiacStats, setShowZodiacStats] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [initialStrictMode, setInitialStrictMode] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   
   const [isStatsExpanded, setIsStatsExpanded] = useState(() => {
@@ -124,6 +127,14 @@ export const Dashboard = () => {
   };
 
   const handleAddToCalendar = async (birthday: Birthday) => {
+    // Check for Strict Mode (Primary Calendar)
+    if (isConnected && (calendarId === 'primary' || !calendarId)) {
+        setInitialStrictMode(true);
+        setShowCalendarModal(true);
+        return;
+    }
+    setInitialStrictMode(false);
+
     try {
       let wishlist: any[] = [];
       try {
@@ -520,6 +531,10 @@ export const Dashboard = () => {
               onEdit={handleEdit}
               onAddToCalendar={handleAddToCalendar}
               duplicateIds={duplicateIds}
+              onOpenCalendarSettings={() => {
+                  setInitialStrictMode(true);
+                  setShowCalendarModal(true);
+              }}
             />
           )}
         </div>
@@ -557,7 +572,11 @@ export const Dashboard = () => {
 
       <GoogleCalendarModal 
         isOpen={showCalendarModal} 
-        onClose={() => setShowCalendarModal(false)} 
+        onClose={() => {
+            setShowCalendarModal(false);
+            setInitialStrictMode(false);
+        }}
+        initialStrictMode={initialStrictMode}
       />
       
       <AboutModal 

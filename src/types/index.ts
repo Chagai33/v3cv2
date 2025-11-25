@@ -247,9 +247,11 @@ export interface SyncResult {
 
 export interface BulkSyncResult {
   totalAttempted: number;
-  successCount: number;
-  failureCount: number;
-  results: SyncResult[];
+  successCount?: number;
+  failureCount?: number;
+  results?: SyncResult[];
+  status?: 'queued' | 'completed';
+  message?: string;
 }
 
 export interface PreviewDeletionSummary {
@@ -262,13 +264,40 @@ export interface PreviewDeletionResult {
   success: boolean;
   summary: PreviewDeletionSummary[];
   totalCount: number;
+  calendarId?: string;   // Added
+  calendarName?: string; // Added
 }
 
 export interface CleanupOrphansResult {
   success: boolean;
   deletedCount: number;
+  foundCount?: number; // Added
   failedCount: number;
+  calendarName?: string; // Added
   message: string;
+}
+
+export interface SyncHistoryItem {
+  id?: string;
+  type: 'BATCH' | 'SINGLE';
+  status: 'SUCCESS' | 'PARTIAL' | 'FAILED';
+  timestamp: number;
+  total: number;
+  successCount: number;
+  failedCount: number;
+  failedItems: Array<{ name: string; reason: string }>;
+}
+
+export interface GoogleCalendarStatus {
+  isConnected: boolean;
+  email: string;
+  name: string;
+  picture: string;
+  calendarId: string;
+  calendarName: string;
+  syncStatus: 'IDLE' | 'IN_PROGRESS';
+  lastSyncStart: number;
+  recentActivity: SyncHistoryItem[];
 }
 
 export interface GoogleCalendarContextType {
@@ -278,17 +307,20 @@ export interface GoogleCalendarContextType {
   userEmail: string | null;
   calendarId: string | null;
   calendarName: string | null;
+  syncStatus: 'IDLE' | 'IN_PROGRESS'; // Added
+  recentActivity: SyncHistoryItem[]; // Added
   connectToGoogle: () => Promise<void>;
   syncSingleBirthday: (birthdayId: string) => Promise<SyncResult>;
   syncMultipleBirthdays: (birthdayIds: string[]) => Promise<BulkSyncResult>;
   removeBirthdayFromCalendar: (birthdayId: string) => Promise<void>;
-  deleteAllSyncedEvents: (tenantId: string) => Promise<{ totalDeleted: number; failedCount: number }>;
+  deleteAllSyncedEvents: (tenantId: string, forceDBOnly?: boolean) => Promise<{ totalDeleted: number; failedCount: number; calendarName?: string }>; // Added calendarName
   disconnect: () => Promise<void>;
   refreshStatus: () => Promise<void>;
   createCalendar: (name: string) => Promise<{ calendarId: string; calendarName: string }>;
   updateCalendarSelection: (calendarId: string, calendarName: string) => Promise<void>;
   listCalendars: () => Promise<Array<{ id: string; summary: string; description: string; primary: boolean }>>;
   deleteCalendar: (calendarId: string) => Promise<void>;
-  cleanupOrphanEvents: (tenantId: string) => Promise<CleanupOrphansResult>;
+  cleanupOrphanEvents: (tenantId: string, dryRun?: boolean) => Promise<CleanupOrphansResult>;
   previewDeletion: (tenantId: string) => Promise<PreviewDeletionResult>;
+  resetBirthdaySyncData: (birthdayId: string) => Promise<void>; // Added
 }

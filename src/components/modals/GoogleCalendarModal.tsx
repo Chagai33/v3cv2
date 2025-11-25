@@ -6,9 +6,10 @@ import { useTranslation } from 'react-i18next';
 interface GoogleCalendarModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialStrictMode?: boolean;
 }
 
-export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({ isOpen, onClose }) => {
+export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({ isOpen, onClose, initialStrictMode }) => {
   const { t, i18n } = useTranslation();
 
   if (!isOpen) return null;
@@ -31,7 +32,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({ isOpen
             {t('googleCalendar.modalDescription')}
           </p>
           <div className="w-full flex justify-center">
-             <GoogleCalendarButton />
+             <GoogleCalendarButton initialStrictMode={initialStrictMode} />
           </div>
         </div>
       </div>

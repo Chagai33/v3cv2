@@ -1,0 +1,56 @@
+# Project Context: Hebrew Birthday Management System (v2.0)
+**Architecture:** Multi-tenant React app with Firebase backend.
+**Core Logic:**
+- Hebrew dates are calculated server-side via Cloud Functions (Hebcal API).
+- Google Calendar Sync uses client-side OAuth with tokens stored in Firestore.
+- Data isolation is enforced by `tenant_id` on every document.
+
+# Tech Stack & Source of Truth
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS.
+- **State:** React Query (Server State), Context API (Auth/Tenant).
+- **Backend:** Firebase (Auth, Firestore, Functions Node.js 20).
+- **Critical Files:**
+  - `functions/src/index.ts` (Backend Logic Source of Truth).
+  - `src/types/index.ts` (Data Model Definition).
+  - `firestore.rules` (Security & Access Control).
+
+# Communication & BiDi Formatting (STRICT)
+1. **Language:** Always answer in Hebrew (עברית).
+2. **English Positioning:**
+   - **Long terms/Paths:** Place file paths, function names, and error messages on a **separate line**.
+   - **Short terms:** Wrap inline English words in backticks (e.g., `tenantId`) to preserve RTL direction.
+3. **Agent Mode Behavior:**
+   - If I define a problem -> **Ask clarifying questions** first.
+   - If I ask for a fix -> **Present a plan** using the 'Double Critique' method below.
+   - **NEVER** execute code without my explicit "Go ahead" / "בצע".
+
+# The "Double Critique" Logic Process
+**Trigger:** Apply this for Logic/DB/Async changes. (Skip for simple UI/CSS tweaks).
+1.  **Plan:** Propose the solution based on current file facts.
+2.  **Critique 1 (Performance/Scale):** Check for DB read/write spikes (e.g., loops without `Promise.all`, missing `batch` writes).
+3.  **Critique 2 (Blind Spot Check - Chat Only):**
+    - Ask yourself: "Am I guessing what happened?"
+    - **Action:**
+      - If Backend issue: Ask for `functions/logs` (specifically `updateNextBirthdayScheduled` if relevant).
+      - If Frontend issue: Ask for `Browser Console Logs`.
+      - Do not theorize without evidence.
+4.  **Final Solution:** Generate code only after passing both critiques.
+
+# Iron Rules (Hard Constraints)
+1.  **Root Cause First (No Band-Aids):**
+    - **ALWAYS** propose solutions that solve the fundamental root cause of the issue.
+    - **NEVER** suggest "patchwork" fixes, workarounds, or hacks unless I explicitly ask for a temporary hotfix.
+    - If a bug is due to bad architecture, point it out and suggest a refactor.
+2.  **Deployment Commands:**
+    - **NEVER** execute deployment commands (like `firebase deploy`) automatically.
+    - **ALWAYS** provide the specific command in a code block for me to run manually.
+3.  **No Assumptions (Logs First):**
+    - Never assume the state of the DB matches the Types perfectly.
+    - If a process fails, demand Logs before writing a single line of fix code.
+4.  **Modularity:**
+    - Frontend: Use the Service Layer (`src/services/`) for all Firebase interactions.
+    - Backend: Keep `index.ts` clean.
+5.  **Date Logic:**
+    - NEVER calculate Hebrew dates on the client for saving.
+    - ALWAYS rely on the `onBirthdayWrite` trigger for the authoritative Hebrew date.
+6.  **Secrets:** Never output API keys or secrets in the chat.
