@@ -86,7 +86,7 @@
     "loadingCalendars": "Loading calendars...",
     "deleteAllConfirm": "Are you sure you want to delete all synced events from Google Calendar?",
     "deleteAllWarning": "This action will delete all birthdays created through the app. This action cannot be undone.",
-    "deleteAllSummary": "Deletion Summary ({{count}} events):",
+    "deleteAllSummary": "Deletion Summary ({{recordsCount}} records, {{eventsCount}} events):",
     "noEventsToDelete": "No events found to delete or data is loading.",
     "calculatingDeletion": "Calculating deletion data...",
     "yesDeleteAll": "Yes, Delete All",

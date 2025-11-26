@@ -263,6 +263,7 @@ export interface PreviewDeletionSummary {
 export interface PreviewDeletionResult {
   success: boolean;
   summary: PreviewDeletionSummary[];
+  recordsCount?: number;
   totalCount: number;
   calendarId?: string;   // Added
   calendarName?: string; // Added

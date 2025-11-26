@@ -774,7 +774,10 @@ export const GoogleCalendarButton: React.FC<GoogleCalendarButtonProps> = ({ init
 
                     {previewData && previewData.summary.length > 0 ? (
                         <div className="mb-4 bg-white/50 rounded-lg p-3 max-h-40 overflow-y-auto text-xs border border-red-100">
-                             <p className="font-bold text-red-900 mb-1">{t('googleCalendar.deleteAllSummary', { count: previewData.totalCount })}</p>
+                             <p className="font-bold text-red-900 mb-1">{t('googleCalendar.deleteAllSummary', { 
+                                recordsCount: previewData.recordsCount || previewData.summary.length,
+                                eventsCount: previewData.totalCount 
+                             })}</p>
                              <ul className="list-disc list-inside space-y-0.5 text-red-800">
                                 {previewData.summary.map((item, idx) => (
                                     <li key={idx}>

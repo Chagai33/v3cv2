@@ -2601,6 +2601,7 @@ export const previewDeletion = functions.https.onCall(async (data, context) => {
     return {
         success: true,
         summary,
+        recordsCount: summary.length,
         totalCount,
         calendarId,   // Return calendar ID
         calendarName  // Return calendar name

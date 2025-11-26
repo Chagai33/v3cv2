@@ -44,7 +44,7 @@
     "deleteAllConfirm": "האם אתה בטוח שברצונך למחוק את כל האירועים המסונכרנים מיומן Google?",
     "deleteAllConfirmWithCalendar": "האם אתה בטוח שברצונך למחוק את כל האירועים המסונכרנים מיומן \"{{calendarName}}\"?",
     "deleteAllWarning": "פעולה זו תמחק את כל ימי ההולדת שנוצרו דרך האפליקציה. פעולה זו אינה ניתנת לביטול.",
-    "deleteAllSummary": "סיכום מחיקה ({{count}} אירועים):",
+    "deleteAllSummary": "סיכום מחיקה ({{recordsCount}} רשומות, {{eventsCount}} אירועים):",
     "noEventsToDelete": "לא נמצאו אירועים למחיקה או שהנתונים בטעינה.",
     "calculatingDeletion": "מחשב נתונים למחיקה...",
     "yesDeleteAll": "כן, מחק הכל",
