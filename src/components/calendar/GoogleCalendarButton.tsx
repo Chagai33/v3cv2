@@ -826,12 +826,12 @@ export const GoogleCalendarButton: React.FC<GoogleCalendarButtonProps> = ({ init
     <button
       onClick={handleConnect}
       disabled={isSyncing}
-      className="flex items-center justify-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg sm:rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg font-medium text-sm sm:text-base"
+      className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 rounded-lg font-medium transition-all shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {isSyncing ? (
-        <Loader className="w-5 h-5 animate-spin" />
+        <Loader className="w-4 h-4 animate-spin" />
       ) : (
-        <Calendar className="w-5 h-5" />
+        <Calendar className="w-4 h-4" />
       )}
       <span>{t('googleCalendar.connect')}</span>
     </button>
