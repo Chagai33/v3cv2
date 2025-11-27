@@ -1,8 +1,4 @@
 {
-  "app": {
-    "title": "HebBirthday | ניהול ימי הולדת עבריים ולועזיים",
-    "tagline": "לא שוכחים אף תאריך - עברי או לועזי"
-  },
   "googleCalendar": {
     "title": "יומן Google",
     "connect": "התחבר ליומן Google",
@@ -48,7 +44,7 @@
     "deleteAllConfirm": "האם אתה בטוח שברצונך למחוק את כל האירועים המסונכרנים מיומן Google?",
     "deleteAllConfirmWithCalendar": "האם אתה בטוח שברצונך למחוק את כל האירועים המסונכרנים מיומן \"{{calendarName}}\"?",
     "deleteAllWarning": "פעולה זו תמחק את כל ימי ההולדת שנוצרו דרך האפליקציה. פעולה זו אינה ניתנת לביטול.",
-    "deleteAllSummary": "סיכום מחיקה ({{recordsCount}} רשומות, {{eventsCount}} אירועים):",
+    "deleteAllSummary": "סיכום מחיקה ({{count}} אירועים):",
     "noEventsToDelete": "לא נמצאו אירועים למחיקה או שהנתונים בטעינה.",
     "calculatingDeletion": "מחשב נתונים למחיקה...",
     "yesDeleteAll": "כן, מחק הכל",
@@ -68,7 +64,6 @@
     "cleanupConfirmMessage": "פעולה זו תסרוק את היומן שנבחר ותמחק את כל האירועים שנוצרו על ידי האפליקציה אך לא מקושרים לשום יום הולדת קיים במערכת (אירועים יתומים). זהו צעד תחזוקה לניקוי נתונים ישנים.",
     "calendar": "יומן",
     "orphansFound": "אירועים יתומים שנמצאו",
-    "eventsFound": "אירועים שנמצאו",
     "confirmCleanup": "בצע ניקוי",
     "account": "חשבון",
     "scanningCalendar": "סורק יומן...",

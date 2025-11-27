@@ -1,8 +1,4 @@
 {
-  "app": {
-    "title": "HebBirthday | Hebrew & Gregorian Calendar",
-    "tagline": "Never miss a date - Hebrew or Gregorian"
-  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -90,7 +86,7 @@
     "loadingCalendars": "Loading calendars...",
     "deleteAllConfirm": "Are you sure you want to delete all synced events from Google Calendar?",
     "deleteAllWarning": "This action will delete all birthdays created through the app. This action cannot be undone.",
-    "deleteAllSummary": "Deletion Summary ({{recordsCount}} records, {{eventsCount}} events):",
+    "deleteAllSummary": "Deletion Summary ({{count}} events):",
     "noEventsToDelete": "No events found to delete or data is loading.",
     "calculatingDeletion": "Calculating deletion data...",
     "yesDeleteAll": "Yes, Delete All",
@@ -107,34 +103,13 @@
     "noToken": "No access token received from Google",
     "syncToCalendar": "Sync to Google Calendar",
     "updateToCalendar": "Update to Google Calendar (unsynced changes)",
-    "deleteAllConfirmWithCalendar": "Are you sure you want to delete all synced events from calendar \"{{calendarName}}\"?",
-    "cleanupConfirmMessage": "This action will scan the selected calendar and delete all events created by the app that are not linked to any existing birthday (orphans). This is a maintenance step to clean up old data.",
-    "confirmCleanup": "Perform Cleanup",
-    "eventsFound": "Events found",
-    "orphansFound": "Orphan events found",
-    "account": "Account",
-    "calendar": "Calendar",
-    "scanningCalendar": "Scanning calendar...",
-    "history": "Sync History",
-    "noHistory": "No history available",
-    "batchSync": "Batch Sync",
-    "singleSync": "Single Sync",
-    "status": {
-      "SUCCESS": "Success",
-      "PARTIAL": "Partial",
-      "FAILED": "Failed"
-    },
     "strictModeTitle": "Let's organize the calendar! 📅",
-    "syncHistory": "Sync History",
     "strictModeDescription": "To keep your personal events separate from birthdays, the system works with a <strong>dedicated and separate calendar</strong>.<br/>This allows you to easily show or hide birthdays and keep your main calendar clean and organized.",
     "createDedicatedCalendar": "Create birthday calendar now",
     "selectExistingCalendar": "I already have a dedicated calendar (Select calendar)",
     "totalRecords": "Total Records",
     "recordsCompleted": "Records Completed",
-    "recordsFailed": "Records Failed",
-    "failures": "Failures",
-    "syncInProgress": "Sync in progress...",
-    "showHistory": "Show History"
+    "recordsFailed": "Records Failed"
   },
   "auth": {
     "signIn": "Sign In",
@@ -253,36 +228,7 @@
     "addToGoogleCalendar": "Add to Google Calendar",
     "exportSelected": "Export Selected",
     "unsyncedChanges": "There are changes not synced to Google Calendar",
-    "notesSyncHint": "Notes will be displayed in the Google Calendar event description if you choose to sync",
-    "next10Years": "Next 10 Years",
-    "unassigned": "Unassigned",
-    "age": "Age",
-    "reassign": "Reassign Group",
-    "refresh": "Refresh Hebrew Dates",
-    "possibleDuplicate": "Possible Duplicate",
-    "futureBirthdays": "Upcoming Hebrew Birthdays",
-    "noFutureDates": "No dates available",
-    "next": "Next",
-    "past": "Past"
-  },
-  "zodiac": {
-    "aries": "Aries",
-    "taurus": "Taurus",
-    "gemini": "Gemini",
-    "cancer": "Cancer",
-    "leo": "Leo",
-    "virgo": "Virgo",
-    "libra": "Libra",
-    "scorpio": "Scorpio",
-    "sagittarius": "Sagittarius",
-    "capricorn": "Capricorn",
-    "aquarius": "Aquarius",
-    "pisces": "Pisces",
-    "statsTitle": "Zodiac Statistics",
-    "mismatchTitle": "Zodiac Gap",
-    "mismatchDesc": "There are {{count}} people whose Hebrew zodiac sign differs from their Gregorian sign.",
-    "gregorianDistribution": "Gregorian Distribution",
-    "hebrewDistribution": "Hebrew Distribution"
+    "notesSyncHint": "Notes will be displayed in the Google Calendar event description if you choose to sync"
   },
   "groups": {
     "title": "Groups",

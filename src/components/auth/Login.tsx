@@ -89,19 +89,12 @@ export const Login: React.FC = () => {
           <Globe className="w-5 h-5" />
         </button>
         <div className="text-center mb-8">
-          <div className="flex flex-col items-center justify-center mb-6">
-            <div className="text-4xl font-black tracking-tight leading-none relative inline-flex items-baseline" dir="ltr">
-              <span className="text-blue-600">Heb</span>
-              <span className="text-purple-600">Birthday</span>
-              <span className="text-gray-400 text-xl ml-1 absolute left-full bottom-1">.app</span>
-            </div>
-            <span className="text-sm text-gray-500 font-medium mt-1">
-              {t('app.tagline')}
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
             {t('auth.signIn')}
           </h1>
+          <p className="text-gray-600">
+            {t('birthday.birthdays')}
+          </p>
         </div>
 
         {error && (
