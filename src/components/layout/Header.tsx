@@ -5,11 +5,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useGroupFilter } from '../../contexts/GroupFilterContext';
 import { useGroups } from '../../hooks/useGroups';
 import { useBirthdays } from '../../hooks/useBirthdays';
-import { LogOut, Globe, FolderTree, Filter, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { LogOut, Globe, FolderTree, Filter, Settings, ChevronDown, ChevronUp, Menu } from 'lucide-react';
 import { useTranslatedRootGroupName } from '../../utils/groupNameTranslator';
 import { TenantSettings } from '../settings/TenantSettings';
+import { useLayoutContext } from '../../contexts/LayoutContext';
 
 export const Header: React.FC = () => {
+  const { openAboutModal } = useLayoutContext();
   const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -67,19 +69,22 @@ export const Header: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3 ms-auto">
                 <a
                   href="https://www.linkedin.com/in/chagai-yechiel/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[10px] sm:text-xs text-gray-500 hover:text-gray-700 transition-colors whitespace-nowrap"
+                  className="flex flex-col items-end text-[10px] leading-tight text-gray-500 hover:text-gray-700 transition-colors whitespace-nowrap"
                 >
-                  {t('common.developedBy')} {i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}
+                  <span>{t('common.developedBy')}</span>
+                  <span>{i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}</span>
                 </a>
-                <span className="hidden sm:inline text-xs text-gray-400">•</span>
-                <span className="hidden sm:inline text-xs text-gray-500">
-                  {t('common.version')} 1.0
-                </span>
+                <button
+                  onClick={openAboutModal}
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
               </div>
               <button
                 onClick={toggleLanguage}
@@ -118,19 +123,22 @@ export const Header: React.FC = () => {
 
           {/* ימין - כפתורים עם separators */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="flex items-center gap-3 ms-auto">
               <a
                 href="https://www.linkedin.com/in/chagai-yechiel/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[10px] sm:text-xs hover:text-gray-700 transition-colors whitespace-nowrap"
+                className="flex flex-col items-end text-[10px] leading-tight text-gray-500 hover:text-gray-700 transition-colors whitespace-nowrap"
               >
-                {t('common.developedBy')} {i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}
+                <span>{t('common.developedBy')}</span>
+                <span>{i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}</span>
               </a>
-              <span className="hidden sm:inline text-gray-400">•</span>
-              <span className="hidden sm:inline">
-                {t('common.version')} 1.0
-              </span>
+                <button
+                  onClick={openAboutModal}
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
             </div>
 
             {/* תפריט ביניים (Tablet/Small Laptop) */}

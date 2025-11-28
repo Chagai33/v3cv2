@@ -1,13 +1,13 @@
 import React from 'react';
 import { Plus, Upload, Calendar, Users, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useLayoutContext } from '../../contexts/LayoutContext';
 
 interface FloatingDockProps {
   onAdd: () => void;
   onImport: () => void;
   onCalendar: () => void;
   onGroups: () => void;
-  onAbout: () => void;
   hidden?: boolean;
 }
 
@@ -16,17 +16,17 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
   onImport,
   onCalendar,
   onGroups,
-  onAbout,
   hidden = false,
 }) => {
   const { t } = useTranslation();
+  const { openAboutModal } = useLayoutContext();
 
   const dockItems = [
     { icon: Plus, label: t('birthday.addBirthday'), onClick: onAdd, color: 'text-blue-600' },
     { icon: Upload, label: t('birthday.importCSV'), onClick: onImport, color: 'text-green-600' },
     { icon: Calendar, label: t('googleCalendar.title'), onClick: onCalendar, color: 'text-purple-600' },
     { icon: Users, label: t('groups.title'), onClick: onGroups, color: 'text-orange-600' },
-    { icon: Info, label: t('common.about', 'About'), onClick: onAbout, color: 'text-gray-600' },
+    { icon: Info, label: t('common.about', 'About'), onClick: openAboutModal, color: 'text-gray-600' },
   ];
 
   if (hidden) {

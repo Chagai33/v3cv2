@@ -8,12 +8,10 @@ import { BirthdayForm } from './birthdays/BirthdayForm';
 import { GoogleCalendarButton } from './calendar/GoogleCalendarButton';
 import { FloatingDock } from './layout/FloatingDock';
 import { GoogleCalendarModal } from './modals/GoogleCalendarModal';
-import { AboutModal } from './modals/AboutModal';
 import { useBirthdays } from '../hooks/useBirthdays';
 import { useTenant } from '../contexts/TenantContext';
 import { useGroupFilter } from '../contexts/GroupFilterContext';
 import { useAuth } from '../contexts/AuthContext';
-import { useGoogleCalendar } from '../contexts/GoogleCalendarContext';
 import { useRootGroups, useInitializeRootGroups, useGroups } from '../hooks/useGroups';
 import { Birthday, DashboardStats } from '../types';
 import { Plus, Users, Calendar, TrendingUp, Cake, Upload, Info, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
@@ -40,7 +38,6 @@ export const Dashboard = () => {
   const { data: rootGroups = [], isLoading: isLoadingGroups } = useRootGroups();
   const { data: allGroups = [] } = useGroups();
   const initializeRootGroups = useInitializeRootGroups();
-  const { calendarId, isConnected } = useGoogleCalendar();
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
   
@@ -53,8 +50,6 @@ export const Dashboard = () => {
   const [csvData, setCsvData] = useState<CSVBirthdayRow[]>([]);
   const [showZodiacStats, setShowZodiacStats] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
-  const [initialStrictMode, setInitialStrictMode] = useState(false);
-  const [showAboutModal, setShowAboutModal] = useState(false);
   
   const [isStatsExpanded, setIsStatsExpanded] = useState(() => {
     const saved = localStorage.getItem('stats-expanded');
@@ -127,14 +122,6 @@ export const Dashboard = () => {
   };
 
   const handleAddToCalendar = async (birthday: Birthday) => {
-    // Check for Strict Mode (Primary Calendar)
-    if (isConnected && (calendarId === 'primary' || !calendarId)) {
-        setInitialStrictMode(true);
-        setShowCalendarModal(true);
-        return;
-    }
-    setInitialStrictMode(false);
-
     try {
       let wishlist: any[] = [];
       try {
@@ -452,13 +439,13 @@ export const Dashboard = () => {
               {/* קבוצה 1: פעולות ראשיות */}
               <button
                 onClick={() => setShowForm(true)}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 rounded-lg font-medium transition-all shadow-sm text-sm"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md text-sm"
                 title={t('birthday.addBirthday')}
               >
                 <Plus className="w-4 h-4" />
                 <span>{t('birthday.addBirthday')}</span>
               </button>
-              <label className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 rounded-lg font-medium transition-all shadow-sm cursor-pointer text-sm">
+              <label className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md cursor-pointer text-sm">
                 <input
                   type="file"
                   accept=".csv"
@@ -489,7 +476,7 @@ export const Dashboard = () => {
               <div className="h-8 w-px bg-gray-300 mx-1" />
               
               {/* קבוצה 2: פעולות ראשיות */}
-              <label className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 rounded-lg font-medium transition-all shadow-sm cursor-pointer text-sm">
+              <label className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md cursor-pointer text-sm">
                 <input
                   type="file"
                   accept=".csv"
@@ -502,7 +489,7 @@ export const Dashboard = () => {
               </label>
               <button
                 onClick={() => setShowForm(true)}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 rounded-lg font-medium transition-all shadow-sm text-sm"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md text-sm"
                 title={t('birthday.addBirthday')}
               >
                 <Plus className="w-4 h-4" />
@@ -531,10 +518,6 @@ export const Dashboard = () => {
               onEdit={handleEdit}
               onAddToCalendar={handleAddToCalendar}
               duplicateIds={duplicateIds}
-              onOpenCalendarSettings={() => {
-                  setInitialStrictMode(true);
-                  setShowCalendarModal(true);
-              }}
             />
           )}
         </div>
@@ -566,22 +549,12 @@ export const Dashboard = () => {
         onImport={() => fileInputRef.current?.click()}
         onCalendar={() => setShowCalendarModal(true)}
         onGroups={() => navigate('/groups')}
-        onAbout={() => setShowAboutModal(true)}
-        hidden={showForm || showCSVPreview || showCalendarModal || showAboutModal || showZodiacStats}
+        hidden={showForm || showCSVPreview || showCalendarModal || showZodiacStats}
       />
 
       <GoogleCalendarModal 
         isOpen={showCalendarModal} 
-        onClose={() => {
-            setShowCalendarModal(false);
-            setInitialStrictMode(false);
-        }}
-        initialStrictMode={initialStrictMode}
-      />
-      
-      <AboutModal 
-        isOpen={showAboutModal} 
-        onClose={() => setShowAboutModal(false)} 
+        onClose={() => setShowCalendarModal(false)} 
       />
     </Layout>
   );

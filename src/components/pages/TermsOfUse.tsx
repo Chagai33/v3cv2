@@ -1,13 +1,13 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Layout } from '../layout/Layout';
+import { InfoPageLayout } from '../layout/InfoPageLayout';
 
 export const TermsOfUse: React.FC = () => {
   const { t, i18n } = useTranslation();
   const isHebrew = i18n.language === 'he';
 
   return (
-    <Layout>
+    <InfoPageLayout>
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm p-6 sm:p-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">
           {t('terms.title', 'תנאי שימוש לאפליקציית "hebbirthday"')}
@@ -120,7 +120,7 @@ export const TermsOfUse: React.FC = () => {
           </section>
         </div>
       </div>
-    </Layout>
+    </InfoPageLayout>
   );
 };
 

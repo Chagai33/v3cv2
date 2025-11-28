@@ -8,6 +8,8 @@ interface FloatingBackButtonProps {
   to?: string;
   className?: string;
   position?: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right';
+  showOnDesktop?: boolean;
+  customPosition?: string;
 }
 
 export const FloatingBackButton: React.FC<FloatingBackButtonProps> = ({
@@ -15,6 +17,8 @@ export const FloatingBackButton: React.FC<FloatingBackButtonProps> = ({
   to,
   className = '',
   position = 'bottom-left',
+  showOnDesktop = false,
+  customPosition,
 }) => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -36,8 +40,11 @@ export const FloatingBackButton: React.FC<FloatingBackButtonProps> = ({
     'top-right': 'top-6 right-6',
   };
 
+  const positionClass = customPosition || positionClasses[position];
+  const visibilityClass = showOnDesktop ? '' : 'sm:hidden';
+
   return (
-    <div className={`fixed ${positionClasses[position]} z-40 sm:hidden`}>
+    <div className={`fixed ${positionClass} z-40 ${visibilityClass}`}>
       <button
         onClick={handleClick}
         className={`p-4 bg-white/80 backdrop-blur-md border border-white/30 text-gray-700 rounded-full shadow-xl hover:bg-white/90 transition-all active:scale-95 ring-1 ring-black/5 ${className}`}

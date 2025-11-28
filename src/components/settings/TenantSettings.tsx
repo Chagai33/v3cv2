@@ -1,3 +1,4 @@
+import { FloatingBackButton } from '../common/FloatingBackButton';
 import { logger } from "../../utils/logger";
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,7 +17,8 @@ interface TenantSettingsProps {
 }
 
 export const TenantSettings: React.FC<TenantSettingsProps> = ({ onClose }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isHebrew = i18n.language === 'he';
   const { currentTenant, updateTenant } = useTenant();
   const { toasts, hideToast, success, error } = useToast();
 
@@ -87,6 +89,17 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ onClose }) => {
 
   return (
     <>
+      <FloatingBackButton
+        onClick={onClose}
+        position={isHebrew ? 'bottom-left' : 'bottom-right'}
+        className="z-[60]"
+      />
+      <FloatingBackButton
+        onClick={onClose}
+        showOnDesktop
+        customPosition={`top-6 ${isHebrew ? 'right-6' : 'left-6'} hidden sm:block`}
+        className="z-[60]"
+      />
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-6">
