@@ -22,7 +22,6 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
   const { openAboutModal } = useLayoutContext();
 
   const dockItems = [
-    { icon: Plus, label: t('birthday.addBirthday'), onClick: onAdd, color: 'text-blue-600' },
     { icon: Upload, label: t('birthday.importCSV'), onClick: onImport, color: 'text-green-600' },
     { icon: Calendar, label: t('googleCalendar.title'), onClick: onCalendar, color: 'text-purple-600' },
     { icon: Users, label: t('groups.title'), onClick: onGroups, color: 'text-orange-600' },
@@ -34,7 +33,18 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
   }
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 sm:hidden">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 sm:hidden flex items-center gap-3">
+      {/* Add Button - Separated but aligned, modern glassmorphism */}
+      <button
+        onClick={onAdd}
+        className="p-3.5 backdrop-blur-md border border-blue-100 rounded-full shadow-xl shadow-blue-900/10 hover:bg-blue-50/80 transition-all duration-200 active:scale-95 ring-1 ring-blue-500/10"
+        style={{ backgroundColor: 'rgba(255, 255, 255, 0.8)' }}
+        aria-label={t('birthday.addBirthday')}
+      >
+        <Plus className="w-6 h-6 text-blue-600 stroke-[2.5]" />
+      </button>
+
+      {/* Main Dock */}
       <div 
         className="flex items-center gap-1 px-2 py-2 backdrop-blur-md border border-white/30 rounded-full shadow-xl shadow-blue-900/5 ring-1 ring-black/5"
         style={{ backgroundColor: 'rgba(255, 255, 255, 0.6)' }}

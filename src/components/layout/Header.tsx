@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useGroupFilter } from '../../contexts/GroupFilterContext';
 import { useGroups } from '../../hooks/useGroups';
 import { useBirthdays } from '../../hooks/useBirthdays';
-import { LogOut, Globe, FolderTree, Filter, Settings, ChevronDown, ChevronUp, Menu } from 'lucide-react';
+import { LogOut, FolderTree, Filter, Settings, ChevronDown, ChevronUp, Menu } from 'lucide-react';
 import { useTranslatedRootGroupName } from '../../utils/groupNameTranslator';
 import { TenantSettings } from '../settings/TenantSettings';
 import { useLayoutContext } from '../../contexts/LayoutContext';
@@ -41,11 +41,6 @@ export const Header: React.FC = () => {
     navigate('/login');
   };
 
-  const toggleLanguage = () => {
-    const newLang = i18n.language === 'he' ? 'en' : 'he';
-    i18n.changeLanguage(newLang);
-  };
-
   // If public page, show minimal header
   if (isPublicPage) {
     return (
@@ -77,8 +72,8 @@ export const Header: React.FC = () => {
                   className="flex flex-col items-end text-[10px] leading-tight text-gray-500 hover:text-gray-700 transition-colors whitespace-nowrap"
                 >
                   <span>{t('common.developedBy')}</span>
-                  <span>{i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}</span>
-                </a>
+                <span>{i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}</span>
+              </a>
                 <button
                   onClick={openAboutModal}
                   className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -86,13 +81,6 @@ export const Header: React.FC = () => {
                   <Menu className="w-6 h-6" />
                 </button>
               </div>
-              <button
-                onClick={toggleLanguage}
-                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                title={i18n.language === 'he' ? t('common.switchToEnglish') : t('common.switchToHebrew')}
-              >
-                <Globe className="w-5 h-5" />
-              </button>
             </div>
           </div>
         </div>
@@ -132,7 +120,7 @@ export const Header: React.FC = () => {
               >
                 <span>{t('common.developedBy')}</span>
                 <span>{i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}</span>
-              </a>
+                </a>
                 <button
                   onClick={openAboutModal}
                   className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -236,19 +224,6 @@ export const Header: React.FC = () => {
                       </button>
                     )}
 
-                    <button
-                      onClick={() => {
-                        toggleLanguage();
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <Globe className="w-4 h-4" />
-                      <span>
-                        {i18n.language === 'he' ? t('common.switchToEnglish') : t('common.switchToHebrew')}
-                      </span>
-                    </button>
-
                     {user && (
                       <>
                         <div className="h-px bg-gray-100 my-1" />
@@ -350,14 +325,6 @@ export const Header: React.FC = () => {
                 <div className="h-6 w-px bg-gray-300" />
               </>
             )}
-
-            <button
-              onClick={toggleLanguage}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title={i18n.language === 'he' ? t('common.switchToEnglish') : t('common.switchToHebrew')}
-            >
-              <Globe className="w-5 h-5" />
-            </button>
 
             {user && (
               <>

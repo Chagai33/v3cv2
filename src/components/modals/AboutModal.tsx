@@ -45,18 +45,17 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
 
         <div className="space-y-6">
           <div className="text-center space-y-2">
-            <p className="font-medium text-gray-900">HebBirthday v3.0</p>
+            <p className="font-medium text-gray-900">HebBirthday.App</p>
             <p className="text-sm text-gray-500">
-              {t('common.developedBy')} {i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}
+              {t('common.developedBy')} <a
+                href="https://www.linkedin.com/in/chagai-yechiel/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                {i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}
+              </a>
             </p>
-            <a
-              href="https://www.linkedin.com/in/chagai-yechiel/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium block mt-1"
-            >
-              {t('common.linkedInProfile')}
-            </a>
           </div>
 
           <div className="flex flex-col gap-2 pt-4 border-t border-gray-100">
