@@ -32,20 +32,21 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-slide-in">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900">{t('common.about', 'About & Settings')}</h2>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-slide-in relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 end-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors z-10"
+        >
+          <X className="w-5 h-5" />
+        </button>
 
-        <div className="space-y-6">
+        <div className="space-y-6 pt-2">
           <div className="text-center space-y-2">
-            <p className="font-medium text-gray-900">HebBirthday.App</p>
+            <div className="text-lg sm:text-xl font-black tracking-tight leading-none relative inline-flex items-baseline" dir="ltr">
+              <span className="text-blue-600">Heb</span>
+              <span className="text-purple-600">Birthday</span>
+              <span className="text-gray-400 text-sm ml-[1px]">.app</span>
+            </div>
             <p className="text-sm text-gray-500">
               {t('common.developedBy')} <a
                 href="https://www.linkedin.com/in/chagai-yechiel/"
