@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,6 +19,8 @@ export const Register: React.FC = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsError, setShowTermsError] = useState(false);
+  const termsRef = useRef<HTMLDivElement>(null);
   
   const from = (location.state as any)?.from?.pathname || '/';
 
@@ -45,12 +47,18 @@ export const Register: React.FC = () => {
     return message === errorKey ? t('auth.errors.default') : message;
   };
 
+  const handleTermsError = () => {
+    setShowTermsError(true);
+    setError('');
+    termsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (!acceptedTerms) {
-      setError(t('auth.mustAcceptTerms', 'You must accept the Terms of Use and Privacy Policy'));
+      handleTermsError();
       return;
     }
 
@@ -79,7 +87,7 @@ export const Register: React.FC = () => {
     setError('');
 
     if (!acceptedTerms) {
-      setError(t('auth.mustAcceptTerms', 'You must accept the Terms of Use and Privacy Policy'));
+      handleTermsError();
       return;
     }
 
@@ -206,26 +214,38 @@ export const Register: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-start gap-2">
-            <input
-              type="checkbox"
-              id="acceptTerms"
-              checked={acceptedTerms}
-              onChange={(e) => setAcceptedTerms(e.target.checked)}
-              className="mt-0.5 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              required
-            />
-            <label htmlFor="acceptTerms" className="text-sm text-gray-700 cursor-pointer">
-              {t('auth.acceptTerms', 'I confirm that I have read and agree to the')}{' '}
-              <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 underline" onClick={(e) => e.stopPropagation()}>
-                {t('footer.termsOfUse', 'Terms of Use')}
-              </a>
-              {' '}{t('auth.and', 'and')}{' '}
-              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 underline" onClick={(e) => e.stopPropagation()}>
-                {t('footer.privacyPolicy', 'Privacy Policy')}
-              </a>
-              .
-            </label>
+          <div ref={termsRef} className="flex flex-col gap-1">
+            <div className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                id="acceptTerms"
+                checked={acceptedTerms}
+                onChange={(e) => {
+                  setAcceptedTerms(e.target.checked);
+                  if (e.target.checked) setShowTermsError(false);
+                }}
+                className="mt-0.5 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                required
+                aria-invalid={showTermsError}
+                aria-describedby="terms-error"
+              />
+              <label htmlFor="acceptTerms" className="text-sm text-gray-700 cursor-pointer">
+                {t('auth.acceptTerms', 'I confirm that I have read and agree to the')}{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 underline" onClick={(e) => e.stopPropagation()}>
+                  {t('footer.termsOfUse', 'Terms of Use')}
+                </a>
+                {' '}{t('auth.and', 'and')}{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 underline" onClick={(e) => e.stopPropagation()}>
+                  {t('footer.privacyPolicy', 'Privacy Policy')}
+                </a>
+                .
+              </label>
+            </div>
+            {showTermsError && (
+              <p id="terms-error" className="text-sm text-red-600 ms-6">
+                {t('auth.mustAcceptTerms', 'You must accept the Terms of Use and Privacy Policy')}
+              </p>
+            )}
           </div>
 
           <button

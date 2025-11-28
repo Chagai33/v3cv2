@@ -58,7 +58,7 @@ export const Header: React.FC = () => {
                 <div className="text-xl sm:text-2xl font-black tracking-tight leading-none relative inline-flex items-baseline" dir="ltr">
                   <span className="text-blue-600">Heb</span>
                   <span className="text-purple-600">Birthday</span>
-                  <span className="text-gray-400 text-sm sm:text-base ml-[1px] absolute left-full bottom-0">.app</span>
+                  <span className="text-gray-400 text-sm sm:text-base ml-[1px]">.app</span>
                 </div>
                 <span className="text-[10px] sm:text-xs text-gray-500 font-medium -mt-0.5">
                   {t('app.tagline')}
@@ -108,7 +108,7 @@ export const Header: React.FC = () => {
               <div className="text-xl sm:text-2xl font-black tracking-tight leading-none relative inline-flex items-baseline" dir="ltr">
                 <span className="text-blue-600">Heb</span>
                 <span className="text-purple-600">Birthday</span>
-                <span className="text-gray-400 text-sm sm:text-base ml-[1px] absolute left-full bottom-0">.app</span>
+                <span className="text-gray-400 text-sm sm:text-base ml-[1px]">.app</span>
               </div>
               <span className="text-[10px] sm:text-xs text-gray-500 font-medium -mt-0.5">
                 {t('app.tagline')}
