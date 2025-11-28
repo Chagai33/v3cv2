@@ -436,6 +436,19 @@
     "rowGroup": "קבוצה",
     "noGroup": "ללא קבוצה (ישתמש בברירת מחדל)"
   },
+  "help": {
+    "title": "איך זה עובד?",
+    "intro": "האפליקציה נועדה לעזור לך לעקוב אחרי ימי הולדת - עבריים ולועזיים - בקלות ובלי מאמץ. הנה כל מה שאפשר לעשות:",
+    "step1_title": "הוספת ימי הולדת",
+    "step1_desc": "לוחצים על כפתור הפלוס (+), מכניסים שם ותאריך לידה לועזי, ואנחנו מחשבים אוטומטית את התאריך העברי ואת הגיל. אפשר גם לייבא רשימה שלמה בבת אחת מקובץ Excel/CSV.",
+    "step2_title": "עברי ולועזי - ביחד",
+    "step2_desc": "לכל אדם תוכלו לבחור אם לחגוג לו בתאריך העברי, הלועזי, או שניהם! המערכת תציג לכם תמיד את יום ההולדת הקרוב ביותר.",
+    "step3_title": "סנכרון ליומן",
+    "step3_desc": "בלחיצת כפתור אחת, כל ימי ההולדת יופיעו ביומן גוגל (Google Calendar) שלכם, כך שתקבלו תזכורות בדיוק כמו שאתם רגילים.",
+    "step4_title": "קבוצות וסדר",
+    "step4_desc": "אפשר לסדר את האנשים בקבוצות (משפחה, חברים מהעבודה, כיתה ה׳2) ולסנן את הרשימה בקלות כדי למצוא בדיוק את מי שמחפשים.",
+    "footer": "פשוט, חכם ומסודר. תהנו! 🎉"
+  },
   "footer": {
     "termsOfUse": "תנאי שימוש",
     "privacyPolicy": "מדיניות פרטיות",

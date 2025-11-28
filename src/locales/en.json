@@ -388,6 +388,19 @@
     "summaryOfData": "Summary of data to be deleted:",
     "confirmDelete": "Yes, delete account"
   },
+  "help": {
+    "title": "How does it work?",
+    "intro": "This app is designed to help you track birthdays - Hebrew and Gregorian - easily and effortlessly. Here's what you can do:",
+    "step1_title": "Adding Birthdays",
+    "step1_desc": "Click the plus (+) button, enter a name and Gregorian birth date, and we automatically calculate the Hebrew date and age. You can also import a full list at once from an Excel/CSV file.",
+    "step2_title": "Hebrew & Gregorian - Together",
+    "step2_desc": "For each person, you can choose whether to celebrate on the Hebrew date, Gregorian date, or both! The system will always show you the next upcoming birthday.",
+    "step3_title": "Calendar Sync",
+    "step3_desc": "With one click, all birthdays will appear in your Google Calendar, so you get reminders just the way you're used to.",
+    "step4_title": "Groups & Organization",
+    "step4_desc": "You can organize people into groups (Family, Work Friends, Class 5B) and easily filter the list to find exactly who you're looking for.",
+    "footer": "Simple, smart, and organized. Enjoy! 🎉"
+  },
   "footer": {
     "termsOfUse": "Terms of Use",
     "privacyPolicy": "Privacy Policy",
