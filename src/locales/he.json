@@ -1,7 +1,10 @@
 {
   "app": {
     "title": "HebBirthday | ניהול ימי הולדת עבריים ולועזיים",
-    "tagline": "לא שוכחים אף תאריך - עברי או לועזי"
+    "taglinePart1": "לא שוכחים אף תאריך -",
+    "taglineHebrew": "עברי",
+    "taglineOr": "או",
+    "taglineGregorian": "לועזי"
   },
   "googleCalendar": {
     "title": "יומן Google",

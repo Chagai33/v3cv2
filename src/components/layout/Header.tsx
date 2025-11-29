@@ -53,12 +53,12 @@ export const Header: React.FC = () => {
                 className="flex flex-col items-start transition-opacity hover:opacity-80 -ms-1 pe-6"
               >
                 <div className="text-xl sm:text-2xl font-black tracking-tight leading-none relative inline-flex items-baseline" dir="ltr">
-                  <span className="text-blue-600">Heb</span>
-                  <span className="text-purple-600">Birthday</span>
+                  <span className="text-[#8e24aa]">Heb</span>
+                  <span className="text-[#304FFE]">Birthday</span>
                   <span className="text-gray-400 text-sm sm:text-base ml-[1px]">.app</span>
                 </div>
                 <span className="text-[10px] sm:text-xs text-gray-500 font-medium -mt-0.5">
-                  {t('app.tagline')}
+                  {t('app.taglinePart1')} <span className="text-[#8e24aa]">{t('app.taglineHebrew')}</span> {t('app.taglineOr')} <span className="text-[#304FFE]">{t('app.taglineGregorian')}</span>
                 </span>
               </button>
             </div>
@@ -99,12 +99,12 @@ export const Header: React.FC = () => {
               className="flex flex-col items-start transition-opacity hover:opacity-80 -ms-1 pe-6"
             >
               <div className="text-xl sm:text-2xl font-black tracking-tight leading-none relative inline-flex items-baseline" dir="ltr">
-                <span className="text-blue-600">Heb</span>
-                <span className="text-purple-600">Birthday</span>
+                <span className="text-[#8e24aa]">Heb</span>
+                <span className="text-[#304FFE]">Birthday</span>
                 <span className="text-gray-400 text-sm sm:text-base ml-[1px]">.app</span>
               </div>
               <span className="text-[10px] sm:text-xs text-gray-500 font-medium -mt-0.5">
-                {t('app.tagline')}
+                {t('app.taglinePart1')} <span className="text-[#8e24aa]">{t('app.taglineHebrew')}</span> {t('app.taglineOr')} <span className="text-[#304FFE]">{t('app.taglineGregorian')}</span>
               </span>
             </button>
           </div>

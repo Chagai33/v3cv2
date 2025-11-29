@@ -696,25 +696,6 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                       </td>
                       <td className="px-2 sm:px-6 py-2 sm:py-4">
                         <div className="flex items-center gap-1.5 sm:gap-3">
-                          {birthday.group ? (
-                            <div
-                              className="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0"
-                              style={{ backgroundColor: `${birthday.group.color}20` }}
-                              title={birthday.group.name}
-                            >
-                              <div
-                                className="w-2 h-2 sm:w-3 sm:h-3 rounded-full"
-                                style={{ backgroundColor: birthday.group.color }}
-                              />
-                            </div>
-                          ) : (
-                            <div
-                              className="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0 bg-gray-100 border border-dashed border-gray-300"
-                              title={t('birthday.unassigned', 'ללא שיוך')}
-                            >
-                              <span className="text-[10px] sm:text-xs text-gray-400">?</span>
-                            </div>
-                          )}
                           <span className="text-xs sm:text-sm font-medium text-gray-900">
                             {birthday.first_name} {birthday.last_name}
                           </span>
@@ -831,15 +812,15 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                             setSelectedBirthday(birthday);
                             setShowFutureModal(true);
                           }}
-                          className="flex flex-col gap-0.5 sm:gap-1 text-start hover:bg-purple-50 p-1 sm:p-2 rounded transition-colors"
+                          className="flex flex-col gap-0.5 sm:gap-1 text-start hover:bg-[#8e24aa]/10 p-1 sm:p-2 rounded transition-colors"
                         >
                           <div className="flex items-center gap-1 sm:gap-2">
-                            <CalendarDays className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" />
+                            <CalendarDays className="w-3 h-3 sm:w-4 sm:h-4 text-[#8e24aa]" />
                             <span className="font-medium">
                               {format(birthday.calculations.nextHebrewBirthday, 'dd/MM/yyyy', { locale })}
                             </span>
                           </div>
-                          <span className="text-[10px] sm:text-xs text-purple-600">
+                          <span className="text-[10px] sm:text-xs text-[#8e24aa]">
                             {t('birthday.ageAtNextHebrew')}: {birthday.calculations.ageAtNextHebrewBirthday}
                           </span>
                           {birthday.calculations.daysUntilHebrewBirthday !== null && (

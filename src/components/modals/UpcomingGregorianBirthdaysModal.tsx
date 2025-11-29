@@ -122,7 +122,7 @@ export const UpcomingGregorianBirthdaysModal: React.FC<UpcomingGregorianBirthday
                         {format(date, 'dd/MM/yyyy', { locale })}
                       </p>
                       {isNext && (
-                        <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-medium rounded">
+                        <span className="px-2 py-0.5 bg-[#304FFE] text-white text-xs font-medium rounded">
                           {t('birthday.next')}
                         </span>
                       )}
@@ -136,16 +136,16 @@ export const UpcomingGregorianBirthdaysModal: React.FC<UpcomingGregorianBirthday
                       {format(date, 'EEEE', { locale })}
                     </p>
                     <div className="flex flex-col gap-1 mt-1">
-                      <p className={`text-sm font-semibold ${isPast ? 'text-blue-400' : 'text-blue-600'}`}>
+                      <p className={`text-sm font-semibold ${isPast ? 'text-blue-400' : 'text-[#304FFE]'}`}>
                         {t('birthday.age')} {item.age}
                       </p>
                       {item.hebrewDate && (
                         <div className="flex flex-col gap-0.5">
-                          <p className={`text-xs ${isPast ? 'text-purple-400' : 'text-purple-600'}`}>
+                          <p className={`text-xs ${isPast ? 'text-purple-400' : 'text-[#8e24aa]'}`}>
                             {t('birthday.hebrewDate')}: {format(item.hebrewDate, 'dd/MM/yyyy')}
                           </p>
                           {hebrewDateString && (
-                            <p className={`text-xs font-medium ${isPast ? 'text-purple-400' : 'text-purple-600'}`}>
+                            <p className={`text-xs font-medium ${isPast ? 'text-purple-400' : 'text-[#8e24aa]'}`}>
                               {t('birthday.hebrewDate')}: {hebrewDateString}
                             </p>
                           )}

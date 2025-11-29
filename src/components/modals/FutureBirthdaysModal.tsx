@@ -100,13 +100,13 @@ export const FutureBirthdaysModal: React.FC<FutureBirthdaysModalProps> = ({
                       {format(date, 'EEEE', { locale })}
                     </p>
                     {hebrewYear && birthHebrewYear && (
-                      <p className={`text-xs font-semibold ${isPast ? 'text-purple-400' : 'text-purple-600'}`}>
+                      <p className={`text-xs font-semibold ${isPast ? 'text-purple-400' : 'text-[#8e24aa]'}`}>
                         {t('birthday.age')}: {hebrewYear - birthHebrewYear}
                       </p>
                     )}
                   </div>
                   {index === 0 && isUpcoming && (
-                    <span className="px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded">
+                    <span className="px-2 py-1 bg-[#304FFE] text-white text-xs font-medium rounded">
                       {t('birthday.next')}
                     </span>
                   )}

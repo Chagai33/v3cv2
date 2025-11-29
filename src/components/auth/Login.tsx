@@ -91,12 +91,12 @@ export const Login: React.FC = () => {
         <div className="text-center mb-8">
           <div className="flex flex-col items-center justify-center mb-6">
             <div className="text-4xl font-black tracking-tight leading-none relative inline-flex items-baseline" dir="ltr">
-              <span className="text-blue-600">Heb</span>
-              <span className="text-purple-600">Birthday</span>
+              <span className="text-[#8e24aa]">Heb</span>
+              <span className="text-[#304FFE]">Birthday</span>
               <span className="text-gray-400 text-xl ml-[1px] absolute left-full bottom-1">.app</span>
             </div>
             <span className="text-sm text-gray-500 font-medium mt-1">
-              {t('app.tagline')}
+              {t('app.taglinePart1')} <span className="text-[#8e24aa]">{t('app.taglineHebrew')}</span> {t('app.taglineOr')} <span className="text-[#304FFE]">{t('app.taglineGregorian')}</span>
             </span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">

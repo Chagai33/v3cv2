@@ -45,8 +45,8 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         <div className="space-y-6 pt-2">
           <div className="text-center space-y-2">
             <div className="text-lg sm:text-xl font-black tracking-tight leading-none relative inline-flex items-baseline" dir="ltr">
-              <span className="text-blue-600">Heb</span>
-              <span className="text-purple-600">Birthday</span>
+              <span className="text-[#8e24aa]">Heb</span>
+              <span className="text-[#304FFE]">Birthday</span>
               <span className="text-gray-400 text-sm ml-[1px]">.app</span>
             </div>
             <p className="text-sm text-gray-500">
