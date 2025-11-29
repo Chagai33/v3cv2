@@ -95,3 +95,4 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
   );
 };
 
+

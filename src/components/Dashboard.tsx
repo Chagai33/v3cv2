@@ -462,14 +462,14 @@ export const Dashboard = () => {
               
               {/* קבוצה 2: Google Calendar */}
               <div className="flex items-center">
-                <GoogleCalendarButton />
+                <GoogleCalendarButton isCompact={true} onManageClick={() => setShowCalendarModal(true)} />
               </div>
             </>
           ) : (
             <>
               {/* קבוצה 1: Google Calendar */}
               <div className="flex items-center">
-                <GoogleCalendarButton />
+                <GoogleCalendarButton isCompact={true} onManageClick={() => setShowCalendarModal(true)} />
               </div>
               
               {/* Separator */}

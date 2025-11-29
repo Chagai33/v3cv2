@@ -100,7 +100,11 @@
     "selectExistingCalendar": "כבר יש לי יומן ייעודי (בחר יומן)",
     "totalRecords": "סה\"כ רשומות",
     "recordsCompleted": "רשומות שהושלמו",
-    "recordsFailed": "רשומות שנכשלו"
+    "recordsFailed": "רשומות שנכשלו",
+    "currentCalendar": "יומן נוכחי",
+    "createNew": "צור יומן חדש",
+    "syncHistoryFull": "היסטוריית סנכרונים",
+    "appCreatedCalendarDescription": "יומן ימי הולדת - נוצר על ידי אפליקציית ימי הולדת עבריים"
   },
   "common": {
     "save": "שמור",
@@ -127,6 +131,8 @@
     "confirmDelete": "האם אתה בטוח?",
     "noResults": "לא נמצאו תוצאות",
     "sortByName": "מיון לפי שם",
+    "sortByNameAZ": "שם (א-ת)",
+    "sortByNameZA": "שם (ת-א)",
     "sortByDate": "מיון לפי תאריך",
     "select": "בחר",
     "creating": "יוצר...",

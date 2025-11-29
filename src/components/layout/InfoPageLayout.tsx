@@ -29,3 +29,4 @@ export const InfoPageLayout: React.FC<InfoPageLayoutProps> = ({ children }) => {
   );
 };
 
+

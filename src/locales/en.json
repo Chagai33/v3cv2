@@ -116,7 +116,11 @@
     "selectExistingCalendar": "I already have a dedicated calendar (Select calendar)",
     "totalRecords": "Total Records",
     "recordsCompleted": "Records Completed",
-    "recordsFailed": "Records Failed"
+    "recordsFailed": "Records Failed",
+    "currentCalendar": "Current Calendar",
+    "createNew": "Create New Calendar",
+    "syncHistoryFull": "Sync History",
+    "appCreatedCalendarDescription": "Hebrew Birthdays Calendar - Created by HebBirthday App"
   },
   "auth": {
     "signIn": "Sign In",
