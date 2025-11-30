@@ -228,12 +228,12 @@
     "confirmDelete": "כן, מחק חשבון"
   },
   "sort": {
-    "upcomingSoonest": "יום הולדת הבא (הקרוב ביותר)",
-    "upcomingLatest": "יום הולדת הבא (הרחוק ביותר)",
+    "upcomingSoonest": "יום הולדת (לועזי - הקרוב ביותר)",
+    "upcomingLatest": "יום הולדת (לועזי - הרחוק ביותר)",
+    "upcomingHebrewSoonest": "יום הולדת (עברי - הקרוב ביותר)",
+    "upcomingHebrewLatest": "יום הולדת (עברי - הרחוק ביותר)",
     "nameAZ": "שם (א-ת)",
     "nameZA": "שם (ת-א)",
-    "birthdayOldest": "תאריך לידה (הישן ביותר)",
-    "birthdayNewest": "תאריך לידה (החדש ביותר)",
     "ageYoungest": "גיל (הצעיר ביותר)",
     "ageOldest": "גיל (המבוגר ביותר)"
   },

@@ -44,7 +44,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   const { showToast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('birthday-search') || '');
-  const [sortBy, setSortBy] = useState<'upcoming' | 'upcoming-latest' | 'name-az' | 'name-za' | 'birthday-oldest' | 'birthday-newest' | 'age-youngest' | 'age-oldest'>(() => (localStorage.getItem('birthday-sort') as any) || 'upcoming');
+  const [sortBy, setSortBy] = useState<'upcoming' | 'upcoming-latest' | 'upcoming-hebrew' | 'upcoming-hebrew-latest' | 'name-az' | 'name-za' | 'age-youngest' | 'age-oldest'>(() => (localStorage.getItem('birthday-sort') as any) || 'upcoming');
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>(() => (localStorage.getItem('birthday-gender') as any) || 'all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFutureModal, setShowFutureModal] = useState(false);
@@ -141,34 +141,30 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
           return `${b.first_name} ${b.last_name}`.localeCompare(
             `${a.first_name} ${a.last_name}`
           );
-        case 'birthday-oldest':
-          return new Date(a.birth_date_gregorian).getTime() - new Date(b.birth_date_gregorian).getTime();
-        case 'birthday-newest':
-          return new Date(b.birth_date_gregorian).getTime() - new Date(a.birth_date_gregorian).getTime();
         case 'age-youngest':
-          return a.calculations.currentGregorianAge - b.calculations.currentGregorianAge;
+          return new Date(b.birth_date_gregorian).getTime() - new Date(a.birth_date_gregorian).getTime();
         case 'age-oldest':
-          return b.calculations.currentGregorianAge - a.calculations.currentGregorianAge;
+          return new Date(a.birth_date_gregorian).getTime() - new Date(b.birth_date_gregorian).getTime();
         case 'upcoming':
-          const aNext = calendarPreferenceService.getNextRelevantBirthday(
-            a.calculations,
-            a.effectivePreference
-          );
-          const bNext = calendarPreferenceService.getNextRelevantBirthday(
-            b.calculations,
-            b.effectivePreference
-          );
-          return aNext.getTime() - bNext.getTime();
+          return a.calculations.daysUntilGregorianBirthday - b.calculations.daysUntilGregorianBirthday;
         case 'upcoming-latest':
-          const aNextLatest = calendarPreferenceService.getNextRelevantBirthday(
-            a.calculations,
-            a.effectivePreference
-          );
-          const bNextLatest = calendarPreferenceService.getNextRelevantBirthday(
-            b.calculations,
-            b.effectivePreference
-          );
-          return bNextLatest.getTime() - aNextLatest.getTime();
+          return b.calculations.daysUntilGregorianBirthday - a.calculations.daysUntilGregorianBirthday;
+        case 'upcoming-hebrew':
+          const aHeb = a.calculations.daysUntilHebrewBirthday ?? 9999;
+          const bHeb = b.calculations.daysUntilHebrewBirthday ?? 9999;
+          return aHeb - bHeb;
+        case 'upcoming-hebrew-latest':
+          // For reverse sort, we still want nulls at the end (or beginning depending on UX, but typically 'latest' implies furthest away, so null/infinity might be last).
+          // Let's treat null as -1 so it appears at the very end if we are sorting descending by days?
+          // Wait, "Latest" usually means "furthest in the future".
+          // Days: 5, 10, 300.
+          // Soonest: 5, 10, 300.
+          // Latest: 300, 10, 5.
+          // Null means unknown/error.
+          // If we use -1 for null in descending sort: 300, 10, 5, -1.
+          const aHebLat = a.calculations.daysUntilHebrewBirthday ?? -1;
+          const bHebLat = b.calculations.daysUntilHebrewBirthday ?? -1;
+          return bHebLat - aHebLat;
         default:
           return 0;
       }
@@ -316,7 +312,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   };
 
   const handleCopyToClipboard = async () => {
-    const selectedBirthdays = enrichedBirthdays.filter(b => selectedIds.has(b.id));
+    const selectedBirthdays = filteredAndSortedBirthdays.filter(b => selectedIds.has(b.id));
 
     if (selectedBirthdays.length === 0) {
       showToast(t('birthday.noSelection', 'לא נבחרו רשומות'), 'warning');
@@ -399,12 +395,12 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
             onChange={(e) => setSortBy(e.target.value as any)}
             className="px-2 sm:px-4 py-1.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="upcoming">{t('sort.upcomingSoonest', 'Next Birthday (Soonest)')}</option>
-            <option value="upcoming-latest">{t('sort.upcomingLatest', 'Next Birthday (Latest)')}</option>
+            <option value="upcoming">{t('sort.upcomingSoonest', 'Next Birthday (Gregorian - Soonest)')}</option>
+            <option value="upcoming-latest">{t('sort.upcomingLatest', 'Next Birthday (Gregorian - Latest)')}</option>
+            <option value="upcoming-hebrew">{t('sort.upcomingHebrewSoonest', 'Next Birthday (Hebrew - Soonest)')}</option>
+            <option value="upcoming-hebrew-latest">{t('sort.upcomingHebrewLatest', 'Next Birthday (Hebrew - Latest)')}</option>
             <option value="name-az">{t('sort.nameAZ', 'Name (A-Z)')}</option>
             <option value="name-za">{t('sort.nameZA', 'Name (Z-A)')}</option>
-            <option value="birthday-oldest">{t('sort.birthdayOldest', 'Birthday (Oldest)')}</option>
-            <option value="birthday-newest">{t('sort.birthdayNewest', 'Birthday (Newest)')}</option>
             <option value="age-youngest">{t('sort.ageYoungest', 'Age (Youngest)')}</option>
             <option value="age-oldest">{t('sort.ageOldest', 'Age (Oldest)')}</option>
           </select>
