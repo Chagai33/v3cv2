@@ -39,24 +39,30 @@ const admin = __importStar(require("firebase-admin"));
 const db = admin.firestore();
 // --- Rate Limiting Logic ---
 async function checkRateLimit(ip) {
+    console.log(`Checking rate limit for IP: ${ip}`); // Added logging
     const rateLimitRef = db.collection('rate_limits').doc(ip.replace(/\./g, '_')); // Sanitize IP for doc ID
     const doc = await rateLimitRef.get();
     if (!doc.exists) {
+        console.log(`No rate limit record found for IP: ${ip}`); // Added logging
         return { allowed: true };
     }
     const data = doc.data();
     const now = admin.firestore.Timestamp.now();
+    console.log(`Rate limit data for IP ${ip}:`, JSON.stringify(data)); // Added logging
     if (data.blockedUntil && data.blockedUntil > now) {
         const waitSeconds = Math.ceil(data.blockedUntil.seconds - now.seconds);
+        console.log(`IP ${ip} is blocked for ${waitSeconds} seconds`); // Added logging
         return { allowed: false, waitSeconds };
     }
     // If block expired, reset attempts (or we can keep them and decay, but simple reset is fine for now)
     if (data.blockedUntil && data.blockedUntil <= now) {
+        console.log(`Block expired for IP ${ip}, deleting record`); // Added logging
         await rateLimitRef.delete();
     }
     return { allowed: true };
 }
 async function recordFailedAttempt(ip) {
+    console.log(`Recording failed attempt for IP: ${ip}`); // Added logging
     const rateLimitRef = db.collection('rate_limits').doc(ip.replace(/\./g, '_'));
     await db.runTransaction(async (t) => {
         const doc = await t.get(rateLimitRef);
@@ -64,6 +70,7 @@ async function recordFailedAttempt(ip) {
         if (doc.exists) {
             attempts = (doc.data()?.attempts || 0) + 1;
         }
+        console.log(`Current attempts for IP ${ip}: ${attempts}`); // Added logging
         let blockedUntil = null;
         // Policy: 3 free attempts.
         // 4th attempt -> block 30s
@@ -78,10 +85,11 @@ async function recordFailedAttempt(ip) {
             else
                 delaySeconds = 300;
             blockedUntil = admin.firestore.Timestamp.fromMillis(Date.now() + (delaySeconds * 1000));
+            console.log(`Blocking IP ${ip} until ${blockedUntil.toDate().toISOString()} (${delaySeconds}s)`); // Added logging
         }
         t.set(rateLimitRef, {
             attempts,
-            blockedUntil: blockedUntil || admin.firestore.FieldValue.serverTimestamp(), // Just to have a date if not blocked yet
+            blockedUntil: blockedUntil, // Only set if explicitly defined, otherwise null
             lastAttempt: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
     });
@@ -223,6 +231,7 @@ exports.guestPortalOps = functions.https.onCall(async (data, context) => {
     // Get IP from context (best effort)
     const ip = context.rawRequest.ip || context.rawRequest.headers['x-forwarded-for'] || 'unknown';
     const ipStr = Array.isArray(ip) ? ip[0] : ip;
+    console.log(`Guest Portal Ops called. Mode: ${mode}, IP: ${ipStr}`); // Added logging
     // 1. LOGIN (Find & Verify)
     if (mode === 'login') {
         // Check Rate Limit
