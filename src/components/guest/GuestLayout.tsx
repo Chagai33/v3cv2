@@ -20,7 +20,7 @@ export const GuestLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Simple Header */}
-      <header className="bg-white shadow-sm py-4 px-6 relative">
+      <header className="bg-white shadow-sm py-4 px-6 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
             <button
               onClick={() => navigate('/')}
