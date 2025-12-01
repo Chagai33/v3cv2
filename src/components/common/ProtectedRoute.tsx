@@ -2,16 +2,18 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTenant } from '../../contexts/TenantContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { loading: tenantLoading, currentTenant } = useTenant();
   const { t } = useTranslation();
 
-  if (loading) {
+  if (authLoading || (user && (tenantLoading || !currentTenant))) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-gray-50">
         <div className="flex flex-col items-center animate-pulse">

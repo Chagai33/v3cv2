@@ -33,6 +33,8 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
         return;
       }
 
+      setLoading(true);
+
       try {
         let tenants = await tenantService.getUserTenants(user.id);
         let retries = 0;
