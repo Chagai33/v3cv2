@@ -27,6 +27,7 @@
     "year": "Year",
     "verifyButton": "Verify & Access Wishlist",
     "accessButton": "Enter My Wishlist",
+    "incompleteDate": "Please enter a full date of birth",
     "loginError": "Login failed. Please check your name and birth date.",
     "missingFields": "Please enter your first and last name",
     "myWishlist": "My Wishlist",
@@ -46,8 +47,12 @@
     "selectProfile": "Select List",
     "multipleProfilesFound": "We found multiple records matching your details. Please select which list you would like to view:",
     "back": "Back",
+    "managingWishlistFor": "Managing list for:",
+    "backToSearch": "Back to Search",
     "accessDenied": "Access to the guest portal has been disabled by the administrator.",
-    "rateLimitError": "Too many attempts. Please wait."
+    "rateLimitError": "Too many attempts. Please wait.",
+    "maxItemsError": "Cannot add more than {{count}} items",
+    "maxItemsLimitReached": "Maximum items limit reached ({{count}})"
   },
   "common": {
     "save": "Save",

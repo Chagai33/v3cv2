@@ -27,6 +27,7 @@
     "year": "שנה",
     "verifyButton": "אמת וכנס לרשימה",
     "accessButton": "כניסה לרשימת המשאלות שלי",
+    "incompleteDate": "נא להזין תאריך לידה מלא",
     "loginError": "ההתחברות נכשלה. אנא בדקו את השם ותאריך הלידה.",
     "missingFields": "נא להזין שם פרטי ושם משפחה",
     "myWishlist": "רשימת המשאלות שלי",
@@ -46,8 +47,12 @@
     "selectProfile": "בחר רשימה",
     "multipleProfilesFound": "מצאנו מספר רשימות התואמות את פרטיך. אנא בחר לאיזו רשימה ברצונך להיכנס:",
     "back": "חזור",
+    "managingWishlistFor": "מנהל רשימה עבור:",
+    "backToSearch": "חזרה לחיפוש",
     "accessDenied": "הגישה לפורטל נחסמה על ידי המנהל.",
-    "rateLimitError": "יותר מדי נסיונות. אנא המתן לפני נסיון נוסף."
+    "rateLimitError": "יותר מדי נסיונות. אנא המתן לפני נסיון נוסף.",
+    "maxItemsError": "לא ניתן להוסיף יותר מ-{{count}} פריטים לרשימה",
+    "maxItemsLimitReached": "הגעת למכסת הפריטים המקסימלית ({{count}})"
   },
   "googleCalendar": {
     "title": "יומן Google",

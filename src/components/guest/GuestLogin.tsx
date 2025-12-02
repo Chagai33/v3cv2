@@ -163,9 +163,24 @@ export const GuestLogin: React.FC<GuestLoginProps> = ({ onLoginSuccess, initialV
     };
   };
 
+  // Validation check
+  const isValid = useMemo(() => {
+    if (!firstName.trim() || !lastName.trim()) return false;
+
+    if (verificationType === 'gregorian') {
+      return !!(selectedDay && selectedMonth && selectedYear);
+    } else {
+      return !!(hebrewDay && hebrewMonth && hebrewYear);
+    }
+  }, [firstName, lastName, verificationType, selectedDay, selectedMonth, selectedYear, hebrewDay, hebrewMonth, hebrewYear]);
+
   const handleLogin = async () => {
-    if (!firstName.trim() || !lastName.trim()) {
-        setError(t('guest.missingFields'));
+    if (!isValid) {
+        if (!firstName.trim() || !lastName.trim()) {
+            setError(t('guest.missingFields'));
+        } else {
+            setError(t('guest.incompleteDate'));
+        }
         return;
     }
     
@@ -242,7 +257,7 @@ export const GuestLogin: React.FC<GuestLoginProps> = ({ onLoginSuccess, initialV
                             <span className="font-medium text-gray-700 group-hover:text-purple-700">{p.tenantName}</span>
                         </div>
                         <span className="text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {isHebrew ? 'בחר' : 'Select'} &rarr;
+                            {t('common.select')} &rarr;
                         </span>
                     </button>
                 ))}

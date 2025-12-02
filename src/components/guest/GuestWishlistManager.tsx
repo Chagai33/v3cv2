@@ -5,13 +5,18 @@ import { WishlistItem } from '../../types';
 import { guestService } from '../../services/guest.service';
 import { Button } from '../common/Button';
 
+const MAX_ITEMS = 20;
+const MAX_NAME_LENGTH = 50;
+const MAX_DESC_LENGTH = 200;
+
 interface GuestWishlistManagerProps {
   initialWishlist: WishlistItem[];
   onLogout: () => void;
   onBackToSearch?: () => void;
+  guestName?: string;
 }
 
-export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ initialWishlist, onLogout, onBackToSearch }) => {
+export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ initialWishlist, onLogout, onBackToSearch, guestName }) => {
   const { t, i18n } = useTranslation();
   const isHebrew = i18n.language === 'he';
   const [items, setItems] = useState<WishlistItem[]>(initialWishlist);
@@ -36,6 +41,12 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
 
   const handleAdd = async () => {
     if (!itemName.trim()) return;
+
+    if (items.length >= MAX_ITEMS) {
+      setError(t('guest.maxItemsError', { count: MAX_ITEMS }));
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
@@ -142,7 +153,14 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-800">{t('guest.myWishlist')}</h2>
+            <div>
+                <h2 className="text-2xl font-bold text-gray-800">{t('guest.myWishlist')}</h2>
+                {guestName && (
+                    <p className="text-sm text-gray-500 mt-1">
+                        {t('guest.managingWishlistFor', 'Managing list for:')} <span className="font-medium text-gray-700">{guestName}</span>
+                    </p>
+                )}
+            </div>
             <Button variant="secondary" size="sm" onClick={onLogout} className="text-red-600 hover:bg-red-50 border-red-200">
                 {t('auth.signOut')}
             </Button>
@@ -166,11 +184,17 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
         </div>
       )}
 
-      {!isAdding && !editingId && (
+      {!isAdding && !editingId && items.length < MAX_ITEMS && (
         <Button onClick={() => setIsAdding(true)} className="w-full">
             <Plus className="w-4 h-4 mr-2 rtl:ml-2 rtl:mr-0" />
             {t('guest.addNewItem')}
         </Button>
+      )}
+
+      {!isAdding && !editingId && items.length >= MAX_ITEMS && (
+        <div className="text-center p-3 bg-gray-50 text-gray-500 text-sm rounded-lg border border-dashed border-gray-200">
+            {t('guest.maxItemsLimitReached', { count: MAX_ITEMS })}
+        </div>
       )}
 
       {(isAdding || editingId) && (
@@ -179,19 +203,27 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
           
           <div className="space-y-3">
             <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">{t('wishlist.itemName')}</label>
+                <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-medium text-gray-500">{t('wishlist.itemName')}</label>
+                    <span className="text-[10px] text-gray-400">{itemName.length}/{MAX_NAME_LENGTH}</span>
+                </div>
                 <input
                     value={itemName}
                     onChange={(e) => setItemName(e.target.value)}
+                    maxLength={MAX_NAME_LENGTH}
                     className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none"
                     placeholder={t('wishlist.itemNamePlaceholder')}
                 />
             </div>
             <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">{t('wishlist.description')}</label>
+                <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-medium text-gray-500">{t('wishlist.description')}</label>
+                    <span className="text-[10px] text-gray-400">{description.length}/{MAX_DESC_LENGTH}</span>
+                </div>
                 <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
+                    maxLength={MAX_DESC_LENGTH}
                     className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none resize-none h-20"
                     placeholder={t('wishlist.descriptionPlaceholder')}
                 />

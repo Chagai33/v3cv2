@@ -80,9 +80,9 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 px-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 relative">
-        <div className="absolute top-4 end-4 flex items-center gap-1">
+    <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 px-4 py-8 overflow-y-auto">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-6 sm:p-8 relative">
+        <div className="flex justify-end items-center gap-1 mb-4">
           <button
             onClick={() => navigate('/portal')}
             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -100,7 +100,7 @@ export const Login: React.FC = () => {
         </div>
         <div className="text-center mb-8">
           <div className="flex flex-col items-center justify-center mb-6">
-            <div className="text-4xl font-black tracking-tight leading-none relative inline-flex items-baseline" dir="ltr">
+            <div className="text-3xl sm:text-4xl font-black tracking-tight leading-none relative inline-flex items-baseline" dir="ltr">
               <span className="text-[#8e24aa]">Heb</span>
               <span className="text-[#304FFE]">Birthday</span>
               <span className="text-gray-400 text-xl ml-[1px] absolute left-full bottom-1">.app</span>

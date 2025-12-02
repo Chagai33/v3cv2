@@ -22,10 +22,28 @@ export const GuestPortal: React.FC = () => {
   const checkSession = async () => {
     const session = guestService.getSession();
     if (session) {
+      setLastSearchParams({
+          firstName: session.firstName,
+          lastName: session.lastName,
+          verification: session.verification
+      });
+
       try {
         // Validate session by attempting login with stored credentials
-        const response = await guestService.login(session.firstName, session.lastName, session.verification);
-        if (response.success) {
+        let response = await guestService.login(session.firstName, session.lastName, session.verification);
+        
+        // If server found multiple matches, but we already have a specific birthdayId in session,
+        // we should auto-select that profile to restore the state correctly.
+        if (response.success && response.multiple && session.birthdayId) {
+            response = await guestService.selectProfile(
+                session.firstName, 
+                session.lastName, 
+                session.verification, 
+                session.birthdayId
+            );
+        }
+
+        if (response.success && response.wishlist) {
           setWishlist(response.wishlist);
           setCurrentView('manager');
         } else {
@@ -82,6 +100,7 @@ export const GuestPortal: React.FC = () => {
             initialWishlist={wishlist} 
             onLogout={handleLogout} 
             onBackToSearch={handleBackToSearch}
+            guestName={lastSearchParams ? `${lastSearchParams.firstName} ${lastSearchParams.lastName}` : undefined}
         />
       )}
     </GuestLayout>
