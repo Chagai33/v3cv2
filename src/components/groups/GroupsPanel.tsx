@@ -137,8 +137,10 @@ export const GroupsPanel = () => {
   const countsByGroup = useMemo(() => {
     const map = new Map<string, number>();
     birthdays.forEach((birthday) => {
-      if (!birthday.group_id) return;
-      map.set(birthday.group_id, (map.get(birthday.group_id) ?? 0) + 1);
+      const groupIds = birthday.group_ids || (birthday.group_id ? [birthday.group_id] : []);
+      groupIds.forEach((groupId) => {
+        map.set(groupId, (map.get(groupId) ?? 0) + 1);
+      });
     });
     return map;
   }, [birthdays]);
@@ -417,14 +419,35 @@ export const GroupsPanel = () => {
                     <option value="gregorian">{t('birthday.gregorianOnly')}</option>
                     <option value="hebrew">{t('birthday.hebrewOnly')}</option>
                   </select>
-                  <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
+                    <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
                     {t('groups.preferenceExplanation')}
                   </p>
                 </div>
 
                 {/* Guest Portal Toggle */}
-                <div className="flex items-start gap-3 bg-purple-50 border border-purple-100 rounded-lg p-3">
-                    <div className="text-purple-600 mt-0.5">
+                <div className={`flex items-start gap-3 border rounded-lg p-3 ${
+                   (() => {
+                       // Check if parent has portal disabled
+                       if (selectedParentId) {
+                           const parent = allGroups.find(g => g.id === selectedParentId);
+                           if (parent && parent.is_guest_portal_enabled === false) {
+                               return "bg-amber-50 border-amber-200";
+                           }
+                       }
+                       return "bg-purple-50 border-purple-100";
+                   })()
+                }`}>
+                    <div className={`mt-0.5 ${
+                       (() => {
+                           if (selectedParentId) {
+                               const parent = allGroups.find(g => g.id === selectedParentId);
+                               if (parent && parent.is_guest_portal_enabled === false) {
+                                   return "text-amber-600";
+                               }
+                           }
+                           return "text-purple-600";
+                       })()
+                    }`}>
                         <Globe className="w-4 h-4" />
                     </div>
                     <div className="flex-1">
@@ -439,12 +462,38 @@ export const GroupsPanel = () => {
                                     checked={formData.isGuestPortalEnabled}
                                     onChange={(e) => setFormData({ ...formData, isGuestPortalEnabled: e.target.checked })}
                                 />
-                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                                <div className={`w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all ${
+                                    (() => {
+                                       if (selectedParentId) {
+                                           const parent = allGroups.find(g => g.id === selectedParentId);
+                                           if (parent && parent.is_guest_portal_enabled === false) {
+                                               return "peer-focus:ring-amber-300 peer-checked:bg-amber-500";
+                                           }
+                                       }
+                                       return "peer-focus:ring-purple-300 peer-checked:bg-purple-600";
+                                    })()
+                                }`}></div>
                             </label>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                            {t('groups.guestPortalDescription', 'Allow access to birthdays in this group via the guest portal.')}
-                        </p>
+                        
+                        {/* Description / Warning */}
+                        {(() => {
+                             if (selectedParentId) {
+                                 const parent = allGroups.find(g => g.id === selectedParentId);
+                                 if (parent && parent.is_guest_portal_enabled === false) {
+                                     return (
+                                         <p className="text-xs text-amber-700 mt-1 font-medium">
+                                             ⚠️ גישה חסומה: קבוצת האב ({useTranslatedRootGroupName(parent)}) חוסמת גישה לפורטל. הפעלת המתג תהיה אפקטיבית רק כשהאב יופעל.
+                                         </p>
+                                     );
+                                 }
+                             }
+                             return (
+                                 <p className="text-xs text-gray-500 mt-1">
+                                     {t('groups.guestPortalDescription', 'Allow access to birthdays in this group via the guest portal.')}
+                                 </p>
+                             );
+                        })()}
                     </div>
                 </div>
 

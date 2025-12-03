@@ -142,7 +142,7 @@ async function findAllMatchingGuests(firstName, lastName, verification) {
                 matches.push({
                     tenantId: data.tenant_id,
                     birthdayId: doc.id,
-                    groupId: data.group_id,
+                    groupIds: data.group_ids || (data.group_id ? [data.group_id] : []),
                     birthday: data
                 });
             }
@@ -190,7 +190,7 @@ async function getGroupName(groupId) {
     }
 }
 // Helper to check if guest access is enabled for Tenant/Group
-async function isGuestAccessAllowed(tenantId, groupId) {
+async function isGuestAccessAllowed(tenantId, groupIds) {
     try {
         // Check Tenant
         const tenantDoc = await db.collection('tenants').doc(tenantId).get();
@@ -200,23 +200,38 @@ async function isGuestAccessAllowed(tenantId, groupId) {
         // Default to true if undefined
         if (tenantData?.is_guest_portal_enabled === false)
             return false;
-        // Check Group (if applicable)
-        if (groupId) {
+        // If no groups, allowed by tenant
+        if (!groupIds || groupIds.length === 0)
+            return true;
+        // Permissive Logic: If ANY group allows access, return true.
+        for (const groupId of groupIds) {
+            // Check Group
             const groupDoc = await db.collection('groups').doc(groupId).get();
             if (groupDoc.exists) {
                 const groupData = groupDoc.data();
                 // Default to true if undefined
                 if (groupData?.is_guest_portal_enabled === false)
-                    return false;
+                    continue; // This group blocked, check next
+                // Check Parent
+                let parentBlocked = false;
+                if (groupData?.parent_id) {
+                    const parentDoc = await db.collection('groups').doc(groupData.parent_id).get();
+                    if (parentDoc.exists) {
+                        const parentData = parentDoc.data();
+                        if (parentData?.is_guest_portal_enabled === false)
+                            parentBlocked = true;
+                    }
+                }
+                if (!parentBlocked) {
+                    return true; // Found an open path!
+                }
             }
         }
-        return true;
+        return false; // No open path found
     }
     catch (error) {
         console.error('Error checking guest access:', error);
-        // Fail safe: if we can't verify settings, we probably shouldn't block unless explicitly disabled,
-        // but if DB is down, everything is down.
-        // Plan: "Default to true (enabled) to not block existing data"
+        // Fail safe
         return true;
     }
 }
@@ -240,7 +255,7 @@ exports.guestPortalOps = functions.https.onCall(async (data, context) => {
         const matchesRaw = await findAllMatchingGuests(firstName, lastName, verification);
         // Filter out matches where guest portal is disabled
         // Use Promise.all to check all concurrently
-        const accessChecks = await Promise.all(matchesRaw.map(m => isGuestAccessAllowed(m.tenantId, m.groupId)));
+        const accessChecks = await Promise.all(matchesRaw.map(m => isGuestAccessAllowed(m.tenantId, m.groupIds)));
         const matches = matchesRaw.filter((_, index) => accessChecks[index]);
         if (matches.length === 0) {
             await recordFailedAttempt(ipStr);
@@ -267,13 +282,22 @@ exports.guestPortalOps = functions.https.onCall(async (data, context) => {
             // Fetch tenant owner names and group names
             const options = await Promise.all(matches.map(async (m) => {
                 const ownerName = await getTenantDisplayName(m.tenantId);
-                const groupName = await getGroupName(m.groupId);
+                // For group names, we might have multiple.
+                // If multiple, maybe show "Multiple Groups" or the first one?
+                // Or join them: "Family, Friends"
+                let groupDisplayName = '';
+                if (m.groupIds && m.groupIds.length > 0) {
+                    const names = await Promise.all(m.groupIds.map(id => getGroupName(id)));
+                    groupDisplayName = names.filter(n => n).join(', ');
+                }
                 // Format: "רשימה אצל [שם הבעלים] ([שם הקבוצה])" or just "[שם הבעלים]"
-                // But to keep it language agnostic here, we'll just return the names and format in frontend potentially,
-                // OR we stick to the dot format but with better names: "Chagai Yechiel • Family"
+                const fullDescription = groupDisplayName ? `${ownerName} • ${groupDisplayName}` : ownerName;
                 return {
                     birthdayId: m.birthdayId,
-                    tenantName: groupName ? `${ownerName} • ${groupName}` : ownerName
+                    tenantName: fullDescription, // Keep legacy field for backward compatibility
+                    tenantId: m.tenantId,
+                    tenantDisplayName: ownerName,
+                    groupDisplayName: groupDisplayName
                 };
             }));
             return {
@@ -289,7 +313,7 @@ exports.guestPortalOps = functions.https.onCall(async (data, context) => {
         // Re-verify to prevent ID enumeration (must match credentials)
         const matchesRaw = await findAllMatchingGuests(firstName, lastName, verification);
         // Filter allowed
-        const accessChecks = await Promise.all(matchesRaw.map(m => isGuestAccessAllowed(m.tenantId, m.groupId)));
+        const accessChecks = await Promise.all(matchesRaw.map(m => isGuestAccessAllowed(m.tenantId, m.groupIds)));
         const matches = matchesRaw.filter((_, index) => accessChecks[index]);
         const selected = matches.find(m => m.birthdayId === birthdayId);
         if (!selected) {
@@ -328,9 +352,9 @@ exports.guestPortalOps = functions.https.onCall(async (data, context) => {
             throw new functions.https.HttpsError('not-found', 'Birthday record not found');
         }
         const birthdayData = birthdayDoc.data();
-        const groupId = birthdayData?.group_id;
+        const groupIds = birthdayData?.group_ids || (birthdayData?.group_id ? [birthdayData.group_id] : []);
         // 2. Check permissions
-        const isAllowed = await isGuestAccessAllowed(tenantId, groupId);
+        const isAllowed = await isGuestAccessAllowed(tenantId, groupIds);
         if (!isAllowed) {
             throw new functions.https.HttpsError('permission-denied', 'Guest portal access has been disabled by the administrator.');
         }

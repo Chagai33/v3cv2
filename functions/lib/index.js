@@ -32,6 +32,9 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -1278,16 +1281,25 @@ async function calculateExpectedEvents(birthday) {
     const tenantDoc = await db.collection('tenants').doc(birthday.tenant_id).get();
     const tenant = tenantDoc.data();
     const language = (tenant?.default_language || 'he');
-    let group = null;
-    let parentGroup = null;
-    if (birthday.group_id) {
-        const g = await db.collection('groups').doc(birthday.group_id).get();
-        if (g.exists) {
-            group = g.data();
-            if (group?.parent_id) {
-                const p = await db.collection('groups').doc(group.parent_id).get();
-                if (p.exists)
-                    parentGroup = p.data();
+    // Support multiple groups
+    const groupIds = birthday.group_ids || (birthday.group_id ? [birthday.group_id] : []);
+    const groups = [];
+    if (groupIds.length > 0) {
+        const groupDocs = await Promise.all(groupIds.map((id) => db.collection('groups').doc(id).get()));
+        for (const groupDoc of groupDocs) {
+            if (groupDoc.exists) {
+                const groupData = groupDoc.data();
+                let parentName;
+                if (groupData?.parent_id) {
+                    const parentDoc = await db.collection('groups').doc(groupData.parent_id).get();
+                    if (parentDoc.exists) {
+                        parentName = parentDoc.data()?.name;
+                    }
+                }
+                groups.push({
+                    name: groupData?.name || 'Unknown',
+                    parentName: parentName
+                });
             }
         }
     }
@@ -1332,8 +1344,11 @@ async function calculateExpectedEvents(birthday) {
     if (birthday.after_sunset) {
         description += language === 'en' ? '⚠️ After Sunset\n' : '⚠️ לאחר השקיעה\n';
     }
-    if (group) {
-        description += parentGroup ? `\n(${parentGroup.name}: ${group.name})` : `\n(${group.name})`;
+    // Display all groups
+    if (groups.length > 0) {
+        const groupNames = groups.map(g => g.parentName ? `${g.parentName}: ${g.name}` : g.name);
+        const groupsLabel = language === 'en' ? 'Groups' : 'קבוצות';
+        description += `\n${groupsLabel}: ${groupNames.join(', ')}`;
     }
     if (birthday.notes) {
         description += language === 'en' ? `\n\nNotes: ${birthday.notes}` : `\n\nהערות: ${birthday.notes}`;
@@ -2351,4 +2366,5 @@ exports.deleteAccount = functions.https.onCall(async (data, context) => {
 });
 var guestPortal_1 = require("./guestPortal");
 Object.defineProperty(exports, "guestPortalOps", { enumerable: true, get: function () { return guestPortal_1.guestPortalOps; } });
+__exportStar(require("./migration"), exports);
 //# sourceMappingURL=index.js.map

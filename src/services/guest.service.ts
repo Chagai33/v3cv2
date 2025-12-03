@@ -25,7 +25,14 @@ export interface GuestLoginResponse {
     birthdayId?: string;
     wishlist?: WishlistItem[];
     multiple?: boolean;
-    options?: Array<{ birthdayId: string; tenantName: string }>;
+    options?: Array<{ 
+        birthdayId: string; 
+        tenantName: string;
+        // New fields for grouping
+        tenantId?: string;
+        tenantDisplayName?: string;
+        groupDisplayName?: string;
+    }>;
 }
 
 const SESSION_KEY = 'guest_portal_session';

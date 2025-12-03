@@ -31,8 +31,10 @@ export const Header: React.FC = () => {
     if (isPublicPage) return new Map<string, number>();
     const map = new Map<string, number>();
     birthdays.forEach((birthday) => {
-      if (!birthday.group_id) return;
-      map.set(birthday.group_id, (map.get(birthday.group_id) ?? 0) + 1);
+      const groupIds = birthday.group_ids || (birthday.group_id ? [birthday.group_id] : []);
+      groupIds.forEach((groupId) => {
+        map.set(groupId, (map.get(groupId) ?? 0) + 1);
+      });
     });
     return map;
   }, [birthdays, isPublicPage]);

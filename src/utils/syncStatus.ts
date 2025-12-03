@@ -5,7 +5,10 @@ import { useState, useEffect } from 'react';
  * מחשב hash של הנתונים הרלוונטיים לסנכרון (SHA-256 - זהה ל-backend)
  */
 export async function calculateDataHash(birthday: Birthday): Promise<string> {
-  const hashData = `${birthday.first_name}|${birthday.last_name}|${birthday.notes || ''}|${birthday.group_id || ''}|${birthday.calendar_preference_override || ''}`;
+  // Include all group_ids in hash (sorted for consistency)
+  const groupIds = birthday.group_ids || (birthday.group_id ? [birthday.group_id] : []);
+  const groupIdsStr = groupIds.sort().join(',');
+  const hashData = `${birthday.first_name}|${birthday.last_name}|${birthday.notes || ''}|${groupIdsStr}|${birthday.calendar_preference_override || ''}`;
   const encoder = new TextEncoder();
   const data = encoder.encode(hashData);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -40,7 +43,7 @@ export function useHasUnsyncedChanges(birthday: Birthday): boolean {
   
   useEffect(() => {
     hasUnsyncedChanges(birthday).then(setHasChanges);
-  }, [birthday.syncedDataHash, birthday.googleCalendarEventIds, birthday.first_name, birthday.last_name, birthday.notes, birthday.group_id, birthday.calendar_preference_override]);
+  }, [birthday.syncedDataHash, birthday.googleCalendarEventIds, birthday.first_name, birthday.last_name, birthday.notes, birthday.group_ids, birthday.group_id, birthday.calendar_preference_override]);
   
   return hasChanges;
 }

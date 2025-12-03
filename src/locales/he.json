@@ -50,9 +50,12 @@
     "managingWishlistFor": "מנהל רשימה עבור:",
     "backToSearch": "חזרה לחיפוש",
     "accessDenied": "הגישה לפורטל נחסמה על ידי המנהל.",
+    "viewList": "צפייה ברשימה",
+    "listOwnedBy": "החשבון של {{name}}",
     "rateLimitError": "יותר מדי נסיונות. אנא המתן לפני נסיון נוסף.",
     "maxItemsError": "לא ניתן להוסיף יותר מ-{{count}} פריטים לרשימה",
-    "maxItemsLimitReached": "הגעת למכסת הפריטים המקסימלית ({{count}})"
+    "maxItemsLimitReached": "הגעת למכסת הפריטים המקסימלית ({{count}})",
+    "groups": "קבוצות"
   },
   "googleCalendar": {
     "title": "יומן Google",
@@ -395,6 +398,8 @@
     "noGroups": "אין קבוצות תחת {{category}}",
     "noGroupsYet": "טרם נוצרו קבוצות",
     "createFirstGroup": "צור את הקבוצה הראשונה שלך",
+    "rootGroup": "קבוצה ראשית",
+    "underGroup": "תחת",
     "filterByGroup": "סינון לפי קבוצה",
     "allGroups": "כל הקבוצות",
     "groupDeleted": "הקבוצה נמחקה בהצלחה",
@@ -409,7 +414,12 @@
     "createSubgroup": "צור תת-קבוצה",
     "parentGroup": "קבוצת אב",
     "subgroupName": "שם התת-קבוצה",
-    "enterSubgroupName": "הכנס שם תת-קבוצה"
+    "enterSubgroupName": "הכנס שם תת-קבוצה",
+    "selectGroups": "בחר קבוצות",
+    "groupsSelected": "{{count}} קבוצות נבחרו",
+    "groupSelected": "קבוצה אחת נבחרה",
+    "unknownGroup": "קבוצה לא ידועה",
+    "noGroupsAvailable": "אין קבוצות זמינות"
   },
   "wishlist": {
     "title": "רשימת המשאלות",
@@ -464,6 +474,14 @@
     "passwordTooShort": "הסיסמה חייבת להכיל לפחות 6 תווים",
     "passwordsDontMatch": "הסיסמאות אינן תואמות",
     "invalidPhoneNumber": "מספר טלפון לא תקין"
+  },
+  "modals": {
+    "duplicateVerification": {
+      "title": "כפילות אפשרית",
+      "mergeMessage": "אדם זה כבר קיים בקבוצה אחרת. האם תרצה להוסיף אותו גם לקבוצה החדשה, במקום ליצור כפילות?",
+      "mergeMessageWithGroups": "אדם זה כבר קיים בקבוצה אחרת. האם תרצה להוסיף אותו גם ל-{{groups}}, במקום ליצור כפילות?",
+      "mergeConfirm": "כן, הוסף"
+    }
   },
   "messages": {
     "birthdayAdded": "יום הולדת נוסף בהצלחה",

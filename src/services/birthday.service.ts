@@ -47,7 +47,8 @@ export const birthdayService = {
 
       const birthdayRef = await addDoc(collection(db, 'birthdays'), {
         tenant_id: tenantId,
-        group_id: data.groupId,
+        group_ids: data.groupIds || (data.groupId ? [data.groupId] : []),
+        group_id: data.groupId || (data.groupIds && data.groupIds.length > 0 ? data.groupIds[0] : null),
         first_name: data.firstName,
         last_name: data.lastName,
         birth_date_gregorian: birthDateString,
@@ -124,7 +125,17 @@ export const birthdayService = {
     }
     if (data.afterSunset !== undefined) updateData.after_sunset = data.afterSunset;
     if (data.gender !== undefined) updateData.gender = data.gender;
-    if (data.groupId !== undefined) updateData.group_id = data.groupId || null;
+    if (data.groupIds !== undefined) {
+      updateData.group_ids = data.groupIds;
+      // Update backward compatibility field
+      updateData.group_id = data.groupIds.length > 0 ? data.groupIds[0] : null;
+    } else if (data.groupId !== undefined) {
+      // Fallback if only groupId provided (should not happen with new UI)
+      updateData.group_id = data.groupId || null;
+      if (data.groupId) {
+        updateData.group_ids = [data.groupId];
+      }
+    }
     if (data.calendarPreferenceOverride !== undefined) updateData.calendar_preference_override = data.calendarPreferenceOverride;
     if (data.notes !== undefined) updateData.notes = data.notes;
 
@@ -194,7 +205,7 @@ export const birthdayService = {
 
   async checkDuplicates(
     tenantId: string,
-    groupId: string,
+    groupIds: string[] | undefined, // Changed from groupId
     firstName: string,
     lastName: string,
     birthDate: string | Date
@@ -227,10 +238,12 @@ export const birthdayService = {
   },
 
   docToBirthday(id: string, data: any): Birthday {
+    const groupIds = data.group_ids || (data.group_id ? [data.group_id] : []);
     return {
       id,
       tenant_id: data.tenant_id,
-      group_id: data.group_id || undefined,
+      group_ids: groupIds,
+      group_id: data.group_id || (groupIds.length > 0 ? groupIds[0] : undefined),
       first_name: data.first_name,
       last_name: data.last_name,
       birth_date_gregorian: data.birth_date_gregorian,

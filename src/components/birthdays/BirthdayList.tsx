@@ -47,6 +47,25 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   const [sortBy, setSortBy] = useState<'upcoming' | 'upcoming-latest' | 'upcoming-hebrew' | 'upcoming-hebrew-latest' | 'name-az' | 'name-za' | 'age-youngest' | 'age-oldest'>(() => (localStorage.getItem('birthday-sort') as any) || 'upcoming');
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>(() => (localStorage.getItem('birthday-gender') as any) || 'all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  // עדכון הזמן כל 5 שניות כדי לעדכן את הטקסט "מחשב..." לרשומות חדשות
+  useEffect(() => {
+    // בדיקה אם יש רשומות חדשות ללא תאריך עברי
+    const hasRecentWithoutHebrew = birthdays.some(b => {
+      if (b.birth_date_hebrew_string) return false;
+      const createdAt = new Date(b.created_at).getTime();
+      return (Date.now() - createdAt) < 30000; // 30 שניות
+    });
+
+    if (!hasRecentWithoutHebrew) return; // אין רשומות חדשות, לא צריך לעדכן
+
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 5000); // עדכון כל 5 שניות
+
+    return () => clearInterval(interval);
+  }, [birthdays]);
 
   // Strict Global Visibility Logic
   // We determine visibility solely based on the Tenant Preference (Strict Mode).
@@ -159,7 +178,9 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
         birthday,
         new Date()
       );
-      const group = groups.find((g) => g.id === birthday.group_id);
+      // Get first group for preference calculation (or find best match)
+      const groupIds = birthday.group_ids || (birthday.group_id ? [birthday.group_id] : []);
+      const group = groupIds.length > 0 ? groups.find((g) => g.id === groupIds[0]) : null;
       const effectivePreference = currentTenant
         ? calendarPreferenceService.resolvePreference(birthday, group, currentTenant)
         : 'both';
@@ -178,10 +199,14 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
 
     if (selectedGroupIds.length > 0) {
       filtered = filtered.filter((b) => {
+        const bGroupIds = b.group_ids || (b.group_id ? [b.group_id] : []);
+        
         if (selectedGroupIds.includes('unassigned')) {
-          return !b.group_id || selectedGroupIds.includes(b.group_id);
+          return bGroupIds.length === 0 || selectedGroupIds.some(id => bGroupIds.includes(id));
         }
-        return b.group_id ? selectedGroupIds.includes(b.group_id) : false;
+        
+        // Check if any of the selected groups match any of the birthday's groups
+        return bGroupIds.length > 0 && selectedGroupIds.some(id => bGroupIds.includes(id));
       });
     }
 
@@ -885,7 +910,18 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                         )}
                         {showHebrewColumn && (
                           <span className={showGregorianColumn ? "text-[10px] sm:text-xs text-gray-500" : ""}>
-                            {birthday.birth_date_hebrew_string || (i18n.language === 'he' ? 'לא זמין' : 'Not available')}
+                            {(() => {
+                              if (birthday.birth_date_hebrew_string) {
+                                return birthday.birth_date_hebrew_string;
+                              }
+                              // בדיקה אם זו רשומה חדשה (נוצרה ב-30 שניות האחרונות)
+                              const createdAt = new Date(birthday.created_at).getTime();
+                              const isRecent = (currentTime - createdAt) < 30000; // 30 שניות
+                              
+                              return isRecent 
+                                ? (i18n.language === 'he' ? 'מחשב...' : 'Calculating...')
+                                : (i18n.language === 'he' ? 'לא זמין' : 'Not available');
+                            })()}
                           </span>
                         )}
                       </div>
@@ -1069,7 +1105,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                             <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           </button>
                         )}
-                        {!birthday.group_id && (
+                        {(!birthday.group_ids || birthday.group_ids.length === 0) && (
                           <button
                             onClick={() => onEdit(birthday)}
                             className="p-1 sm:p-2 text-orange-600 hover:bg-orange-100 rounded-lg transition-all hover:scale-110 animate-pulse"
@@ -1078,7 +1114,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                             <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           </button>
                         )}
-                        {birthday.group_id && (
+                        {birthday.group_ids && birthday.group_ids.length > 0 && (
                           <button
                             onClick={() => onEdit(birthday)}
                             className="p-1 sm:p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-all hover:scale-110"

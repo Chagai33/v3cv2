@@ -183,10 +183,23 @@ export async function exportBirthdaysToCSV(
       }
     }
 
-    // מציאת קבוצה
-    const group = birthday.group_id ? groupsMap.get(birthday.group_id) : null;
-    const groupName = group?.name || '';
-    const groupCalendarPreference = group?.calendar_preference || '';
+    // מציאת כל הקבוצות
+    const groupIds = birthday.group_ids || (birthday.group_id ? [birthday.group_id] : []);
+    const groupNames: string[] = [];
+    let groupCalendarPreference = '';
+    
+    groupIds.forEach(groupId => {
+      const group = groupsMap.get(groupId);
+      if (group) {
+        groupNames.push(group.name);
+        // Use first group's calendar preference (or could merge logic)
+        if (!groupCalendarPreference) {
+          groupCalendarPreference = group.calendar_preference || '';
+        }
+      }
+    });
+    
+    const groupName = groupNames.join(', '); // Join multiple group names
 
     // קבלת wishlist
     const wishlistItems = wishlistsMap.get(birthday.id) || [];
@@ -221,7 +234,7 @@ export async function exportBirthdaysToCSV(
       birthday.next_upcoming_hebrew_birthday || '',
       nextGregorianStr,
       groupName,
-      birthday.group_id || '',
+      groupIds.join(', '), // Export all group IDs
       (birthday.notes || '').replace(/"/g, '""'),
       translateCalendarPreference(groupCalendarPreference),
       translateCalendarPreference(birthday.calendar_preference_override),

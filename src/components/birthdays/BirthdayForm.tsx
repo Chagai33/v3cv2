@@ -10,11 +10,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { DuplicateVerificationModal } from '../modals/DuplicateVerificationModal';
 import { SunsetVerificationModal } from '../modals/SunsetVerificationModal';
 import { GenderVerificationModal } from '../modals/GenderVerificationModal';
-import { X, Save, Plus, Info } from 'lucide-react';
+import { MultiSelectGroups, GroupOption } from '../common/MultiSelectGroups';
+import { X, Save, Plus, Info, AlertCircle } from 'lucide-react';
 import { Toast } from '../common/Toast';
 import { useToast } from '../../hooks/useToast';
-import { useTranslatedRootGroupName } from '../../utils/groupNameTranslator';
-import { AlertCircle } from 'lucide-react';
 
 interface BirthdayFormProps {
   onClose: () => void;
@@ -47,6 +46,7 @@ export const BirthdayForm = ({
   const [selectedParentGroup, setSelectedParentGroup] = useState('');
   const [duplicates, setDuplicates] = useState<Birthday[]>([]);
   const [pendingData, setPendingData] = useState<BirthdayFormData | null>(null);
+  const [newGroupNames, setNewGroupNames] = useState<string[]>([]);
   const [hasUnsyncedChanges, setHasUnsyncedChanges] = useState(false);
   const [showSunsetTooltip, setShowSunsetTooltip] = useState(false);
 
@@ -68,7 +68,7 @@ export const BirthdayForm = ({
     } else {
       setHasUnsyncedChanges(false);
     }
-  }, [editBirthday?.syncedDataHash, editBirthday?.googleCalendarEventIds, editBirthday?.first_name, editBirthday?.last_name, editBirthday?.notes, editBirthday?.group_id, editBirthday?.calendar_preference_override]);
+  }, [editBirthday?.syncedDataHash, editBirthday?.googleCalendarEventIds, editBirthday?.first_name, editBirthday?.last_name, editBirthday?.notes, editBirthday?.group_ids, editBirthday?.group_id, editBirthday?.calendar_preference_override]);
 
   const formatDateForInput = (dateString: string): string => {
     const date = new Date(dateString);
@@ -155,6 +155,19 @@ export const BirthdayForm = ({
     return '';
   }, [editBirthday, selectedDay, selectedMonth, selectedYear]);
 
+  const initialGroupIds = useMemo(() => {
+    if (editBirthday) {
+        if (editBirthday.group_ids && editBirthday.group_ids.length > 0) {
+            return editBirthday.group_ids;
+        }
+        if (editBirthday.group_id) {
+            return [editBirthday.group_id];
+        }
+        return [];
+    }
+    return defaultGroupId ? [defaultGroupId] : [];
+  }, [editBirthday, defaultGroupId]);
+
   const {
     register,
     handleSubmit,
@@ -169,12 +182,12 @@ export const BirthdayForm = ({
           birthDateGregorian: formatDateForInput(editBirthday.birth_date_gregorian) as any,
           afterSunset: editBirthday.after_sunset,
           gender: editBirthday.gender,
-          groupId: editBirthday.group_id,
+          groupIds: initialGroupIds,
           calendarPreferenceOverride: editBirthday.calendar_preference_override || undefined,
           notes: editBirthday.notes,
         }
       : {
-          groupId: defaultGroupId || '',
+          groupIds: initialGroupIds,
           birthDateGregorian: initialDateString as any,
         },
   });
@@ -184,9 +197,6 @@ export const BirthdayForm = ({
     const dateString = getDateString(selectedDay, selectedMonth, selectedYear);
     setValue('birthDateGregorian', dateString as any, { shouldValidate: !!dateString });
   }, [selectedDay, selectedMonth, selectedYear, setValue]);
-
-  const selectedGroupId = watch('groupId');
-  const selectedGroup = allGroups.find(g => g.id === selectedGroupId);
 
   const rootGroups = allGroups.filter(g => g.is_root);
   const childGroups = allGroups.filter(g => !g.is_root);
@@ -212,6 +222,52 @@ export const BirthdayForm = ({
     return map;
   }, [rootGroups, t]);
 
+  // Prepare group options for MultiSelect
+  // When adding a new birthday (not editing), only show child groups (subgroups)
+  // When editing, show all groups (root + child) for flexibility
+  const groupOptions = useMemo<GroupOption[]>(() => {
+    const options: GroupOption[] = [];
+    
+    if (editBirthday) {
+      // When editing: show all groups (root + child)
+      rootGroups.forEach(root => {
+        const rootName = translatedRootNamesMap.get(root.id) || root.name;
+        
+        options.push({
+          id: root.id,
+          name: rootName,
+          isRoot: true
+        });
+
+        const children = childGroups.filter(c => c.parent_id === root.id);
+        children.forEach(child => {
+          options.push({
+            id: child.id,
+            name: child.name,
+            parentName: rootName,
+            isRoot: false
+          });
+        });
+      });
+    } else {
+      // When adding new: only show child groups (subgroups)
+      rootGroups.forEach(root => {
+        const rootName = translatedRootNamesMap.get(root.id) || root.name;
+        const children = childGroups.filter(c => c.parent_id === root.id);
+        children.forEach(child => {
+          options.push({
+            id: child.id,
+            name: child.name,
+            parentName: rootName,
+            isRoot: false
+          });
+        });
+      });
+    }
+    
+    return options;
+  }, [rootGroups, childGroups, translatedRootNamesMap, editBirthday]);
+
   const finalSubmit = async (data: BirthdayFormData) => {
     try {
       if (editBirthday) {
@@ -233,14 +289,15 @@ export const BirthdayForm = ({
   };
 
   const onSubmit = async (data: BirthdayFormData) => {
-    if (!data.groupId) {
+    if (!data.groupIds || data.groupIds.length === 0) {
       showError(t('birthday.selectGroup'));
       return;
     }
 
     if (!editBirthday) {
+      // Check duplicates with ALL selected groups (or at tenant level)
       const result = await checkDuplicates.mutateAsync({
-        groupId: data.groupId,
+        groupIds: data.groupIds,
         firstName: data.firstName,
         lastName: data.lastName,
         birthDate: data.birthDateGregorian,
@@ -249,6 +306,14 @@ export const BirthdayForm = ({
       if (result && result.length > 0) {
         setDuplicates(result);
         setPendingData(data);
+        // Get names of the new groups being added
+        const names = (data.groupIds || [])
+          .map(id => {
+            const group = allGroups.find(g => g.id === id);
+            return group?.name;
+          })
+          .filter((name): name is string => !!name);
+        setNewGroupNames(names);
         setShowDuplicateModal(true);
         return;
       }
@@ -269,17 +334,47 @@ export const BirthdayForm = ({
     await finalSubmit(data);
   };
 
-  const handleDuplicateConfirm = () => {
+  const handleMerge = async () => {
     setShowDuplicateModal(false);
-    if (pendingData) {
-      if (pendingData.afterSunset === undefined) {
-        setShowSunsetModal(true);
-      } else if (!pendingData.gender) {
-        setShowGenderModal(true);
-      } else {
-        finalSubmit(pendingData);
-      }
+    if (pendingData && duplicates.length > 0) {
+        try {
+            const master = duplicates[0];
+            const newGroups = pendingData.groupIds || [];
+            const existingGroups = master.group_ids || (master.group_id ? [master.group_id] : []);
+            
+            // Combine unique groups
+            const combinedGroups = Array.from(new Set([...existingGroups, ...newGroups]));
+            
+            // Call update on the existing birthday
+            await updateBirthday.mutateAsync({
+                birthdayId: master.id,
+                data: {
+                    groupIds: combinedGroups,
+                    // Optionally update other fields if they are newer/better, 
+                    // but for a "Merge" action, usually we just add the group.
+                }
+            });
+            
+            showSuccess(t('messages.birthdayMerged', 'Person updated with new groups successfully'));
+            onSuccess();
+            onClose();
+        } catch (error) {
+            showError(t('common.error'));
+            logger.error('Error merging birthday:', error);
+        }
     }
+  };
+
+  const handleDuplicateConfirm = () => {
+      // This is "Create Anyway" logic (Not recommended but maybe needed as fallback?)
+      // Actually, based on the plan, we should PREFER merge.
+      // But what if it IS a different person? 
+      // The modal now should probably offer "Merge" as primary.
+      // Let's assume the modal now has a "Merge" button which calls handleMerge.
+      // If they close, it cancels.
+      // If we want to support "Create New" despite duplicate, we need another button.
+      // For now, we'll implement handleMerge as the primary action for the modal's "Confirm".
+      handleMerge(); 
   };
 
   const handleSunsetConfirm = (afterSunset: boolean) => {
@@ -324,12 +419,23 @@ export const BirthdayForm = ({
       setShowCreateGroupModal(false);
       setNewGroupName('');
       setSelectedParentGroup('');
+      
+      // Automatically select the new group
+      const currentIds = watch('groupIds') || [];
+      setValue('groupIds', [...currentIds, groupId], { shouldValidate: true });
+      
       showSuccess(t('messages.groupCreated', 'Group created successfully'));
     } catch (error) {
       logger.error('Error creating group:', error);
       showError(t('common.error'));
     }
   };
+
+  // Calculate selected groups for display or preference logic
+  const selectedGroupIds = watch('groupIds') || [];
+  // Use the first selected group for calendar preference hint (or show mixed?)
+  const firstSelectedGroupId = selectedGroupIds.length > 0 ? selectedGroupIds[0] : undefined;
+  const firstSelectedGroup = allGroups.find(g => g.id === firstSelectedGroupId);
 
   return (
     <>
@@ -487,7 +593,6 @@ export const BirthdayForm = ({
                   </label>
                 </div>
               </div>
-              {/* שדה נסתר עבור react-hook-form */}
               <input
                 type="hidden"
                 value={getDateString(selectedDay, selectedMonth, selectedYear)}
@@ -496,7 +601,6 @@ export const BirthdayForm = ({
                   validate: (value) => {
                     const date = new Date(value);
                     const now = new Date();
-                    // Reset time part for comparison
                     now.setHours(0, 0, 0, 0);
                     if (date > now) {
                       return t('validation.futureDate', 'Birth date cannot be in the future');
@@ -513,41 +617,29 @@ export const BirthdayForm = ({
               )}
             </div>
 
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">
-                {t('birthday.group')} *
-              </label>
-              <div className="flex gap-1.5 sm:gap-2">
-                <select
-                  {...register('groupId', { required: t('validation.required') })}
-                  className="flex-1 px-2 sm:px-4 py-1.5 sm:py-2 text-base sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">{t('birthday.selectGroup')}</option>
-                  {rootGroups.map((root) => {
-                    const children = childGroups.filter(c => c.parent_id === root.id);
-                    return (
-                      <optgroup key={root.id} label={translatedRootNamesMap.get(root.id) || root.name}>
-                        {children.map((group) => (
-                          <option key={group.id} value={group.id}>
-                            {group.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    );
-                  })}
-                </select>
+            <div className="flex gap-1.5 sm:gap-2 items-start">
+              <div className="flex-1">
+                <MultiSelectGroups
+                    groups={groupOptions}
+                    selectedIds={watch('groupIds')}
+                    onChange={(ids) => setValue('groupIds', ids, { shouldValidate: true })}
+                    label={t('birthday.group') + ' *'}
+                    error={errors.groupIds ? String(errors.groupIds.message) : undefined} // Type check workaround
+                    placeholder={t('birthday.selectGroup')}
+                />
+                {/* Hidden field for validation if needed, but MultiSelect uses setValue */}
+                <input type="hidden" {...register('groupIds', { required: t('birthday.selectGroup') })} />
+              </div>
+              <div className="mt-6 sm:mt-7">
                 <button
                   type="button"
                   onClick={() => setShowCreateGroupModal(true)}
-                  className="px-2 sm:px-3 py-1.5 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-1 text-xs sm:text-sm font-medium"
+                  className="px-2 sm:px-3 py-1.5 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-1 text-xs sm:text-sm font-medium h-[38px] sm:h-[42px]"
                   title={t('groups.createSubgroup', 'Create subgroup')}
                 >
                   <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
                 </button>
               </div>
-              {errors.groupId && (
-                <p className="text-red-500 text-xs mt-0.5 sm:mt-1">{errors.groupId.message}</p>
-              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
@@ -620,9 +712,9 @@ export const BirthdayForm = ({
                 {t('birthday.calendarPreference')}
               </label>
               <div className="space-y-1 sm:space-y-2">
-                {selectedGroup && selectedGroup.calendar_preference && (
+                {firstSelectedGroup && firstSelectedGroup.calendar_preference && (
                   <div className="text-xs text-gray-600 bg-gray-50 p-1.5 sm:p-2 rounded">
-                    {t('birthday.groupPreference', 'Group preference')}: <span className="font-semibold">{t(`birthday.${selectedGroup.calendar_preference}`)}</span>
+                    {t('birthday.groupPreference', 'Group preference')} ({firstSelectedGroup.name}): <span className="font-semibold">{t(`birthday.${firstSelectedGroup.calendar_preference}`)}</span>
                   </div>
                 )}
                 <select
@@ -690,6 +782,7 @@ export const BirthdayForm = ({
         onClose={() => setShowDuplicateModal(false)}
         onConfirm={handleDuplicateConfirm}
         duplicates={duplicates}
+        newGroupNames={newGroupNames}
       />
 
       <SunsetVerificationModal

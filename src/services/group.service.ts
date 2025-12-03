@@ -137,24 +137,45 @@ export const groupService = {
     }
 
     if (deleteBirthdays) {
+      // Find birthdays that have this group in their group_ids array
       const birthdaysQuery = query(
         collection(db, 'birthdays'),
-        where('group_id', '==', groupId),
+        where('group_ids', 'array-contains', groupId),
         where('tenant_id', '==', tenantId)
       );
       const birthdaysSnapshot = await getDocs(birthdaysQuery);
       const deletePromises = birthdaysSnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
       await Promise.all(deletePromises);
     } else {
+      // Find birthdays that have this group in their group_ids array
       const birthdaysQuery = query(
         collection(db, 'birthdays'),
-        where('group_id', '==', groupId),
+        where('group_ids', 'array-contains', groupId),
         where('tenant_id', '==', tenantId)
       );
       const birthdaysSnapshot = await getDocs(birthdaysQuery);
-      const updatePromises = birthdaysSnapshot.docs.map(docSnap =>
-        updateDoc(docSnap.ref, { group_id: null })
-      );
+      
+      // Remove groupId from group_ids array for each birthday
+      const updatePromises = birthdaysSnapshot.docs.map(async (docSnap) => {
+        const data = docSnap.data();
+        const currentGroupIds = data.group_ids || (data.group_id ? [data.group_id] : []);
+        const updatedGroupIds = currentGroupIds.filter((id: string) => id !== groupId);
+        
+        const updateData: any = {
+          group_ids: updatedGroupIds,
+          updated_at: serverTimestamp(),
+        };
+        
+        // Update backward compatibility field
+        if (updatedGroupIds.length > 0) {
+          updateData.group_id = updatedGroupIds[0];
+        } else {
+          updateData.group_id = null;
+        }
+        
+        return updateDoc(docSnap.ref, updateData);
+      });
+      
       await Promise.all(updatePromises);
     }
 
@@ -164,7 +185,7 @@ export const groupService = {
   async getGroupBirthdaysCount(groupId: string, tenantId: string): Promise<number> {
     const q = query(
       collection(db, 'birthdays'),
-      where('group_id', '==', groupId),
+      where('group_ids', 'array-contains', groupId),
       where('tenant_id', '==', tenantId)
     );
     const snapshot = await getDocs(q);

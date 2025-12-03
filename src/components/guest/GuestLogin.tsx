@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { guestService, GuestVerificationData } from '../../services/guest.service';
 import { Button } from '../common/Button';
 import { WishlistItem } from '../../types';
-import { Users, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, Info, ChevronDown, ChevronUp, ArrowRight, ArrowLeft } from 'lucide-react';
 
 interface GuestLoginProps {
   onLoginSuccess: (birthdayId: string, verification: GuestVerificationData, wishlist: WishlistItem[], firstName: string, lastName: string) => void;
@@ -107,7 +107,12 @@ export const GuestLogin: React.FC<GuestLoginProps> = ({ onLoginSuccess, initialV
   const [hebrewYear, setHebrewYear] = useState(initialValues?.verification.hebrewYear || currentYear);
 
   // Profiles State
-  const [profiles, setProfiles] = useState<Array<{ birthdayId: string; tenantName: string }> | null>(null);
+  const [profiles, setProfiles] = useState<Array<{ 
+    birthdayId: string; 
+    tenantName: string;
+    tenantDisplayName?: string;
+    groupDisplayName?: string;
+  }> | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -235,6 +240,14 @@ export const GuestLogin: React.FC<GuestLoginProps> = ({ onLoginSuccess, initialV
 
   const getHebrewMonths = () => isHebrew ? HEBREW_MONTHS_HE : HEBREW_MONTHS_EN;
 
+  const formatTenantName = (name: string) => {
+    if (name.endsWith("'s Organization")) {
+      const ownerName = name.replace("'s Organization", "");
+      return t('guest.listOwnedBy', { name: ownerName });
+    }
+    return name;
+  };
+
   // --- Render Profile Selection ---
   if (profiles) {
       return (
@@ -248,17 +261,21 @@ export const GuestLogin: React.FC<GuestLoginProps> = ({ onLoginSuccess, initialV
                     <button
                         key={p.birthdayId}
                         onClick={() => handleProfileSelect(p.birthdayId)}
-                        className="w-full p-4 flex items-center justify-between bg-gray-50 hover:bg-purple-50 border border-gray-200 rounded-lg transition-all group"
+                        className="w-full p-4 flex items-center gap-4 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md text-start group"
                     >
-                        <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                            <div className="p-2 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
-                                <Users className="w-5 h-5 text-purple-600" />
-                            </div>
-                            <span className="font-medium text-gray-700 group-hover:text-purple-700">{p.tenantName}</span>
+                        <div className="p-3 bg-blue-50 rounded-full group-hover:bg-blue-100 transition-colors shrink-0">
+                            <Users className="w-5 h-5 text-blue-600" />
                         </div>
-                        <span className="text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {t('common.select')} &rarr;
-                        </span>
+                        <div className="flex-1 flex flex-col gap-1">
+                            <span className="font-semibold text-gray-800 group-hover:text-blue-700 text-lg transition-colors">
+                                {formatTenantName(p.tenantDisplayName || p.tenantName)}
+                            </span>
+                            {p.groupDisplayName && (
+                                <span className="text-sm text-gray-600 group-hover:text-blue-600 transition-colors">
+                                    {t('guest.groups', 'Groups')}: {p.groupDisplayName}
+                                </span>
+                            )}
+                        </div>
                     </button>
                 ))}
             </div>

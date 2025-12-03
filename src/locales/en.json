@@ -50,9 +50,12 @@
     "managingWishlistFor": "Managing list for:",
     "backToSearch": "Back to Search",
     "accessDenied": "Access to the guest portal has been disabled by the administrator.",
+    "viewList": "View List",
+    "listOwnedBy": "{{name}}'s Account",
     "rateLimitError": "Too many attempts. Please wait.",
     "maxItemsError": "Cannot add more than {{count}} items",
-    "maxItemsLimitReached": "Maximum items limit reached ({{count}})"
+    "maxItemsLimitReached": "Maximum items limit reached ({{count}})",
+    "groups": "Groups"
   },
   "common": {
     "save": "Save",
@@ -338,7 +341,14 @@
     "enterSubgroupName": "Enter subgroup name",
     "manageDescription": "Organize your records into groups",
     "noRootGroups": "No root groups found",
-    "totalRecords": "Total Records"
+    "totalRecords": "Total Records",
+    "selectGroups": "Select Groups",
+    "groupsSelected": "{{count}} groups selected",
+    "groupSelected": "1 group selected",
+    "unknownGroup": "Unknown Group",
+    "noGroupsAvailable": "No groups available",
+    "rootGroup": "Main Group",
+    "underGroup": "Under"
   },
   "wishlist": {
     "title": "Wishlist",
@@ -371,6 +381,9 @@
   "modals": {
     "duplicateVerification": {
       "title": "Possible Duplicate",
+      "mergeMessage": "This person already exists in another group. Would you like to add them to the new group as well, instead of creating a duplicate?",
+      "mergeMessageWithGroups": "This person already exists in another group. Would you like to add them to {{groups}} as well, instead of creating a duplicate?",
+      "mergeConfirm": "Yes, Add",
       "message": "A person with similar name already exists. Do you want to continue?",
       "existingPerson": "Existing person"
     },
@@ -461,6 +474,13 @@
     "deleteAccountConfirmDescription": "This action cannot be undone. This will permanently delete your account and remove your data from our servers.",
     "summaryOfData": "Summary of data to be deleted:",
     "confirmDelete": "Yes, delete account"
+  },
+  "modals": {
+    "duplicateVerification": {
+      "title": "Possible Duplicate",
+      "mergeMessage": "This person already exists in another group. Would you like to add them to the new group as well, instead of creating a duplicate?",
+      "mergeConfirm": "Yes, Add"
+    }
   },
   "help": {
     "title": "How does it work?",

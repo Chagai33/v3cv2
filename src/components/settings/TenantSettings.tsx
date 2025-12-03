@@ -344,46 +344,112 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ onClose }) => {
                       >
                         <div className="flex items-center gap-2">
                           <Users className="w-4 h-4" />
-                          <span className="font-medium">ניהול הרשאות לקבוצות ספציפיות</span>
+                          <span className="font-medium">ניהול הרשאות לפי קבוצות</span>
                         </div>
                         {showGroupExceptions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                       
                       {showGroupExceptions && (
-                        <div className="mt-3 space-y-1 pl-1 animate-in fade-in slide-in-from-top-1 duration-200 bg-gray-50 rounded-lg p-2 max-h-60 overflow-y-auto">
+                        <div className="mt-3 space-y-1 pl-1 animate-in fade-in slide-in-from-top-1 duration-200 bg-gray-50 rounded-lg p-2 max-h-80 overflow-y-auto custom-scrollbar">
                           {groups.length === 0 ? (
                             <p className="text-xs text-gray-400 text-center py-2">לא נמצאו קבוצות</p>
                           ) : (
-                            sortedGroups.map(group => {
-                              const parentGroup = group.parent_id ? groups.find(g => g.id === group.parent_id) : null;
-                              const isGroupEnabled = group.is_guest_portal_enabled !== false; // Default true
+                            // Build Tree Structure
+                            (() => {
+                              const rootGroups = groups.filter(g => !g.parent_id).sort((a, b) => a.name.localeCompare(b.name));
                               
-                              return (
-                                <div key={group.id} className="flex items-center justify-between py-2 px-2 hover:bg-white rounded-md transition-colors">
-                                  <div className="flex flex-col min-w-0 mr-2">
-                                    <span className="text-sm font-medium text-gray-700 truncate flex items-center gap-1.5">
-                                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: group.color || '#CBD5E1' }}></span>
-                                      {group.name}
-                                    </span>
-                                    {parentGroup && (
-                                      <span className="text-[10px] text-gray-400 mr-3.5 truncate">
-                                        תחת: {parentGroup.name}
-                                      </span>
+                              return rootGroups.map((rootGroup, index) => {
+                                const childGroups = groups
+                                  .filter(g => g.parent_id === rootGroup.id)
+                                  .sort((a, b) => a.name.localeCompare(b.name));
+                                
+                                const isRootEnabled = rootGroup.is_guest_portal_enabled !== false; // Default true
+                                const hasChildren = childGroups.length > 0;
+                                
+                                return (
+                                  <div key={rootGroup.id} className="mb-3 border border-gray-200 rounded-xl overflow-hidden">
+                                    {/* Root Group Header */}
+                                    <div className={`flex items-center justify-between py-2.5 px-3 ${!isRootEnabled && hasChildren ? 'bg-gray-100' : 'bg-gray-50'}`}>
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <div className="w-6 h-6 rounded-full flex items-center justify-center bg-white border border-gray-200 shadow-sm shrink-0">
+                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: rootGroup.color || '#CBD5E1' }}></div>
+                                        </div>
+                                        <span className={`text-sm font-bold truncate ${(!isRootEnabled && hasChildren) ? 'text-gray-500' : 'text-gray-800'}`}>
+                                          {rootGroup.name}
+                                        </span>
+                                      </div>
+                                      
+                                      {/* Checkbox adjacent to name (left side in Hebrew) */}
+                                      <div className="flex items-center pl-1">
+                                        {hasChildren ? (
+                                            <label className="relative inline-flex items-center cursor-pointer shrink-0" title={isRootEnabled ? 'השבת קבוצה' : 'הפעל קבוצה'}>
+                                              <input
+                                                type="checkbox"
+                                                className="sr-only peer"
+                                                checked={isRootEnabled}
+                                                onChange={() => handleGroupToggle(rootGroup.id, rootGroup.is_guest_portal_enabled)}
+                                              />
+                                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                                            </label>
+                                        ) : (
+                                            <span className="text-[10px] text-gray-400 bg-white border border-gray-200 px-2 py-0.5 rounded-full">
+                                                אין קבוצות
+                                            </span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Child Groups Body */}
+                                    {hasChildren && (
+                                      <div className="bg-white p-1 space-y-0.5">
+                                        {childGroups.map(child => {
+                                          const isChildEnabledInDB = child.is_guest_portal_enabled !== false;
+                                          const isEffectiveEnabled = isRootEnabled && isChildEnabledInDB;
+                                          
+                                          return (
+                                            <label 
+                                              key={child.id} 
+                                              className={`flex items-center justify-between py-2 px-3 rounded-lg transition-all border border-transparent ${
+                                                  isRootEnabled ? 'hover:bg-purple-50 cursor-pointer' : 'cursor-not-allowed opacity-60'
+                                              }`}
+                                            >
+                                              <div className="flex items-center gap-3 min-w-0">
+                                                <div className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
+                                                    isEffectiveEnabled 
+                                                        ? 'bg-purple-600 border-purple-600' 
+                                                        : 'bg-white border-gray-300'
+                                                }`}>
+                                                    {isEffectiveEnabled && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                                </div>
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                     <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: child.color || '#CBD5E1' }}></span>
+                                                     <span className={`text-sm font-medium truncate ${!isRootEnabled ? 'text-gray-400' : 'text-gray-700'}`}>
+                                                       {child.name}
+                                                     </span>
+                                                </div>
+                                              </div>
+                                              
+                                              {/* Hidden Native Checkbox */}
+                                              <input
+                                                type="checkbox"
+                                                className="sr-only"
+                                                checked={isEffectiveEnabled}
+                                                disabled={!isRootEnabled}
+                                                onChange={() => {
+                                                    if (isRootEnabled) {
+                                                        handleGroupToggle(child.id, child.is_guest_portal_enabled);
+                                                    }
+                                                }}
+                                              />
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
                                     )}
                                   </div>
-                                  
-                                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                                    <input
-                                      type="checkbox"
-                                      className="sr-only peer"
-                                      checked={isGroupEnabled}
-                                      onChange={() => handleGroupToggle(group.id, group.is_guest_portal_enabled)}
-                                    />
-                                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
-                                  </label>
-                                </div>
-                              );
-                            })
+                                );
+                              });
+                            })()
                           )}
                         </div>
                       )}

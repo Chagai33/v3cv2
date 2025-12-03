@@ -1481,15 +1481,31 @@ async function calculateExpectedEvents(birthday: any): Promise<SyncEvent[]> {
      const tenant = tenantDoc.data();
      const language = (tenant?.default_language || 'he') as 'he' | 'en';
      
-     let group: any = null;
-     let parentGroup: any = null;
-     if (birthday.group_id) {
-         const g = await db.collection('groups').doc(birthday.group_id).get();
-         if (g.exists) {
-             group = g.data();
-             if (group?.parent_id) {
-                 const p = await db.collection('groups').doc(group.parent_id).get();
-                 if (p.exists) parentGroup = p.data();
+     // Support multiple groups
+     const groupIds = birthday.group_ids || (birthday.group_id ? [birthday.group_id] : []);
+     const groups: Array<{ name: string; parentName?: string }> = [];
+     
+     if (groupIds.length > 0) {
+         const groupDocs = await Promise.all(
+             groupIds.map((id: string) => db.collection('groups').doc(id).get())
+         );
+         
+         for (const groupDoc of groupDocs) {
+             if (groupDoc.exists) {
+                 const groupData = groupDoc.data();
+                 let parentName: string | undefined;
+                 
+                 if (groupData?.parent_id) {
+                     const parentDoc = await db.collection('groups').doc(groupData.parent_id).get();
+                     if (parentDoc.exists) {
+                         parentName = parentDoc.data()?.name;
+                     }
+                 }
+                 
+                 groups.push({
+                     name: groupData?.name || 'Unknown',
+                     parentName: parentName
+                 });
              }
          }
      }
@@ -1540,8 +1556,13 @@ async function calculateExpectedEvents(birthday: any): Promise<SyncEvent[]> {
          description += language === 'en' ? '⚠️ After Sunset\n' : '⚠️ לאחר השקיעה\n';
      }
      
-     if (group) {
-         description += parentGroup ? `\n(${parentGroup.name}: ${group.name})` : `\n(${group.name})`;
+     // Display all groups
+     if (groups.length > 0) {
+         const groupNames = groups.map(g => 
+             g.parentName ? `${g.parentName}: ${g.name}` : g.name
+         );
+         const groupsLabel = language === 'en' ? 'Groups' : 'קבוצות';
+         description += `\n${groupsLabel}: ${groupNames.join(', ')}`;
      }
      if (birthday.notes) {
          description += language === 'en' ? `\n\nNotes: ${birthday.notes}` : `\n\nהערות: ${birthday.notes}`;
@@ -2721,4 +2742,5 @@ export const deleteAccount = functions.https.onCall(async (data, context) => {
 });
 
 export { guestPortalOps } from './guestPortal';
+export * from './migration';
 

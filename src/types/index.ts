@@ -66,7 +66,8 @@ export interface HebrewBirthdayDate {
 export interface Birthday {
   id: string;
   tenant_id: string;
-  group_id?: string;
+  group_id?: string; // Deprecated: Use group_ids instead
+  group_ids?: string[]; // Array of group IDs this birthday belongs to
   first_name: string;
   last_name: string;
   birth_date_gregorian: string;
@@ -114,7 +115,8 @@ export interface BirthdayFormData {
   birthDateGregorian: Date | string;
   afterSunset?: boolean;
   gender?: Gender;
-  groupId: string;
+  groupId?: string; // Deprecated
+  groupIds: string[];
   calendarPreferenceOverride?: CalendarPreference | null;
   notes?: string;
 }
@@ -192,6 +194,7 @@ export interface CSVBirthdayRow {
   afterSunset: boolean;
   gender?: Gender;
   groupId?: string;
+  groupIds?: string[];
   notes?: string;
   calendarPreference?: CalendarPreference;
   validationErrors?: string[];

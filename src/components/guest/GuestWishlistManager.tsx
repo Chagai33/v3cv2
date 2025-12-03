@@ -150,7 +150,7 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
   };
 
   return (
-    <div className="space-y-6">
+    <div className="bg-white rounded-xl shadow-lg p-6 space-y-6">
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
             <div>
@@ -169,7 +169,7 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
         {onBackToSearch && (
             <button
                 onClick={onBackToSearch}
-                className="flex items-center gap-2 text-sm text-gray-600 hover:text-purple-600 transition-colors w-fit"
+                className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors w-fit"
             >
                 {isHebrew ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
                 <span>{t('guest.backToSearch', 'Back to search')}</span>
@@ -185,7 +185,11 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
       )}
 
       {!isAdding && !editingId && items.length < MAX_ITEMS && (
-        <Button onClick={() => setIsAdding(true)} className="w-full">
+        <Button 
+            onClick={() => setIsAdding(true)} 
+            variant="outline"
+            className="w-full !border-blue-600 !text-blue-600 hover:!bg-blue-50"
+        >
             <Plus className="w-4 h-4 mr-2 rtl:ml-2 rtl:mr-0" />
             {t('guest.addNewItem')}
         </Button>
@@ -198,7 +202,7 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
       )}
 
       {(isAdding || editingId) && (
-        <div className="bg-white p-4 rounded-xl border border-purple-100 shadow-sm space-y-4">
+        <div className="space-y-4">
           <h3 className="font-semibold text-gray-700">{isAdding ? t('guest.addNewItem') : t('guest.editItem')}</h3>
           
           <div className="space-y-3">
@@ -211,7 +215,7 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
                     value={itemName}
                     onChange={(e) => setItemName(e.target.value)}
                     maxLength={MAX_NAME_LENGTH}
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                     placeholder={t('wishlist.itemNamePlaceholder')}
                 />
             </div>
@@ -224,7 +228,7 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     maxLength={MAX_DESC_LENGTH}
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none resize-none h-20"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none h-20 bg-white"
                     placeholder={t('wishlist.descriptionPlaceholder')}
                 />
             </div>
@@ -237,7 +241,7 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
                             onClick={() => setPriority(p)}
                             className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-all ${
                                 priority === p 
-                                    ? 'border-purple-500 bg-purple-50 text-purple-700' 
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' 
                                     : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                             }`}
                         >
@@ -249,11 +253,11 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
           </div>
 
           <div className="flex gap-2 pt-2">
-            <Button onClick={isAdding ? handleAdd : handleUpdate} isLoading={loading} className="flex-1">
+            <Button onClick={isAdding ? handleAdd : handleUpdate} isLoading={loading} className="flex-1 !bg-blue-600 hover:!bg-blue-700 text-white">
                 <Save className="w-4 h-4 mr-2 rtl:ml-2 rtl:mr-0" />
                 {t('guest.save')}
             </Button>
-            <Button variant="outline" onClick={resetForm} disabled={loading}>
+            <Button variant="outline" onClick={resetForm} disabled={loading} className="hover:bg-gray-50">
                 {t('guest.cancel')}
             </Button>
           </div>
@@ -268,7 +272,7 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
         )}
         
         {items.map((item) => (
-            <div key={item.id} className={`bg-white p-4 rounded-xl border border-gray-100 shadow-sm transition-all ${editingId === item.id ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div key={item.id} className={`bg-white p-4 rounded-xl border border-gray-200 hover:border-blue-200 shadow-sm transition-all group ${editingId === item.id ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div className="flex justify-between items-start gap-3">
                     <div className="flex-grow">
                         <div className="flex items-center gap-2 mb-1">
@@ -281,10 +285,10 @@ export const GuestWishlistManager: React.FC<GuestWishlistManagerProps> = ({ init
                             <p className="text-sm text-gray-500 mt-1 whitespace-pre-wrap">{item.description}</p>
                         )}
                     </div>
-                    <div className="flex gap-1 shrink-0">
+                    <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                             onClick={() => startEdit(item)}
-                            className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         >
                             <Edit2 className="w-4 h-4" />
                         </button>

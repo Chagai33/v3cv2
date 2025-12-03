@@ -62,7 +62,10 @@ export const Dashboard = () => {
 
   const birthdays = useMemo(() => {
     if (selectedGroupIds.length === 0) return allBirthdays;
-    return allBirthdays.filter(b => b.group_id && selectedGroupIds.includes(b.group_id));
+    return allBirthdays.filter(b => {
+      const bGroupIds = b.group_ids || (b.group_id ? [b.group_id] : []);
+      return bGroupIds.length > 0 && selectedGroupIds.some(id => bGroupIds.includes(id));
+    });
   }, [allBirthdays, selectedGroupIds]);
 
   const duplicateIds = useMemo(() => {
@@ -130,11 +133,12 @@ export const Dashboard = () => {
         logger.warn('Could not load wishlist, continuing without it:', wishlistError);
       }
 
-      // טעינת מידע על הקבוצה
+      // טעינת מידע על הקבוצה (לוקח את הקבוצה הראשונה)
       let groupInfo: { parentName?: string; groupName: string } | undefined;
-      if (birthday.group_id) {
+      const groupIds = birthday.group_ids || (birthday.group_id ? [birthday.group_id] : []);
+      if (groupIds.length > 0) {
         try {
-          const group = await groupService.getGroup(birthday.group_id);
+          const group = await groupService.getGroup(groupIds[0]);
           if (group) {
             if (group.parent_id) {
               const parentGroup = await groupService.getGroup(group.parent_id);
