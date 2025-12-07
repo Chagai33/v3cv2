@@ -85,10 +85,18 @@ export const birthdayService = {
 
     if (data.firstName !== undefined) updateData.first_name = data.firstName;
     if (data.lastName !== undefined) updateData.last_name = data.lastName;
-    if (data.birthDateGregorian !== undefined) {
-      // בדיקה אם התאריך הלועזי באמת השתנה
+    
+    // בדיקה אם התאריך או afterSunset השתנו - אם כן, צריך לאפס את הנתונים העבריים
+    let shouldResetHebrewData = false;
+    let currentData: any = null;
+    
+    if (data.birthDateGregorian !== undefined || data.afterSunset !== undefined) {
+      // קוראים את המסמך הנוכחי פעם אחת לבדיקת שני השדות
       const currentDoc = await getDoc(doc(db, 'birthdays', birthdayId));
-      const currentData = currentDoc.data();
+      currentData = currentDoc.data();
+    }
+    
+    if (data.birthDateGregorian !== undefined) {
       const currentBirthDate = currentData?.birth_date_gregorian;
       
       let newBirthDateString: string;
@@ -117,13 +125,30 @@ export const birthdayService = {
           updateData.gregorian_day = birthDate.getDate();
         }
 
-        updateData.birth_date_hebrew_string = null;
-        updateData.next_upcoming_hebrew_birthday = null;
-        updateData.future_hebrew_birthdays = [];
+        shouldResetHebrewData = true;
       }
       // אם התאריך לא השתנה, לא נעשה כלום - הנתונים העבריים נשמרים
     }
-    if (data.afterSunset !== undefined) updateData.after_sunset = data.afterSunset;
+    
+    if (data.afterSunset !== undefined) {
+      const currentAfterSunset = currentData?.after_sunset ?? false;
+      const newAfterSunset = data.afterSunset ?? false;
+      
+      // אם afterSunset השתנה, צריך לאפס את הנתונים העבריים
+      if (currentAfterSunset !== newAfterSunset) {
+        updateData.after_sunset = data.afterSunset;
+        shouldResetHebrewData = true;
+      } else {
+        updateData.after_sunset = data.afterSunset;
+      }
+    }
+    
+    // אם אחד מהשדות הרלוונטיים השתנה, אפס את הנתונים העבריים
+    if (shouldResetHebrewData) {
+      updateData.birth_date_hebrew_string = null;
+      updateData.next_upcoming_hebrew_birthday = null;
+      updateData.future_hebrew_birthdays = [];
+    }
     if (data.gender !== undefined) updateData.gender = data.gender;
     if (data.groupIds !== undefined) {
       updateData.group_ids = data.groupIds;
