@@ -617,6 +617,8 @@
     "profileUpdateError": "Error updating profile",
     "profileAgeGroups": "{{count}} age groups",
     "load": "Load",
+    "save": "Save",
+    "budget": "Budget",
     "close": "Close",
     "saving": "Saving...",
     "percentageOfBudget": "% of Budget",

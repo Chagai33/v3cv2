@@ -603,23 +603,23 @@ export const GeltPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <div className="mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-2">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{t('gelt.pageTitle')}</h1>
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-6">
+        <div className="mb-3 sm:mb-4 lg:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{t('gelt.pageTitle')}</h1>
               <button
                 onClick={() => setShowHowItWorksModal(true)}
-                className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1 sm:p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 title={t('gelt.howItWorks')}
               >
                 <Info className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
             {defaultTemplate && (
-              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm bg-blue-50 px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-blue-200 shadow-sm">
+              <div className="flex items-center gap-1 text-xs bg-blue-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-blue-200 shadow-sm">
                 <span className="font-medium text-gray-700 hidden sm:inline">{t('gelt.currentProfile')}:</span>
-                <span className="text-blue-700 font-semibold text-xs sm:text-sm truncate max-w-[200px] sm:max-w-none">
+                <span className="text-blue-700 font-semibold text-xs truncate max-w-[150px] sm:max-w-none">
                   {defaultTemplate.is_default 
                     ? t('gelt.userDefaultProfile', { name: defaultTemplate.name })
                     : t('gelt.systemDefault')}
@@ -627,23 +627,23 @@ export const GeltPage: React.FC = () => {
               </div>
             )}
             {!defaultTemplate && (
-              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm bg-gray-50 px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-gray-200 shadow-sm">
+              <div className="flex items-center gap-1 text-xs bg-gray-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 shadow-sm">
                 <span className="font-medium text-gray-700 hidden sm:inline">{t('gelt.currentProfile')}:</span>
-                <span className="text-gray-600 text-xs sm:text-sm">{t('gelt.systemDefault')}</span>
+                <span className="text-gray-600 text-xs">{t('gelt.systemDefault')}</span>
               </div>
             )}
           </div>
-          <p className="text-sm sm:text-base text-gray-600 hidden sm:block">{t('gelt.description')}</p>
+          <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">{t('gelt.description')}</p>
           
           {/* Warning about modified ages */}
           {localState && localState.children.some(child => child.originalAge !== undefined) && (
-            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-2">
-              <Info className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-1.5 sm:gap-2">
+              <Info className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm text-yellow-800 font-medium">
+                <p className="text-xs text-yellow-800 font-medium">
                   {t('gelt.modifiedAgesWarning')}
                 </p>
-                <p className="text-[10px] sm:text-xs text-yellow-700 mt-1">
+                <p className="text-[10px] text-yellow-700 mt-0.5 sm:mt-1">
                   {t('gelt.modifiedAgesWarningDescription')}
                 </p>
               </div>
@@ -651,26 +651,30 @@ export const GeltPage: React.FC = () => {
           )}
         </div>
 
-        {/* Action buttons */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
+        {/* Action buttons - Mobile optimized grid */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-2 mb-4 sm:mb-6">
           <Button
             variant="primary"
             onClick={() => setShowImportModal(true)}
             icon={<Upload className="w-4 h-4" />}
+            size="sm"
           >
-            {t('gelt.importFromBirthdays')}
+            <span className="hidden sm:inline">{t('gelt.importFromBirthdays')}</span>
+            <span className="sm:hidden">{t('gelt.import')}</span>
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowBudgetConfigModal(true)}
             icon={<Settings className="w-4 h-4" />}
+            size="sm"
           >
-            {t('gelt.budgetConfig')}
-            <span className="ml-2 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-medium">
-              {localState.budgetConfig.participants} / {localState.budgetConfig.allowedOverflowPercentage}%
+            <span className="hidden sm:inline">{t('gelt.budgetConfig')}</span>
+            <span className="sm:hidden">{t('gelt.budget')}</span>
+            <span className="ml-1 sm:ml-2 text-[10px] sm:text-xs bg-blue-50 text-blue-700 px-1.5 sm:px-2 py-0.5 rounded-md font-medium whitespace-nowrap">
+              {localState.budgetConfig.participants}/{localState.budgetConfig.allowedOverflowPercentage}%
               {localState.budgetConfig.customBudget && (
-                <span className="ml-1 font-semibold">
-                  • {localState.budgetConfig.customBudget}₪
+                <span className="ml-0.5 sm:ml-1 font-semibold">
+                  •{localState.budgetConfig.customBudget}₪
                 </span>
               )}
             </span>
@@ -679,20 +683,25 @@ export const GeltPage: React.FC = () => {
             variant="outline"
             onClick={() => setShowLoadTemplateModal(true)}
             icon={<FolderOpen className="w-4 h-4" />}
+            size="sm"
           >
-            {t('gelt.loadProfile')}
+            <span className="hidden sm:inline">{t('gelt.loadProfile')}</span>
+            <span className="sm:hidden">{t('gelt.load')}</span>
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowSaveTemplateModal(true)}
             icon={<Save className="w-4 h-4" />}
+            size="sm"
           >
-            {t('gelt.saveProfile')}
+            <span className="hidden sm:inline">{t('gelt.saveProfile')}</span>
+            <span className="sm:hidden">{t('gelt.save')}</span>
           </Button>
           <Button
             variant="outline"
             onClick={handleExport}
             icon={<Download className="w-4 h-4" />}
+            size="sm"
           >
             {t('gelt.export')}
           </Button>
@@ -700,6 +709,8 @@ export const GeltPage: React.FC = () => {
             variant="danger"
             onClick={handleReset}
             icon={<RotateCcw className="w-4 h-4" />}
+            size="sm"
+            className="col-span-2 sm:col-span-1"
           >
             {t('gelt.reset')}
           </Button>

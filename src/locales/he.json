@@ -667,6 +667,8 @@
     "profileUpdateError": "שגיאה בעדכון הפרופיל",
     "profileAgeGroups": "{{count}} קבוצות גיל",
     "load": "טען",
+    "save": "שמור",
+    "budget": "תקציב",
     "close": "סגור",
     "saving": "שומר...",
     "percentageOfBudget": "אחוז מהתקציב",

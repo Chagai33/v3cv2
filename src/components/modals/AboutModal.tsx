@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, Globe, Trash2, MessageSquare, LogOut, Settings, Info, Gift } from 'lucide-react';
+import { X, Globe, Trash2, MessageSquare, LogOut, Settings, Info, Gift, Calculator } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { FloatingBackButton } from '../common/FloatingBackButton';
 import { TenantSettings } from '../settings/TenantSettings';
@@ -16,6 +16,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
   const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showSettings, setShowSettings] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
 
@@ -87,6 +88,27 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               <Info className="w-5 h-5 text-blue-500" />
               <span className="text-sm font-medium">{t('help.title')}</span>
             </button>
+
+            {user && (
+              <button
+                onClick={() => {
+                  onClose();
+                  if (location.pathname === '/gelt') {
+                    navigate('/');
+                  } else {
+                    navigate('/gelt');
+                  }
+                }}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors w-full text-start ${
+                  location.pathname === '/gelt'
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Calculator className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-medium">{t('gelt.title')}</span>
+              </button>
+            )}
 
             <Link
               to="/portal"
