@@ -617,6 +617,8 @@
     "confirmReset": "Are you sure you want to reset all data?",
     "resetSuccess": "Data reset successfully",
     "resetError": "Error resetting data",
+    "resetToDefaultProfile": "Reset successfully and returned to default profile: {{name}}",
+    "resetToSystemDefault": "Reset successfully and returned to system default settings",
     "saveError": "Error saving data",
     "saveProfile": "Save Budget Profile",
     "loadProfile": "Load Budget Profile",

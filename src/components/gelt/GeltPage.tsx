@@ -197,6 +197,32 @@ export const GeltPage: React.FC = () => {
     console.log('[GeltPage] defaultTemplate:', JSON.stringify(defaultTemplate?.budgetConfig, null, 2));
 
     if (geltState) {
+      // Check if current state matches system defaults
+      // If so, don't load defaultTemplate - keep system defaults
+      const matchesSystemDefaults = 
+        geltState.ageGroups.length === DEFAULT_AGE_GROUPS.length &&
+        geltState.ageGroups.every((group, idx) => {
+          const defaultGroup = DEFAULT_AGE_GROUPS[idx];
+          return group.id === defaultGroup.id &&
+                 group.minAge === defaultGroup.minAge &&
+                 group.maxAge === defaultGroup.maxAge &&
+                 group.amountPerChild === defaultGroup.amountPerChild;
+        }) &&
+        geltState.budgetConfig.participants === DEFAULT_BUDGET_CONFIG.participants &&
+        geltState.budgetConfig.allowedOverflowPercentage === DEFAULT_BUDGET_CONFIG.allowedOverflowPercentage &&
+        (!geltState.budgetConfig.customBudget || geltState.budgetConfig.customBudget === 0) &&
+        geltState.customGroupSettings === null;
+      
+      // If state matches system defaults (after reset), use it as-is, don't load defaultTemplate
+      if (matchesSystemDefaults) {
+        console.log('[GeltPage] State matches system defaults, keeping system defaults (not loading defaultTemplate)');
+        setLocalState(geltState);
+        skipNextAutoSaveRef.current = true;
+        lastSavedStateRef.current = JSON.stringify(geltState);
+        hasInitializedRef.current = true;
+        return;
+      }
+      
       // Always apply default profile's isIncluded values if profile exists
       // This ensures that default profile settings are always respected
       if (defaultTemplate) {
@@ -578,58 +604,8 @@ export const GeltPage: React.FC = () => {
     if (window.confirm(t('gelt.confirmReset'))) {
       resetGelt.mutate(undefined, {
         onSuccess: () => {
-          // Load default profile if exists, otherwise use system defaults
-          if (defaultTemplate) {
-            // Prepare budgetConfig from default template - clean customBudget if not needed
-            const defaultBudgetConfig: BudgetConfig = {
-              participants: defaultTemplate.budgetConfig.participants,
-              allowedOverflowPercentage: defaultTemplate.budgetConfig.allowedOverflowPercentage,
-              ...(defaultTemplate.budgetConfig.customBudget !== undefined && 
-                  defaultTemplate.budgetConfig.customBudget !== null && 
-                  defaultTemplate.budgetConfig.customBudget > 0
-                ? { customBudget: defaultTemplate.budgetConfig.customBudget }
-                : {}),
-            };
-            
-            // Check if customGroupSettings is valid
-            const hasValidCustomGroupSettings = defaultTemplate.customGroupSettings !== null && 
-                                               Array.isArray(defaultTemplate.customGroupSettings) && 
-                                               defaultTemplate.customGroupSettings.length > 0;
-            
-            const resetState = {
-              children: [],
-              ageGroups: defaultTemplate.ageGroups.map(group => ({ ...group })),
-              budgetConfig: defaultBudgetConfig,
-              calculation: {
-                totalRequired: 0,
-                amountPerParticipant: 0,
-                maxAllowed: 0,
-                groupTotals: {},
-              },
-              customGroupSettings: hasValidCustomGroupSettings
-                ? defaultTemplate.customGroupSettings!.map(group => ({ ...group }))
-                : null,
-              includedChildren: [],
-            };
-            
-            setLocalState(resetState);
-            setLoadedTemplateId(null); // Reset loaded template tracking
-            skipNextAutoSaveRef.current = true;
-            lastSavedStateRef.current = JSON.stringify(resetState);
-            
-            // Save immediately to ensure DB is clean
-            updateGelt.mutate(resetState, {
-              onSuccess: () => {
-                lastSavedStateRef.current = JSON.stringify(resetState);
-                console.log('[GeltPage] Reset with default template completed and saved successfully');
-              },
-              onError: (err) => {
-                console.error('Failed to save reset state:', err);
-              },
-            });
-          } else {
-            // No default profile, use system defaults - identical to handleLoadSystemDefault
-            const resetState = {
+          // Always reset to system defaults, not to custom default profile
+          const resetState = {
               children: [],
               ageGroups: DEFAULT_AGE_GROUPS.map(group => ({ ...group })),
               budgetConfig: { 
@@ -648,7 +624,8 @@ export const GeltPage: React.FC = () => {
             };
             
             setLocalState(resetState);
-            setLoadedTemplateId(null); // Reset loaded template tracking
+            // DON'T reset loadedTemplateId/loadedTemplate - keep them so user can still update the original profile
+            // The "current profile" display will show "system default" because the state matches system defaults
             skipNextAutoSaveRef.current = true;
             lastSavedStateRef.current = JSON.stringify(resetState);
             
@@ -656,14 +633,15 @@ export const GeltPage: React.FC = () => {
             updateGelt.mutate(resetState, {
               onSuccess: () => {
                 lastSavedStateRef.current = JSON.stringify(resetState);
-                console.log('[GeltPage] Reset completed and saved successfully');
+                console.log('[GeltPage] Reset to system defaults completed and saved successfully');
+                // Show success message for system default
+                success(t('gelt.resetToSystemDefault'));
               },
               onError: (err) => {
                 console.error('Failed to save reset state:', err);
+                showError(t('gelt.resetError'));
               },
             });
-          }
-          success(t('gelt.resetSuccess'));
         },
         onError: () => {
           showError(t('gelt.resetError'));
@@ -868,22 +846,73 @@ export const GeltPage: React.FC = () => {
                 <Info className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
-            {defaultTemplate && (
-              <div className="flex items-center gap-1 text-xs bg-blue-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-blue-200 shadow-sm">
-                <span className="font-medium text-gray-700 hidden sm:inline">{t('gelt.currentProfile')}:</span>
-                <span className="text-blue-700 font-semibold text-xs truncate max-w-[150px] sm:max-w-none">
-                  {defaultTemplate.is_default 
-                    ? t('gelt.userDefaultProfile', { name: defaultTemplate.name })
-                    : t('gelt.systemDefault')}
-                </span>
-              </div>
-            )}
-            {!defaultTemplate && (
-              <div className="flex items-center gap-1 text-xs bg-gray-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 shadow-sm">
-                <span className="font-medium text-gray-700 hidden sm:inline">{t('gelt.currentProfile')}:</span>
-                <span className="text-gray-600 text-xs">{t('gelt.systemDefault')}</span>
-              </div>
-            )}
+            {/* Show current profile - what is currently displayed, not what was loaded */}
+            {/* If state matches system defaults (after reset), show system default */}
+            {/* Otherwise, show the loaded/matching template */}
+            {(() => {
+              // Check if current state matches system defaults
+              const matchesSystemDefaults = localState && 
+                localState.ageGroups.length === DEFAULT_AGE_GROUPS.length &&
+                localState.ageGroups.every((group, idx) => {
+                  const defaultGroup = DEFAULT_AGE_GROUPS[idx];
+                  return group.id === defaultGroup.id &&
+                         group.minAge === defaultGroup.minAge &&
+                         group.maxAge === defaultGroup.maxAge &&
+                         group.amountPerChild === defaultGroup.amountPerChild;
+                }) &&
+                localState.budgetConfig.participants === DEFAULT_BUDGET_CONFIG.participants &&
+                localState.budgetConfig.allowedOverflowPercentage === DEFAULT_BUDGET_CONFIG.allowedOverflowPercentage &&
+                (!localState.budgetConfig.customBudget || localState.budgetConfig.customBudget === 0) &&
+                localState.customGroupSettings === null;
+              
+              // If matches system defaults (after reset), always show system default
+              if (matchesSystemDefaults) {
+                return (
+                  <div className="flex items-center gap-1 text-xs bg-gray-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 shadow-sm">
+                    <span className="font-medium text-gray-700 hidden sm:inline">{t('gelt.currentProfile')}:</span>
+                    <span className="text-gray-600 text-xs">{t('gelt.systemDefault')}</span>
+                  </div>
+                );
+              }
+              
+              // Otherwise, show loaded/matching template (if user loaded a profile)
+              const templateToDisplay = matchingTemplate && matchingTemplate.id !== 'system-default'
+                ? matchingTemplate
+                : (loadedTemplateId && loadedTemplateId !== 'system-default'
+                  ? existingTemplates.find(t => t.id === loadedTemplateId)
+                  : null);
+              
+              if (templateToDisplay && templateToDisplay.id !== 'system-default') {
+                return (
+                  <div className="flex items-center gap-1 text-xs bg-blue-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-blue-200 shadow-sm">
+                    <span className="font-medium text-gray-700 hidden sm:inline">{t('gelt.currentProfile')}:</span>
+                    <span className="text-blue-700 font-semibold text-xs truncate max-w-[150px] sm:max-w-none">
+                      {templateToDisplay.name}
+                    </span>
+                  </div>
+                );
+              }
+              
+              // If defaultTemplate is set as default, show it
+              if (defaultTemplate && defaultTemplate.is_default) {
+                return (
+                  <div className="flex items-center gap-1 text-xs bg-blue-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-blue-200 shadow-sm">
+                    <span className="font-medium text-gray-700 hidden sm:inline">{t('gelt.currentProfile')}:</span>
+                    <span className="text-blue-700 font-semibold text-xs truncate max-w-[150px] sm:max-w-none">
+                      {t('gelt.userDefaultProfile', { name: defaultTemplate.name })}
+                    </span>
+                  </div>
+                );
+              }
+              
+              // Default: show system default
+              return (
+                <div className="flex items-center gap-1 text-xs bg-gray-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 shadow-sm">
+                  <span className="font-medium text-gray-700 hidden sm:inline">{t('gelt.currentProfile')}:</span>
+                  <span className="text-gray-600 text-xs">{t('gelt.systemDefault')}</span>
+                </div>
+              );
+            })()}
           </div>
           <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">{t('gelt.description')}</p>
           
