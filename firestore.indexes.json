@@ -121,6 +121,10 @@
         {
           "fieldPath": "is_default",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updated_at",
+          "order": "DESCENDING"
         }
       ]
     }

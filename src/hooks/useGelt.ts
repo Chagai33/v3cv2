@@ -15,8 +15,8 @@ const emptyCalculation = {
 
 const defaultState: GeltState = {
   children: [],
-  ageGroups: DEFAULT_AGE_GROUPS,
-  budgetConfig: DEFAULT_BUDGET_CONFIG,
+  ageGroups: DEFAULT_AGE_GROUPS.map(group => ({ ...group })),
+  budgetConfig: { ...DEFAULT_BUDGET_CONFIG },
   calculation: emptyCalculation,
   customGroupSettings: null,
   includedChildren: [],

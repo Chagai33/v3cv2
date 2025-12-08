@@ -59,7 +59,10 @@ export const GeltLoadTemplateModal: React.FC<GeltLoadTemplateModalProps> = ({
       name: t('gelt.systemDefaultProfile'),
       description: t('gelt.systemDefaultProfileDescription'),
       ageGroups: DEFAULT_AGE_GROUPS.map(group => ({ ...group })),
-      budgetConfig: { ...DEFAULT_BUDGET_CONFIG },
+      budgetConfig: { 
+        participants: DEFAULT_BUDGET_CONFIG.participants,
+        allowedOverflowPercentage: DEFAULT_BUDGET_CONFIG.allowedOverflowPercentage,
+      },
       customGroupSettings: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

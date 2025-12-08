@@ -294,20 +294,47 @@ export const geltTemplatesService = {
   // קבלת פרופיל תקציב ברירת מחדל
   async getDefaultTemplate(tenantId: string): Promise<GeltTemplate | null> {
     return retryFirestoreOperation(async () => {
+      console.log('[getDefaultTemplate] tenantId:', tenantId);
       const templatesRef = collection(db, 'gelt_templates');
       const q = query(
         templatesRef,
         where('tenant_id', '==', tenantId),
-        where('is_default', '==', true)
+        where('is_default', '==', true),
+        orderBy('updated_at', 'desc')
       );
-      const querySnapshot = await getDocs(q);
+      let querySnapshot;
+      try {
+        querySnapshot = await getDocs(q);
+      } catch (error: any) {
+        console.error('[getDefaultTemplate] Query error:', error);
+        // If index is missing, try without orderBy
+        if (error.code === 'failed-precondition') {
+          console.log('[getDefaultTemplate] Index missing, trying without orderBy');
+          const q2 = query(
+            templatesRef,
+            where('tenant_id', '==', tenantId),
+            where('is_default', '==', true)
+          );
+          querySnapshot = await getDocs(q2);
+        } else {
+          throw error;
+        }
+      }
+
+      console.log('[getDefaultTemplate] querySnapshot.empty:', querySnapshot.empty);
+      console.log('[getDefaultTemplate] querySnapshot.size:', querySnapshot.size);
 
       if (querySnapshot.empty) {
+        console.log('[getDefaultTemplate] No default template found, returning null');
         return null;
       }
 
       const docSnap = querySnapshot.docs[0];
       const data = docSnap.data() as GeltTemplateDocument;
+      console.log('[getDefaultTemplate] Found template. docId:', docSnap.id);
+      console.log('[getDefaultTemplate] Template name:', data.name);
+      console.log('[getDefaultTemplate] is_default:', data.is_default);
+      console.log('[getDefaultTemplate] Raw budgetConfig:', JSON.stringify(data.budgetConfig, null, 2));
       
       // Clean budgetConfig - remove customBudget if it's not valid
       const budgetConfig = data.budgetConfig || {};
@@ -321,7 +348,7 @@ export const geltTemplatesService = {
           : {}),
       };
       
-      return {
+      const result = {
         id: docSnap.id,
         tenant_id: data.tenant_id,
         name: data.name,
@@ -339,6 +366,9 @@ export const geltTemplatesService = {
         updated_by: data.updated_by,
         is_default: data.is_default || false,
       };
+      
+      console.log('[getDefaultTemplate] Returning template:', JSON.stringify(result.budgetConfig, null, 2));
+      return result;
     });
   },
 };

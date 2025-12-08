@@ -37,8 +37,14 @@ export const useDefaultGeltTemplate = () => {
   return useQuery({
     queryKey: ['defaultGeltTemplate', currentTenant?.id],
     queryFn: async () => {
-      if (!currentTenant) return null;
-      return await geltTemplatesService.getDefaultTemplate(currentTenant.id);
+      console.log('[useDefaultGeltTemplate] currentTenant?.id:', currentTenant?.id);
+      if (!currentTenant) {
+        console.log('[useDefaultGeltTemplate] No currentTenant, returning null');
+        return null;
+      }
+      const result = await geltTemplatesService.getDefaultTemplate(currentTenant.id);
+      console.log('[useDefaultGeltTemplate] Result from service:', result ? `Found: ${result.name}` : 'null');
+      return result;
     },
     enabled: !!currentTenant,
   });

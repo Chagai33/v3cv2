@@ -51,6 +51,8 @@ export const GeltPage: React.FC = () => {
   
   const saveTemplate = useSaveGeltTemplate();
   const hasInitializedRef = useRef(false);
+  const skipNextAutoSaveRef = useRef(false);
+  const lastSavedStateRef = useRef<string | null>(null);
 
   // Helper function to check if state is empty/reset
   // State is considered empty if it has no children and no custom configurations
@@ -104,11 +106,18 @@ export const GeltPage: React.FC = () => {
 
   // Initialize local state from server state or default profile (only on first load)
   useEffect(() => {
+    console.log('[GeltPage] useEffect triggered. isLoading:', isLoading, 'isLoadingDefaultTemplate:', isLoadingDefaultTemplate);
+    console.log('[GeltPage] defaultTemplate:', defaultTemplate ? `Found: ${defaultTemplate.name}` : 'null/undefined');
+    console.log('[GeltPage] defaultTemplate data:', defaultTemplate ? JSON.stringify(defaultTemplate.budgetConfig, null, 2) : 'null');
+    
     if (isLoading || isLoadingDefaultTemplate) return;
     
     // Only initialize once - don't update localState from server after auto-save
     if (hasInitializedRef.current) return;
     
+    console.log('[GeltPage] Initializing state. geltState:', JSON.stringify(geltState?.budgetConfig, null, 2));
+    console.log('[GeltPage] defaultTemplate:', JSON.stringify(defaultTemplate?.budgetConfig, null, 2));
+
     if (geltState) {
       // Always apply default profile's isIncluded values if profile exists
       // This ensures that default profile settings are always respected
@@ -153,41 +162,110 @@ export const GeltPage: React.FC = () => {
                 ? defaultTemplate.customGroupSettings.map(group => ({ ...group }))
                 : null,
             });
+            skipNextAutoSaveRef.current = true;
           } else {
             // State is not empty, but still apply default profile's isIncluded values
             // Also clean budgetConfig from any invalid customBudget
+            // If defaultTemplate doesn't have customBudget, we should clean it from geltState too
+            const defaultHasCustomBudget = defaultTemplate.budgetConfig.customBudget !== undefined && 
+                                          defaultTemplate.budgetConfig.customBudget !== null && 
+                                          defaultTemplate.budgetConfig.customBudget > 0;
+            
             const cleanedBudgetConfig: BudgetConfig = {
               participants: geltState.budgetConfig.participants,
               allowedOverflowPercentage: geltState.budgetConfig.allowedOverflowPercentage,
-              ...(geltState.budgetConfig.customBudget !== undefined && 
-                  geltState.budgetConfig.customBudget !== null && 
-                  geltState.budgetConfig.customBudget > 0
-                ? { customBudget: geltState.budgetConfig.customBudget }
-                : {}),
+              // Only include customBudget if:
+              // 1. defaultTemplate has customBudget, OR
+              // 2. geltState has customBudget AND defaultTemplate doesn't exist (fallback to server state)
+              // But if defaultTemplate exists and doesn't have customBudget, clean it
+              ...(defaultHasCustomBudget 
+                ? { customBudget: defaultTemplate.budgetConfig.customBudget }
+                : (geltState.budgetConfig.customBudget !== undefined && 
+                    geltState.budgetConfig.customBudget !== null && 
+                    geltState.budgetConfig.customBudget > 0 &&
+                    !defaultTemplate // Only use geltState's customBudget if no defaultTemplate
+                  ? { customBudget: geltState.budgetConfig.customBudget }
+                  : {})),
             };
             
-            setLocalState({
+            // Also clean customGroupSettings if defaultTemplate doesn't have it
+            const cleanedCustomGroupSettings = defaultTemplate.customGroupSettings 
+              ? defaultTemplate.customGroupSettings.map(group => ({ ...group }))
+              : null;
+            
+            const newState = {
               ...geltState,
               ageGroups: mergedAgeGroups,
               budgetConfig: cleanedBudgetConfig,
-            });
+              customGroupSettings: cleanedCustomGroupSettings,
+            };
+            
+            setLocalState(newState);
+            skipNextAutoSaveRef.current = true;
+            lastSavedStateRef.current = JSON.stringify(newState);
+            
+            // If we cleaned customBudget or customGroupSettings, save immediately to DB
+            const needsCleanup = (!defaultHasCustomBudget && geltState.budgetConfig.customBudget) ||
+                                (!defaultTemplate.customGroupSettings && geltState.customGroupSettings);
+            
+            if (needsCleanup) {
+              console.log('[GeltPage] Cleaning up orphaned customBudget/customGroupSettings, saving immediately');
+              updateGelt.mutate(newState, {
+                onSuccess: () => {
+                  lastSavedStateRef.current = JSON.stringify(newState);
+                },
+                onError: (err) => {
+                  console.error('Failed to save cleaned state:', err);
+                },
+              });
+            }
           }
         } else {
           // Groups don't match, use state as-is but clean budgetConfig
+          // If defaultTemplate doesn't have customBudget, we should clean it from geltState too
+          const defaultHasCustomBudget = defaultTemplate.budgetConfig.customBudget !== undefined && 
+                                        defaultTemplate.budgetConfig.customBudget !== null && 
+                                        defaultTemplate.budgetConfig.customBudget > 0;
+          
           const cleanedBudgetConfig: BudgetConfig = {
             participants: geltState.budgetConfig.participants,
             allowedOverflowPercentage: geltState.budgetConfig.allowedOverflowPercentage,
-            ...(geltState.budgetConfig.customBudget !== undefined && 
-                geltState.budgetConfig.customBudget !== null && 
-                geltState.budgetConfig.customBudget > 0
-              ? { customBudget: geltState.budgetConfig.customBudget }
+            // Only include customBudget if defaultTemplate has it, otherwise clean it
+            ...(defaultHasCustomBudget 
+              ? { customBudget: defaultTemplate.budgetConfig.customBudget }
               : {}),
           };
           
-          setLocalState({
+          // Also clean customGroupSettings if defaultTemplate doesn't have it
+          const cleanedCustomGroupSettings = defaultTemplate.customGroupSettings 
+            ? defaultTemplate.customGroupSettings.map(group => ({ ...group }))
+            : null;
+          
+          const newState = {
             ...geltState,
             budgetConfig: cleanedBudgetConfig,
-          });
+            customGroupSettings: cleanedCustomGroupSettings,
+          };
+          
+          setLocalState(newState);
+          skipNextAutoSaveRef.current = true;
+          lastSavedStateRef.current = JSON.stringify(newState);
+          
+          // If we cleaned customBudget or customGroupSettings, save immediately to DB
+          const needsCleanup = (!defaultHasCustomBudget && geltState.budgetConfig.customBudget) ||
+                              (!defaultTemplate.customGroupSettings && geltState.customGroupSettings);
+          
+          if (needsCleanup) {
+            console.log('[GeltPage] Cleaning up orphaned customBudget/customGroupSettings, saving immediately');
+            updateGelt.mutate(newState, {
+              onSuccess: () => {
+                lastSavedStateRef.current = JSON.stringify(newState);
+              },
+              onError: (err) => {
+                console.error('Failed to save cleaned state:', err);
+              },
+            });
+          }
         }
       } else {
         // No default profile, use state from server but clean budgetConfig
@@ -205,6 +283,7 @@ export const GeltPage: React.FC = () => {
           ...geltState,
           budgetConfig: cleanedBudgetConfig,
         });
+        skipNextAutoSaveRef.current = true;
       }
       hasInitializedRef.current = true;
     }
@@ -240,8 +319,30 @@ export const GeltPage: React.FC = () => {
   useEffect(() => {
     if (!localState || isLoading) return;
 
+    // Skip auto-save if this is right after initialization
+    if (skipNextAutoSaveRef.current) {
+      console.log('[GeltPage] Skipping auto-save after initialization');
+      skipNextAutoSaveRef.current = false;
+      // Store the state so we can compare next time
+      lastSavedStateRef.current = JSON.stringify(localState);
+      return;
+    }
+
+    // Check if state actually changed (not just a new reference)
+    const currentStateString = JSON.stringify(localState);
+    if (lastSavedStateRef.current === currentStateString) {
+      console.log('[GeltPage] State unchanged, skipping auto-save');
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
+      console.log('[GeltPage] Auto-saving state. budgetConfig:', JSON.stringify(localState.budgetConfig, null, 2));
+      console.log('[GeltPage] Auto-saving state. customGroupSettings:', localState.customGroupSettings ? 'exists' : 'null');
       updateGelt.mutate(localState, {
+        onSuccess: () => {
+          // Update last saved state after successful save
+          lastSavedStateRef.current = JSON.stringify(localState);
+        },
         onError: (err) => {
           showError(t('gelt.saveError'));
           console.error('Failed to save GELT state:', err);
@@ -250,7 +351,7 @@ export const GeltPage: React.FC = () => {
     }, 1000); // Debounce 1 second
 
     return () => clearTimeout(timeoutId);
-  }, [localState, isLoading, updateGelt, showError, t]);
+  }, [localState, isLoading]);
 
   if (isLoading || isLoadingDefaultTemplate || !localState) {
     return (
@@ -403,8 +504,8 @@ export const GeltPage: React.FC = () => {
             // No default profile, use system defaults
             setLocalState({
               children: [],
-              ageGroups: DEFAULT_AGE_GROUPS,
-              budgetConfig: DEFAULT_BUDGET_CONFIG,
+              ageGroups: DEFAULT_AGE_GROUPS.map(group => ({ ...group })),
+              budgetConfig: { ...DEFAULT_BUDGET_CONFIG },
               calculation: {
                 totalRequired: 0,
                 amountPerParticipant: 0,
@@ -483,9 +584,15 @@ export const GeltPage: React.FC = () => {
     };
 
     setLocalState(newState);
+    skipNextAutoSaveRef.current = true; // Skip auto-save since we're saving immediately
+    lastSavedStateRef.current = JSON.stringify(newState); // Update last saved state
     
     // Save to server immediately to override any old state
     updateGelt.mutate(newState, {
+      onSuccess: () => {
+        // Ensure last saved state is updated after successful save
+        lastSavedStateRef.current = JSON.stringify(newState);
+      },
       onError: (err) => {
         console.error('Failed to save state after loading profile:', err);
       },
@@ -712,8 +819,8 @@ export const GeltPage: React.FC = () => {
           if (wasDefault) {
             setLocalState({
               children: localState?.children || [],
-              ageGroups: DEFAULT_AGE_GROUPS,
-              budgetConfig: DEFAULT_BUDGET_CONFIG,
+              ageGroups: DEFAULT_AGE_GROUPS.map(group => ({ ...group })),
+              budgetConfig: { ...DEFAULT_BUDGET_CONFIG },
               calculation: {
                 totalRequired: 0,
                 amountPerParticipant: 0,
