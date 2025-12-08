@@ -2,12 +2,13 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
   serverTimestamp,
   Timestamp,
-  FieldValue
+  FieldValue,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { GeltState, BudgetCalculation } from '../types/gelt';
+import { GeltState, BudgetCalculation, BudgetConfig } from '../types/gelt';
 import { DEFAULT_AGE_GROUPS, DEFAULT_BUDGET_CONFIG } from '../utils/geltConstants';
 import { retryFirestoreOperation } from './firestore.retry';
 
@@ -32,6 +33,7 @@ interface GeltStateDocument {
   budgetConfig: {
     participants: number;
     allowedOverflowPercentage: number;
+    customBudget: number | null; // Always present - null if not set, number if set
   };
   customGroupSettings: Array<{
     id: string;
@@ -68,10 +70,23 @@ export const geltService = {
         groupTotals: {},
       };
 
+      // Clean budgetConfig - remove customBudget if it's not valid
+      const budgetConfig = data.budgetConfig || DEFAULT_BUDGET_CONFIG;
+      const cleanedBudgetConfig: BudgetConfig = {
+        participants: budgetConfig.participants,
+        allowedOverflowPercentage: budgetConfig.allowedOverflowPercentage,
+        // Only include customBudget if it exists, is not null, and is greater than 0
+        ...(budgetConfig.customBudget !== undefined && 
+            budgetConfig.customBudget !== null && 
+            budgetConfig.customBudget > 0
+          ? { customBudget: budgetConfig.customBudget }
+          : {}),
+      };
+
       return {
         children: data.children || [],
         ageGroups: data.ageGroups || DEFAULT_AGE_GROUPS,
-        budgetConfig: data.budgetConfig || DEFAULT_BUDGET_CONFIG,
+        budgetConfig: cleanedBudgetConfig,
         calculation,
         customGroupSettings: data.customGroupSettings || null,
         includedChildren: data.includedChildren || [],
@@ -88,11 +103,17 @@ export const geltService = {
       const docRef = doc(db, 'gelt_states', tenantId);
       const docSnap = await getDoc(docRef);
 
-      // Prepare budgetConfig without undefined customBudget
-      const budgetConfigToSave = {
+      // Prepare budgetConfig - always include customBudget (null if not set)
+      // This ensures that when we reload, we know explicitly that customBudget is not set
+      const hasCustomBudget = state.budgetConfig.customBudget !== undefined && 
+                              state.budgetConfig.customBudget !== null && 
+                              state.budgetConfig.customBudget > 0;
+      
+      const budgetConfigToSave: { participants: number; allowedOverflowPercentage: number; customBudget: number | null } = {
         participants: state.budgetConfig.participants,
         allowedOverflowPercentage: state.budgetConfig.allowedOverflowPercentage,
-        ...(state.budgetConfig.customBudget !== undefined && { customBudget: state.budgetConfig.customBudget }),
+        // Always include customBudget - null if not set, value if set
+        customBudget: hasCustomBudget ? (state.budgetConfig.customBudget ?? null) : null,
       };
 
       const stateData: Partial<GeltStateDocument> = {
@@ -114,8 +135,18 @@ export const geltService = {
           created_by: userId,
         } as GeltStateDocument);
       } else {
-        // Update existing document
-        await setDoc(docRef, stateData as GeltStateDocument, { merge: true });
+        // Update existing document - simple update with explicit null for customBudget
+        const updateData: any = {
+          children: state.children,
+          ageGroups: state.ageGroups,
+          budgetConfig: budgetConfigToSave,
+          customGroupSettings: state.customGroupSettings,
+          includedChildren: state.includedChildren,
+          updated_at: serverTimestamp(),
+          updated_by: userId,
+        };
+        
+        await updateDoc(docRef, updateData);
       }
     });
   },
@@ -128,7 +159,11 @@ export const geltService = {
         tenant_id: tenantId,
         children: [],
         ageGroups: DEFAULT_AGE_GROUPS,
-        budgetConfig: DEFAULT_BUDGET_CONFIG,
+        budgetConfig: {
+          participants: DEFAULT_BUDGET_CONFIG.participants,
+          allowedOverflowPercentage: DEFAULT_BUDGET_CONFIG.allowedOverflowPercentage,
+          customBudget: null, // Explicitly set to null
+        },
         customGroupSettings: null,
         includedChildren: [],
         created_at: serverTimestamp(),

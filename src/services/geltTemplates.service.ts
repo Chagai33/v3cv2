@@ -32,7 +32,7 @@ interface GeltTemplateDocument {
   budgetConfig: {
     participants: number;
     allowedOverflowPercentage: number;
-    customBudget?: number;
+    customBudget: number | null; // Always present - null if not set, number if set
   };
   customGroupSettings: Array<{
     id: string;
@@ -50,7 +50,7 @@ interface GeltTemplateDocument {
 }
 
 export const geltTemplatesService = {
-  // קבלת כל התבניות של tenant
+  // קבלת כל פרופילי התקציב של tenant
   async getTemplates(tenantId: string): Promise<GeltTemplate[]> {
     return retryFirestoreOperation(async () => {
       const templatesRef = collection(db, 'gelt_templates');
@@ -68,13 +68,26 @@ export const geltTemplatesService = {
 
       return querySnapshot.docs.map((docSnap) => {
         const data = docSnap.data() as GeltTemplateDocument;
+        
+        // Clean budgetConfig - remove customBudget if it's not valid
+        const budgetConfig = data.budgetConfig || {};
+        const cleanedBudgetConfig = {
+          participants: budgetConfig.participants,
+          allowedOverflowPercentage: budgetConfig.allowedOverflowPercentage,
+          ...(budgetConfig.customBudget !== undefined && 
+              budgetConfig.customBudget !== null && 
+              budgetConfig.customBudget > 0
+            ? { customBudget: budgetConfig.customBudget }
+            : {}),
+        };
+        
         return {
           id: docSnap.id,
           tenant_id: data.tenant_id,
           name: data.name,
           description: data.description,
           ageGroups: data.ageGroups || [],
-          budgetConfig: data.budgetConfig,
+          budgetConfig: cleanedBudgetConfig,
           customGroupSettings: data.customGroupSettings || null,
           created_at: data.created_at instanceof Timestamp
             ? data.created_at.toDate().toISOString()
@@ -90,7 +103,7 @@ export const geltTemplatesService = {
     });
   },
 
-  // קבלת תבנית ספציפית
+  // קבלת פרופיל תקציב ספציפי
   async getTemplate(templateId: string): Promise<GeltTemplate | null> {
     return retryFirestoreOperation(async () => {
       const docRef = doc(db, 'gelt_templates', templateId);
@@ -101,13 +114,26 @@ export const geltTemplatesService = {
       }
 
       const data = docSnap.data() as GeltTemplateDocument;
+      
+      // Clean budgetConfig - remove customBudget if it's not valid
+      const budgetConfig = data.budgetConfig || {};
+      const cleanedBudgetConfig = {
+        participants: budgetConfig.participants,
+        allowedOverflowPercentage: budgetConfig.allowedOverflowPercentage,
+        ...(budgetConfig.customBudget !== undefined && 
+            budgetConfig.customBudget !== null && 
+            budgetConfig.customBudget > 0
+          ? { customBudget: budgetConfig.customBudget }
+          : {}),
+      };
+      
       return {
         id: docSnap.id,
         tenant_id: data.tenant_id,
         name: data.name,
         description: data.description,
         ageGroups: data.ageGroups || [],
-        budgetConfig: data.budgetConfig,
+        budgetConfig: cleanedBudgetConfig,
         customGroupSettings: data.customGroupSettings || null,
         created_at: data.created_at instanceof Timestamp
           ? data.created_at.toDate().toISOString()
@@ -122,7 +148,7 @@ export const geltTemplatesService = {
     });
   },
 
-  // שמירת תבנית חדשה
+  // שמירת פרופיל תקציב חדש
   async saveTemplate(
     tenantId: string,
     template: Omit<GeltTemplate, 'id' | 'tenant_id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by'>,
@@ -132,6 +158,17 @@ export const geltTemplatesService = {
       const templatesRef = collection(db, 'gelt_templates');
       const docRef = doc(templatesRef);
 
+      // Prepare budgetConfig - always include customBudget (null if not set)
+      const hasCustomBudget = template.budgetConfig.customBudget !== undefined && 
+                              template.budgetConfig.customBudget !== null && 
+                              template.budgetConfig.customBudget > 0;
+      const budgetConfigToSave: { participants: number; allowedOverflowPercentage: number; customBudget: number | null } = {
+        participants: template.budgetConfig.participants,
+        allowedOverflowPercentage: template.budgetConfig.allowedOverflowPercentage,
+        // Always include customBudget - null if not set, value if set
+        customBudget: hasCustomBudget ? (template.budgetConfig.customBudget ?? null) : null,
+      };
+
       const templateData: GeltTemplateDocument = {
         tenant_id: tenantId,
         name: template.name,
@@ -139,8 +176,10 @@ export const geltTemplatesService = {
           ? { description: template.description.trim() } 
           : {}),
         ageGroups: template.ageGroups,
-        budgetConfig: template.budgetConfig,
-        customGroupSettings: template.customGroupSettings,
+        budgetConfig: budgetConfigToSave,
+        customGroupSettings: (template.customGroupSettings !== undefined && template.customGroupSettings !== null) 
+          ? template.customGroupSettings 
+          : null,
         created_at: serverTimestamp(),
         updated_at: serverTimestamp(),
         created_by: userId,
@@ -150,7 +189,7 @@ export const geltTemplatesService = {
 
       await setDoc(docRef, templateData);
 
-      // אם זו תבנית ברירת מחדל, נסיר את הסימון מתבניות אחרות
+      // אם זה פרופיל ברירת מחדל, נסיר את הסימון מפרופילים אחרים
       if (template.is_default) {
         await this.unsetOtherDefaults(tenantId, docRef.id);
       }
@@ -159,7 +198,7 @@ export const geltTemplatesService = {
     });
   },
 
-  // עדכון תבנית קיימת
+  // עדכון פרופיל תקציב קיים
   async updateTemplate(
     templateId: string,
     template: Partial<Omit<GeltTemplate, 'id' | 'tenant_id' | 'created_at' | 'created_by'>>,
@@ -188,20 +227,37 @@ export const geltTemplatesService = {
         // אם רוצים למחוק אותו, צריך להשתמש ב-deleteField() - אבל זה לא נדרש כרגע
       }
       if (template.ageGroups !== undefined) updateData.ageGroups = template.ageGroups;
-      if (template.budgetConfig !== undefined) updateData.budgetConfig = template.budgetConfig;
-      if (template.customGroupSettings !== undefined) updateData.customGroupSettings = template.customGroupSettings;
+      if (template.budgetConfig !== undefined) {
+        // Prepare budgetConfig - always include customBudget (null if not set)
+        const hasCustomBudget = template.budgetConfig.customBudget !== undefined && 
+                                template.budgetConfig.customBudget !== null && 
+                                template.budgetConfig.customBudget > 0;
+        const budgetConfigToSave: { participants: number; allowedOverflowPercentage: number; customBudget: number | null } = {
+          participants: template.budgetConfig.participants,
+          allowedOverflowPercentage: template.budgetConfig.allowedOverflowPercentage,
+          // Always include customBudget - null if not set, value if set
+          customBudget: hasCustomBudget ? (template.budgetConfig.customBudget ?? null) : null,
+        };
+        updateData.budgetConfig = budgetConfigToSave;
+      }
+      if (template.customGroupSettings !== undefined) {
+        // אם customGroupSettings הוא null, לא נכלול אותו (Firestore לא מאפשר null עבור מערכים)
+        if (template.customGroupSettings !== null) {
+          updateData.customGroupSettings = template.customGroupSettings;
+        }
+      }
       if (template.is_default !== undefined) updateData.is_default = template.is_default;
 
       await setDoc(docRef, updateData, { merge: true });
 
-      // אם זו תבנית ברירת מחדל, נסיר את הסימון מתבניות אחרות
+      // אם זה פרופיל ברירת מחדל, נסיר את הסימון מפרופילים אחרים
       if (template.is_default) {
         await this.unsetOtherDefaults((docSnap.data() as GeltTemplateDocument).tenant_id, templateId);
       }
     });
   },
 
-  // מחיקת תבנית
+  // מחיקת פרופיל תקציב
   async deleteTemplate(templateId: string): Promise<void> {
     return retryFirestoreOperation(async () => {
       const docRef = doc(db, 'gelt_templates', templateId);
@@ -235,7 +291,7 @@ export const geltTemplatesService = {
     });
   },
 
-  // קבלת תבנית ברירת מחדל
+  // קבלת פרופיל תקציב ברירת מחדל
   async getDefaultTemplate(tenantId: string): Promise<GeltTemplate | null> {
     return retryFirestoreOperation(async () => {
       const templatesRef = collection(db, 'gelt_templates');
@@ -252,13 +308,26 @@ export const geltTemplatesService = {
 
       const docSnap = querySnapshot.docs[0];
       const data = docSnap.data() as GeltTemplateDocument;
+      
+      // Clean budgetConfig - remove customBudget if it's not valid
+      const budgetConfig = data.budgetConfig || {};
+      const cleanedBudgetConfig = {
+        participants: budgetConfig.participants,
+        allowedOverflowPercentage: budgetConfig.allowedOverflowPercentage,
+        ...(budgetConfig.customBudget !== undefined && 
+            budgetConfig.customBudget !== null && 
+            budgetConfig.customBudget > 0
+          ? { customBudget: budgetConfig.customBudget }
+          : {}),
+      };
+      
       return {
         id: docSnap.id,
         tenant_id: data.tenant_id,
         name: data.name,
         description: data.description,
         ageGroups: data.ageGroups || [],
-        budgetConfig: data.budgetConfig,
+        budgetConfig: cleanedBudgetConfig,
         customGroupSettings: data.customGroupSettings || null,
         created_at: data.created_at instanceof Timestamp
           ? data.created_at.toDate().toISOString()

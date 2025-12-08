@@ -61,11 +61,11 @@ export interface ExportData {
   }[];
 }
 
-// תבנית של קבוצות גיל והגדרות תקציב
+// פרופיל תקציב - קבוצות גיל והגדרות תקציב
 export interface GeltTemplate {
   id: string;
   tenant_id: string;
-  name: string;                    // שם התבנית
+  name: string;                    // שם הפרופיל
   description?: string;             // תיאור (אופציונלי)
   ageGroups: AgeGroup[];           // קבוצות הגיל
   budgetConfig: BudgetConfig;      // הגדרות תקציב
@@ -74,5 +74,5 @@ export interface GeltTemplate {
   updated_at: string;
   created_by: string;
   updated_by: string;
-  is_default?: boolean;            // האם זו התבנית הברירת מחדל
+  is_default?: boolean;            // האם זה הפרופיל ברירת המחדל
 }

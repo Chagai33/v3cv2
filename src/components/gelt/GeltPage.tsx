@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Layout } from '../layout/Layout';
 import { useGelt, useUpdateGelt, useResetGelt } from '../../hooks/useGelt';
-import { useSaveGeltTemplate, useDefaultGeltTemplate } from '../../hooks/useGeltTemplates';
+import { useSaveGeltTemplate, useDefaultGeltTemplate, useGeltTemplates } from '../../hooks/useGeltTemplates';
 import { GeltTemplate } from '../../types/gelt';
 import { useBirthdays } from '../../hooks/useBirthdays';
 import { GeltChildrenList } from './GeltChildrenList';
@@ -36,6 +36,7 @@ export const GeltPage: React.FC = () => {
   const { data: birthdays = [] } = useBirthdays();
   const { success, error: showError } = useToast();
   const { data: defaultTemplate, isLoading: isLoadingDefaultTemplate } = useDefaultGeltTemplate();
+  const { data: existingTemplates = [] } = useGeltTemplates();
 
   const [localState, setLocalState] = useState<GeltState | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -101,7 +102,7 @@ export const GeltPage: React.FC = () => {
     return true;
   };
 
-  // Initialize local state from server state or default template (only on first load)
+  // Initialize local state from server state or default profile (only on first load)
   useEffect(() => {
     if (isLoading || isLoadingDefaultTemplate) return;
     
@@ -109,8 +110,8 @@ export const GeltPage: React.FC = () => {
     if (hasInitializedRef.current) return;
     
     if (geltState) {
-      // Always apply default template's isIncluded values if template exists
-      // This ensures that default template settings are always respected
+      // Always apply default profile's isIncluded values if profile exists
+      // This ensures that default profile settings are always respected
       if (defaultTemplate) {
         const defaultGroupIds = new Set(defaultTemplate.ageGroups.map(g => g.id));
         const stateGroupIds = new Set(geltState.ageGroups.map(g => g.id));
@@ -118,8 +119,8 @@ export const GeltPage: React.FC = () => {
                            Array.from(defaultGroupIds).every(id => stateGroupIds.has(id));
         
         if (groupsMatch) {
-          // Always merge isIncluded values from default template
-          // This ensures default template's isIncluded settings override server state
+          // Always merge isIncluded values from default profile
+          // This ensures default profile's isIncluded settings override server state
           const mergedAgeGroups = geltState.ageGroups.map(stateGroup => {
             const defaultGroup = defaultTemplate.ageGroups.find(g => g.id === stateGroup.id);
             if (defaultGroup) {
@@ -131,30 +132,79 @@ export const GeltPage: React.FC = () => {
             return stateGroup;
           });
           
-          // If state is empty, load full default template
+          // If state is empty, load full default profile
           if (isStateEmpty(geltState)) {
+            // Prepare budgetConfig from default template - clean customBudget if not needed
+            const defaultBudgetConfig: BudgetConfig = {
+              participants: defaultTemplate.budgetConfig.participants,
+              allowedOverflowPercentage: defaultTemplate.budgetConfig.allowedOverflowPercentage,
+              ...(defaultTemplate.budgetConfig.customBudget !== undefined && 
+                  defaultTemplate.budgetConfig.customBudget !== null && 
+                  defaultTemplate.budgetConfig.customBudget > 0
+                ? { customBudget: defaultTemplate.budgetConfig.customBudget }
+                : {}),
+            };
+            
             setLocalState({
               ...geltState,
               ageGroups: mergedAgeGroups,
-              budgetConfig: { ...defaultTemplate.budgetConfig },
+              budgetConfig: defaultBudgetConfig,
               customGroupSettings: defaultTemplate.customGroupSettings 
                 ? defaultTemplate.customGroupSettings.map(group => ({ ...group }))
                 : null,
             });
           } else {
-            // State is not empty, but still apply default template's isIncluded values
+            // State is not empty, but still apply default profile's isIncluded values
+            // Also clean budgetConfig from any invalid customBudget
+            const cleanedBudgetConfig: BudgetConfig = {
+              participants: geltState.budgetConfig.participants,
+              allowedOverflowPercentage: geltState.budgetConfig.allowedOverflowPercentage,
+              ...(geltState.budgetConfig.customBudget !== undefined && 
+                  geltState.budgetConfig.customBudget !== null && 
+                  geltState.budgetConfig.customBudget > 0
+                ? { customBudget: geltState.budgetConfig.customBudget }
+                : {}),
+            };
+            
             setLocalState({
               ...geltState,
               ageGroups: mergedAgeGroups,
+              budgetConfig: cleanedBudgetConfig,
             });
           }
         } else {
-          // Groups don't match, use state as-is
-          setLocalState(geltState);
+          // Groups don't match, use state as-is but clean budgetConfig
+          const cleanedBudgetConfig: BudgetConfig = {
+            participants: geltState.budgetConfig.participants,
+            allowedOverflowPercentage: geltState.budgetConfig.allowedOverflowPercentage,
+            ...(geltState.budgetConfig.customBudget !== undefined && 
+                geltState.budgetConfig.customBudget !== null && 
+                geltState.budgetConfig.customBudget > 0
+              ? { customBudget: geltState.budgetConfig.customBudget }
+              : {}),
+          };
+          
+          setLocalState({
+            ...geltState,
+            budgetConfig: cleanedBudgetConfig,
+          });
         }
       } else {
-        // No default template, use state from server
-        setLocalState(geltState);
+        // No default profile, use state from server but clean budgetConfig
+        const cleanedBudgetConfig: BudgetConfig = {
+          participants: geltState.budgetConfig.participants,
+          allowedOverflowPercentage: geltState.budgetConfig.allowedOverflowPercentage,
+          ...(geltState.budgetConfig.customBudget !== undefined && 
+              geltState.budgetConfig.customBudget !== null && 
+              geltState.budgetConfig.customBudget > 0
+            ? { customBudget: geltState.budgetConfig.customBudget }
+            : {}),
+        };
+        
+        setLocalState({
+          ...geltState,
+          budgetConfig: cleanedBudgetConfig,
+        });
       }
       hasInitializedRef.current = true;
     }
@@ -321,12 +371,23 @@ export const GeltPage: React.FC = () => {
     if (window.confirm(t('gelt.confirmReset'))) {
       resetGelt.mutate(undefined, {
         onSuccess: () => {
-          // Load default template if exists, otherwise use system defaults
+          // Load default profile if exists, otherwise use system defaults
           if (defaultTemplate) {
+            // Prepare budgetConfig from default template - clean customBudget if not needed
+            const defaultBudgetConfig: BudgetConfig = {
+              participants: defaultTemplate.budgetConfig.participants,
+              allowedOverflowPercentage: defaultTemplate.budgetConfig.allowedOverflowPercentage,
+              ...(defaultTemplate.budgetConfig.customBudget !== undefined && 
+                  defaultTemplate.budgetConfig.customBudget !== null && 
+                  defaultTemplate.budgetConfig.customBudget > 0
+                ? { customBudget: defaultTemplate.budgetConfig.customBudget }
+                : {}),
+            };
+            
             setLocalState({
               children: [],
               ageGroups: defaultTemplate.ageGroups.map(group => ({ ...group })),
-              budgetConfig: { ...defaultTemplate.budgetConfig },
+              budgetConfig: defaultBudgetConfig,
               calculation: {
                 totalRequired: 0,
                 amountPerParticipant: 0,
@@ -339,7 +400,7 @@ export const GeltPage: React.FC = () => {
               includedChildren: [],
             });
           } else {
-            // No default template, use system defaults
+            // No default profile, use system defaults
             setLocalState({
               children: [],
               ageGroups: DEFAULT_AGE_GROUPS,
@@ -393,20 +454,44 @@ export const GeltPage: React.FC = () => {
   }) => {
     try {
       await saveTemplate.mutateAsync(template);
-      success(t('gelt.templateSaved'));
+      success(t('gelt.profileSaved'));
     } catch {
-      showError(t('gelt.templateSaveError'));
+      showError(t('gelt.profileSaveError'));
     }
   };
 
   const handleLoadTemplate = (template: GeltTemplate) => {
-    setLocalState({
-      ...localState!,
-      ageGroups: template.ageGroups,
-      budgetConfig: template.budgetConfig,
-      customGroupSettings: template.customGroupSettings,
+    // Prepare budgetConfig - only include customBudget if it exists in the template
+    const budgetConfigToLoad: BudgetConfig = {
+      participants: template.budgetConfig.participants,
+      allowedOverflowPercentage: template.budgetConfig.allowedOverflowPercentage,
+      ...(template.budgetConfig.customBudget !== undefined && template.budgetConfig.customBudget !== null && template.budgetConfig.customBudget > 0
+        ? { customBudget: template.budgetConfig.customBudget }
+        : {}),
+    };
+
+    // Create new state explicitly - don't use spread to avoid including old customBudget
+    const newState: GeltState = {
+      children: localState!.children,
+      ageGroups: template.ageGroups.map(group => ({ ...group })),
+      budgetConfig: budgetConfigToLoad, // This explicitly excludes customBudget if not in template
+      calculation: localState!.calculation,
+      customGroupSettings: template.customGroupSettings 
+        ? template.customGroupSettings.map(group => ({ ...group }))
+        : null,
+      includedChildren: localState!.includedChildren,
+    };
+
+    setLocalState(newState);
+    
+    // Save to server immediately to override any old state
+    updateGelt.mutate(newState, {
+      onError: (err) => {
+        console.error('Failed to save state after loading profile:', err);
+      },
     });
-    success(t('gelt.templateLoaded', { name: template.name }));
+    
+    success(t('gelt.profileLoaded', { name: template.name }));
   };
 
   return (
@@ -426,17 +511,17 @@ export const GeltPage: React.FC = () => {
             </div>
             {defaultTemplate && (
               <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm bg-blue-50 px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-blue-200 shadow-sm">
-                <span className="font-medium text-gray-700 hidden sm:inline">{t('gelt.currentTemplate')}:</span>
+                <span className="font-medium text-gray-700 hidden sm:inline">{t('gelt.currentProfile')}:</span>
                 <span className="text-blue-700 font-semibold text-xs sm:text-sm truncate max-w-[200px] sm:max-w-none">
                   {defaultTemplate.is_default 
-                    ? t('gelt.userDefaultTemplate', { name: defaultTemplate.name })
+                    ? t('gelt.userDefaultProfile', { name: defaultTemplate.name })
                     : t('gelt.systemDefault')}
                 </span>
               </div>
             )}
             {!defaultTemplate && (
               <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm bg-gray-50 px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-gray-200 shadow-sm">
-                <span className="font-medium text-gray-700 hidden sm:inline">{t('gelt.currentTemplate')}:</span>
+                <span className="font-medium text-gray-700 hidden sm:inline">{t('gelt.currentProfile')}:</span>
                 <span className="text-gray-600 text-xs sm:text-sm">{t('gelt.systemDefault')}</span>
               </div>
             )}
@@ -488,14 +573,14 @@ export const GeltPage: React.FC = () => {
             onClick={() => setShowLoadTemplateModal(true)}
             icon={<FolderOpen className="w-4 h-4" />}
           >
-            {t('gelt.loadTemplate')}
+            {t('gelt.loadProfile')}
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowSaveTemplateModal(true)}
             icon={<Save className="w-4 h-4" />}
           >
-            {t('gelt.saveTemplate')}
+            {t('gelt.saveProfile')}
           </Button>
           <Button
             variant="outline"
@@ -605,7 +690,7 @@ export const GeltPage: React.FC = () => {
         onUpdate={handleUpdateBudgetConfig}
       />
 
-      {/* Save Template Modal */}
+      {/* Save Profile Modal */}
       <GeltTemplateModal
         isOpen={showSaveTemplateModal}
         onClose={() => setShowSaveTemplateModal(false)}
@@ -613,16 +698,17 @@ export const GeltPage: React.FC = () => {
         currentAgeGroups={localState.ageGroups}
         currentBudgetConfig={localState.budgetConfig}
         currentCustomGroupSettings={localState.customGroupSettings}
+        existingTemplates={existingTemplates}
         isLoading={saveTemplate.isPending}
       />
 
-      {/* Load Template Modal */}
+      {/* Load Profile Modal */}
       <GeltLoadTemplateModal
         isOpen={showLoadTemplateModal}
         onClose={() => setShowLoadTemplateModal(false)}
         onLoad={handleLoadTemplate}
         onTemplateDeleted={(wasDefault) => {
-          // If default template was deleted, reset to system defaults
+          // If default profile was deleted, reset to system defaults
           if (wasDefault) {
             setLocalState({
               children: localState?.children || [],
@@ -645,20 +731,22 @@ export const GeltPage: React.FC = () => {
       {showHowItWorksModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowHowItWorksModal(false)}>
           <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full animate-slide-in relative max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-slide-in"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              onClick={() => setShowHowItWorksModal(false)}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors z-10"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-bold text-gray-900">{t('gelt.howItWorksTitle')}</h2>
+              <button
+                onClick={() => setShowHowItWorksModal(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-            <div className="p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">{t('gelt.howItWorksTitle')}</h2>
-              <div className="prose prose-sm max-w-none">
-                <p className="text-gray-700 whitespace-pre-line leading-relaxed">
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-4">
+                <p className="text-gray-700 whitespace-pre-line leading-relaxed text-sm">
                   {t('gelt.howItWorksContent')}
                 </p>
               </div>

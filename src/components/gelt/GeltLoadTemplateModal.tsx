@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GeltTemplate } from '../../types/gelt';
+import { GeltTemplate, AgeGroup, BudgetConfig } from '../../types/gelt';
 import { Button } from '../common/Button';
 import { useGeltTemplates, useDeleteGeltTemplate, useUpdateGeltTemplate } from '../../hooks/useGeltTemplates';
 import { useTenant } from '../../contexts/TenantContext';
-import { X, Loader2, Trash2, Star, StarOff } from 'lucide-react';
+import { X, Loader2, Trash2, Star, StarOff, RotateCcw } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
+import { DEFAULT_AGE_GROUPS, DEFAULT_BUDGET_CONFIG } from '../../utils/geltConstants';
 
 interface GeltLoadTemplateModalProps {
   isOpen: boolean;
@@ -50,27 +51,47 @@ export const GeltLoadTemplateModal: React.FC<GeltLoadTemplateModalProps> = ({
     onClose();
   };
 
+  const handleLoadSystemDefault = () => {
+    // Create a system default profile object
+    const systemDefault: GeltTemplate = {
+      id: 'system-default',
+      tenant_id: currentTenant?.id || '',
+      name: t('gelt.systemDefaultProfile'),
+      description: t('gelt.systemDefaultProfileDescription'),
+      ageGroups: DEFAULT_AGE_GROUPS.map(group => ({ ...group })),
+      budgetConfig: { ...DEFAULT_BUDGET_CONFIG },
+      customGroupSettings: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      created_by: '',
+      updated_by: '',
+      is_default: false,
+    };
+    onLoad(systemDefault);
+    onClose();
+  };
+
   const handleDelete = async (templateId: string, templateName: string) => {
-    if (!window.confirm(t('gelt.confirmDeleteTemplate', { name: templateName }))) {
+    if (!window.confirm(t('gelt.confirmDeleteProfile', { name: templateName }))) {
       return;
     }
 
-    // Check if this is the default template before deleting
+    // Check if this is the default profile before deleting
     const template = templates.find(t => t.id === templateId);
     const wasDefault = template?.is_default || false;
 
     setDeletingId(templateId);
     try {
       await deleteTemplate.mutateAsync(templateId);
-      success(t('gelt.templateDeleted'));
+      success(t('gelt.profileDeleted'));
       
-      // Notify parent if default template was deleted
+      // Notify parent if default profile was deleted
       if (wasDefault && onTemplateDeleted) {
         onTemplateDeleted(true);
       }
     } catch (err) {
-      showError(t('gelt.templateDeleteError'));
-      console.error('Failed to delete template:', err);
+      showError(t('gelt.profileDeleteError'));
+      console.error('Failed to delete profile:', err);
     } finally {
       setDeletingId(null);
     }
@@ -86,12 +107,12 @@ export const GeltLoadTemplateModal: React.FC<GeltLoadTemplateModalProps> = ({
       });
       success(
         template.is_default
-          ? t('gelt.templateUnsetAsDefault')
-          : t('gelt.templateSetAsDefault')
+          ? t('gelt.profileUnsetAsDefault')
+          : t('gelt.profileSetAsDefault')
       );
     } catch (err) {
-      showError(t('gelt.templateUpdateError'));
-      console.error('Failed to update template:', err);
+      showError(t('gelt.profileUpdateError'));
+      console.error('Failed to update profile:', err);
     }
   };
 
@@ -102,7 +123,7 @@ export const GeltLoadTemplateModal: React.FC<GeltLoadTemplateModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-900">{t('gelt.loadTemplate')}</h2>
+          <h2 className="text-xl font-bold text-gray-900">{t('gelt.loadProfile')}</h2>
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
@@ -112,25 +133,56 @@ export const GeltLoadTemplateModal: React.FC<GeltLoadTemplateModalProps> = ({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          {isError ? (
-            <div className="text-center py-12 text-red-500">
-              <p className="font-semibold mb-2">{t('gelt.templateLoadError')}</p>
-              <p className="text-sm">{error?.message || 'Unknown error'}</p>
-              <p className="text-xs mt-2 text-gray-500">
-                {t('gelt.checkConsoleForDetails')}
-              </p>
+          <div className="space-y-3">
+            {/* System Default Option - Always visible */}
+            <div
+              className="flex items-center justify-between p-4 border-2 border-blue-200 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
+            >
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <RotateCcw className="w-4 h-4 text-blue-600" />
+                  <h3 className="font-medium text-gray-900">{t('gelt.systemDefaultProfile')}</h3>
+                  <span className="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded">
+                    {t('gelt.systemDefault')}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">{t('gelt.systemDefaultProfileDescription')}</p>
+                <div className="text-xs text-gray-500">
+                  <span>
+                    {t('gelt.profileAgeGroups', { count: DEFAULT_AGE_GROUPS.length })}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleLoadSystemDefault}
+                >
+                  {t('gelt.load')}
+                </Button>
+              </div>
             </div>
-          ) : isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            </div>
-          ) : templates.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <p>{t('gelt.noTemplates')}</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {templates.map((template) => (
+
+            {/* User Profiles */}
+            {isError ? (
+              <div className="text-center py-8 text-red-500 border border-red-200 rounded-lg bg-red-50 p-4">
+                <p className="font-semibold mb-2">{t('gelt.profileLoadError')}</p>
+                <p className="text-sm">{error?.message || 'Unknown error'}</p>
+                <p className="text-xs mt-2 text-gray-500">
+                  {t('gelt.checkConsoleForDetails')}
+                </p>
+              </div>
+            ) : isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm border border-gray-200 rounded-lg bg-gray-50 p-4">
+                <p>{t('gelt.noProfiles')}</p>
+              </div>
+            ) : (
+              templates.map((template) => (
                 <div
                   key={template.id}
                   className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
@@ -140,7 +192,7 @@ export const GeltLoadTemplateModal: React.FC<GeltLoadTemplateModalProps> = ({
                       <h3 className="font-medium text-gray-900">{template.name}</h3>
                       {template.is_default && (
                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                          {t('gelt.defaultTemplate')}
+                          {t('gelt.defaultProfile')}
                         </span>
                       )}
                     </div>
@@ -149,7 +201,7 @@ export const GeltLoadTemplateModal: React.FC<GeltLoadTemplateModalProps> = ({
                     )}
                     <div className="text-xs text-gray-500">
                       <span>
-                        {t('gelt.templateAgeGroups', { count: template.ageGroups.length })}
+                        {t('gelt.profileAgeGroups', { count: template.ageGroups.length })}
                       </span>
                       {template.budgetConfig.customBudget && (
                         <span className="ml-3">
@@ -185,7 +237,7 @@ export const GeltLoadTemplateModal: React.FC<GeltLoadTemplateModalProps> = ({
                       onClick={() => handleDelete(template.id, template.name)}
                       className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={deletingId === template.id}
-                      title={t('gelt.deleteTemplate')}
+                      title={t('gelt.deleteProfile')}
                     >
                       {deletingId === template.id ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -195,9 +247,9 @@ export const GeltLoadTemplateModal: React.FC<GeltLoadTemplateModalProps> = ({
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-3 p-6 border-t bg-gray-50">
