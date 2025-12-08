@@ -68,11 +68,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           ${className}
         `}
         disabled={isLoading || disabled}
+        dir="auto"
         {...props}
       >
         {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
         {!isLoading && icon && <span className="flex-shrink-0">{icon}</span>}
-        {children}
+        <span className="whitespace-nowrap">{children}</span>
       </Component>
     );
   }

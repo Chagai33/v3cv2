@@ -69,51 +69,118 @@ function formatWishlist(wishlistItems: WishlistItem[], language: string): string
     .join('; ');
 }
 
+function translateGender(gender: string | null | undefined, language: string): string {
+  if (!gender) return '';
+  if (language === 'he') {
+    const genderMap: { [key: string]: string } = {
+      'male': 'זכר',
+      'female': 'נקבה',
+      'other': 'אחר'
+    };
+    return genderMap[gender.toLowerCase()] || gender;
+  } else {
+    return gender.charAt(0).toUpperCase() + gender.slice(1);
+  }
+}
+
+export interface CSVHeaders {
+  recordId: string;
+  firstName: string;
+  lastName: string;
+  birthDateGregorian: string;
+  afterSunset: string;
+  gender: string;
+  currentAge: string;
+  ageAtNextBirthday: string;
+  gregorianZodiacSign: string;
+  hebrewDate: string;
+  hebrewZodiacSign: string;
+  hebrewYear: string;
+  nextHebrewBirthday: string;
+  nextGregorianBirthday: string;
+  groupName: string;
+  groupId: string;
+  notes: string;
+  calendarPreferenceGroup: string;
+  calendarPreferenceRecord: string;
+  wishlist: string;
+}
+
 export async function exportBirthdaysToCSV(
   birthdays: Birthday[], 
   groups: Group[],
   tenantId: string,
   filename: string = 'birthdays.csv', 
-  language: string = 'en'
+  language: string = 'en',
+  headers?: CSVHeaders
 ) {
-  const headers = language === 'he' ? [
-    'מזהה רשומה',
-    'שם פרטי',
-    'שם משפחה',
-    'תאריך לידה לועזי',
-    'אחרי שקיעה',
-    'מגדר',
-    'מזל לועזי',
-    'תאריך לידה עברי',
-    'מזל עברי',
-    'שנה עברית',
-    'יום הולדת עברי הבא',
-    'יום הולדת לועזי הבא',
-    'שם קבוצה',
-    'מזהה קבוצה',
-    'הערות',
-    'העדפת לוח שנה - קבוצה',
-    'העדפת לוח שנה - רשומה',
-    'רשימת משאלות'
-  ] : [
-    'Record ID',
-    'First Name',
-    'Last Name',
-    'Birth Date (Gregorian)',
-    'After Sunset',
-    'Gender',
-    'Gregorian Zodiac Sign',
-    'Hebrew Date',
-    'Hebrew Zodiac Sign',
-    'Hebrew Year',
-    'Next Hebrew Birthday',
-    'Next Gregorian Birthday',
-    'Group Name',
-    'Group ID',
-    'Notes',
-    'Calendar Preference - Group',
-    'Calendar Preference - Record',
-    'Wishlist'
+  // אם לא הועברו headers, נשתמש ב-defaults (backward compatibility)
+  const defaultHeaders: CSVHeaders = language === 'he' ? {
+    recordId: 'מזהה רשומה',
+    firstName: 'שם פרטי',
+    lastName: 'שם משפחה',
+    birthDateGregorian: 'תאריך לידה לועזי',
+    afterSunset: 'אחרי שקיעה',
+    gender: 'מגדר',
+    currentAge: 'גיל נוכחי',
+    ageAtNextBirthday: 'גיל ביום הולדת הבא',
+    gregorianZodiacSign: 'מזל לועזי',
+    hebrewDate: 'תאריך לידה עברי',
+    hebrewZodiacSign: 'מזל עברי',
+    hebrewYear: 'שנה עברית',
+    nextHebrewBirthday: 'יום הולדת עברי הבא',
+    nextGregorianBirthday: 'יום הולדת לועזי הבא',
+    groupName: 'שם קבוצה',
+    groupId: 'מזהה קבוצה',
+    notes: 'הערות',
+    calendarPreferenceGroup: 'העדפת לוח שנה - קבוצה',
+    calendarPreferenceRecord: 'העדפת לוח שנה - רשומה',
+    wishlist: 'רשימת משאלות'
+  } : {
+    recordId: 'Record ID',
+    firstName: 'First Name',
+    lastName: 'Last Name',
+    birthDateGregorian: 'Birth Date (Gregorian)',
+    afterSunset: 'After Sunset',
+    gender: 'Gender',
+    currentAge: 'Current Age',
+    ageAtNextBirthday: 'Age at Next Birthday',
+    gregorianZodiacSign: 'Gregorian Zodiac Sign',
+    hebrewDate: 'Hebrew Date',
+    hebrewZodiacSign: 'Hebrew Zodiac Sign',
+    hebrewYear: 'Hebrew Year',
+    nextHebrewBirthday: 'Next Hebrew Birthday',
+    nextGregorianBirthday: 'Next Gregorian Birthday',
+    groupName: 'Group Name',
+    groupId: 'Group ID',
+    notes: 'Notes',
+    calendarPreferenceGroup: 'Calendar Preference - Group',
+    calendarPreferenceRecord: 'Calendar Preference - Record',
+    wishlist: 'Wishlist'
+  };
+
+  const csvHeaders = headers || defaultHeaders;
+  const headerArray = [
+    csvHeaders.recordId,
+    csvHeaders.firstName,
+    csvHeaders.lastName,
+    csvHeaders.birthDateGregorian,
+    csvHeaders.afterSunset,
+    csvHeaders.gender,
+    csvHeaders.currentAge,
+    csvHeaders.ageAtNextBirthday,
+    csvHeaders.gregorianZodiacSign,
+    csvHeaders.hebrewDate,
+    csvHeaders.hebrewZodiacSign,
+    csvHeaders.hebrewYear,
+    csvHeaders.nextHebrewBirthday,
+    csvHeaders.nextGregorianBirthday,
+    csvHeaders.groupName,
+    csvHeaders.groupId,
+    csvHeaders.notes,
+    csvHeaders.calendarPreferenceGroup,
+    csvHeaders.calendarPreferenceRecord,
+    csvHeaders.wishlist
   ];
 
   // טעינת wishlist items לכל הרשומות (מקבילית)
@@ -166,10 +233,18 @@ export async function exportBirthdaysToCSV(
       ? (language === 'he' ? getZodiacSignNameHe(hebrewSign) : getZodiacSignNameEn(hebrewSign))
       : '';
 
-    // חישוב יום הולדת לועזי הבא
+    // חישוב יום הולדת לועזי הבא וגילאים
     let nextGregorianStr = '';
-    if (enrichedBirthday.calculations?.nextGregorianBirthday) {
-      const date = enrichedBirthday.calculations.nextGregorianBirthday;
+    let currentAge = 0;
+    let ageAtNextBirthday = 0;
+    
+    let calculations: BirthdayCalculations | null = null;
+    if (enrichedBirthday.calculations) {
+      calculations = enrichedBirthday.calculations as BirthdayCalculations;
+      currentAge = calculations.currentGregorianAge || 0;
+      ageAtNextBirthday = calculations.ageAtNextGregorianBirthday || 0;
+      
+      const date = calculations.nextGregorianBirthday;
       if (date instanceof Date) {
         nextGregorianStr = date.toISOString().split('T')[0];
       } else if (typeof date === 'string') {
@@ -177,7 +252,10 @@ export async function exportBirthdaysToCSV(
       }
     } else {
       // חישוב ישיר אם אין calculations
-      const calculations = birthdayCalculationsService.calculateAll(birthday, new Date());
+      calculations = birthdayCalculationsService.calculateAll(birthday, new Date());
+      currentAge = calculations.currentGregorianAge || 0;
+      ageAtNextBirthday = calculations.ageAtNextGregorianBirthday || 0;
+      
       if (calculations.nextGregorianBirthday) {
         nextGregorianStr = calculations.nextGregorianBirthday.toISOString().split('T')[0];
       }
@@ -226,7 +304,9 @@ export async function exportBirthdaysToCSV(
       birthday.last_name || '',
       birthday.birth_date_gregorian || '',
       birthday.after_sunset ? (language === 'he' ? 'כן' : 'Yes') : (language === 'he' ? 'לא' : 'No'),
-      birthday.gender || '',
+      translateGender(birthday.gender, language),
+      currentAge.toString(),
+      ageAtNextBirthday.toString(),
       gregorianSignName,
       (birthday.birth_date_hebrew_string || '').replace(/"/g, '""'),
       hebrewSignName,
@@ -243,12 +323,28 @@ export async function exportBirthdaysToCSV(
   }));
 
   const csvContent = [
-    headers.join(','),
+    headerArray.join(','),
     ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
   ].join('\n');
 
-  const BOM = '\uFEFF';
-  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+  // יצירת קובץ CSV עם UTF-8 BOM לתמיכה נכונה בעברית
+  // BOM bytes: 0xEF, 0xBB, 0xBF
+  const BOM = new Uint8Array([0xEF, 0xBB, 0xBF]);
+  
+  // המרה ל-UTF-8 bytes
+  const encoder = new TextEncoder();
+  const csvBytes = encoder.encode(csvContent);
+  
+  // שילוב BOM עם תוכן הקובץ
+  const fileContent = new Uint8Array(BOM.length + csvBytes.length);
+  fileContent.set(BOM, 0);
+  fileContent.set(csvBytes, BOM.length);
+  
+  // יצירת Blob עם סוג MIME נכון
+  const blob = new Blob([fileContent], { 
+    type: 'text/csv;charset=utf-8;' 
+  });
+  
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
 

@@ -19,6 +19,15 @@ interface GeltTemplateModalProps {
     customGroupSettings: AgeGroup[] | null;
     is_default?: boolean;
   }) => Promise<void>;
+  onUpdate?: (template: {
+    name?: string;
+    description?: string;
+    ageGroups?: AgeGroup[];
+    budgetConfig?: BudgetConfig;
+    customGroupSettings?: AgeGroup[] | null;
+    is_default?: boolean;
+  }) => Promise<void>;
+  templateToUpdate?: GeltTemplate;
   currentAgeGroups: AgeGroup[];
   currentBudgetConfig: BudgetConfig;
   currentCustomGroupSettings: AgeGroup[] | null;
@@ -30,6 +39,8 @@ export const GeltTemplateModal: React.FC<GeltTemplateModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  onUpdate,
+  templateToUpdate,
   currentAgeGroups,
   currentBudgetConfig,
   currentCustomGroupSettings,
@@ -42,14 +53,27 @@ export const GeltTemplateModal: React.FC<GeltTemplateModalProps> = ({
   const [isDefault, setIsDefault] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isUpdateMode = !!templateToUpdate && !!onUpdate;
+
   useEffect(() => {
     if (isOpen) {
-      setName('');
-      setDescription('');
-      setIsDefault(false);
+      console.log('[GeltTemplateModal] useEffect triggered. templateToUpdate:', templateToUpdate?.name, 'onUpdate:', !!onUpdate);
+      if (templateToUpdate && onUpdate) {
+        // Pre-fill with existing template data
+        console.log('[GeltTemplateModal] Pre-filling with template data:', templateToUpdate.name);
+        setName(templateToUpdate.name);
+        setDescription(templateToUpdate.description || '');
+        setIsDefault(templateToUpdate.is_default || false);
+      } else {
+        // Reset for new template
+        console.log('[GeltTemplateModal] Resetting for new template');
+        setName('');
+        setDescription('');
+        setIsDefault(false);
+      }
       setError(null);
     }
-  }, [isOpen]);
+  }, [isOpen, templateToUpdate, onUpdate]);
 
   if (!isOpen) return null;
 
@@ -77,34 +101,49 @@ export const GeltTemplateModal: React.FC<GeltTemplateModalProps> = ({
       return;
     }
 
-    // Check for duplicate name
-    const duplicateProfile = existingTemplates.find(
-      (t) => t.name.toLowerCase().trim() === trimmedName.toLowerCase()
-    );
-    if (duplicateProfile) {
-      setError(t('gelt.profileNameDuplicate'));
-      return;
+    // Check for duplicate name (only if creating new template or name changed)
+    if (!isUpdateMode || trimmedName !== templateToUpdate?.name) {
+      const duplicateProfile = existingTemplates.find(
+        (t) => t.id !== templateToUpdate?.id && t.name.toLowerCase().trim() === trimmedName.toLowerCase()
+      );
+      if (duplicateProfile) {
+        setError(t('gelt.profileNameDuplicate'));
+        return;
+      }
     }
 
-    // Check max profiles count
-    if (existingTemplates.length >= MAX_PROFILES_COUNT) {
+    // Check max profiles count (only for new templates)
+    if (!isUpdateMode && existingTemplates.length >= MAX_PROFILES_COUNT) {
       setError(t('gelt.profileMaxCountReached', { max: MAX_PROFILES_COUNT }));
       return;
     }
 
     try {
-      await onSave({
-        name: trimmedName,
-        description: trimmedDescription || undefined,
-        ageGroups: currentAgeGroups,
-        budgetConfig: currentBudgetConfig,
-        customGroupSettings: currentCustomGroupSettings,
-        is_default: isDefault,
-      });
+      if (isUpdateMode && onUpdate) {
+        // Update existing template
+        await onUpdate({
+          name: trimmedName !== templateToUpdate?.name ? trimmedName : undefined,
+          description: trimmedDescription !== (templateToUpdate?.description || '') ? (trimmedDescription || undefined) : undefined,
+          ageGroups: currentAgeGroups,
+          budgetConfig: currentBudgetConfig,
+          customGroupSettings: currentCustomGroupSettings,
+          is_default: isDefault !== templateToUpdate?.is_default ? isDefault : undefined,
+        });
+      } else {
+        // Create new template
+        await onSave({
+          name: trimmedName,
+          description: trimmedDescription || undefined,
+          ageGroups: currentAgeGroups,
+          budgetConfig: currentBudgetConfig,
+          customGroupSettings: currentCustomGroupSettings,
+          is_default: isDefault,
+        });
+      }
       onClose();
     } catch (err) {
-      setError(t('gelt.profileSaveError'));
-      console.error('Failed to save profile:', err);
+      setError(isUpdateMode ? t('gelt.profileUpdateError') : t('gelt.profileSaveError'));
+      console.error(`Failed to ${isUpdateMode ? 'update' : 'save'} profile:`, err);
     }
   };
 
@@ -115,7 +154,9 @@ export const GeltTemplateModal: React.FC<GeltTemplateModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-900">{t('gelt.saveProfile')}</h2>
+          <h2 className="text-xl font-bold text-gray-900">
+            {isUpdateMode ? t('gelt.updateProfile') : t('gelt.saveProfile')}
+          </h2>
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
@@ -208,7 +249,10 @@ export const GeltTemplateModal: React.FC<GeltTemplateModalProps> = ({
             disabled={isLoading || !name.trim()}
             icon={isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           >
-            {isLoading ? t('common.saving') : t('gelt.saveProfile')}
+            {isLoading 
+              ? (isUpdateMode ? t('gelt.updating') : t('gelt.saving'))
+              : (isUpdateMode ? t('gelt.updateProfile') : t('gelt.saveProfile'))
+            }
           </Button>
         </div>
       </div>

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Layout } from '../layout/Layout';
 import { useGelt, useUpdateGelt, useResetGelt } from '../../hooks/useGelt';
-import { useSaveGeltTemplate, useDefaultGeltTemplate, useGeltTemplates } from '../../hooks/useGeltTemplates';
+import { useSaveGeltTemplate, useUpdateGeltTemplate, useDefaultGeltTemplate, useGeltTemplates } from '../../hooks/useGeltTemplates';
 import { GeltTemplate } from '../../types/gelt';
 import { useBirthdays } from '../../hooks/useBirthdays';
 import { GeltChildrenList } from './GeltChildrenList';
@@ -29,7 +29,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { DEFAULT_AGE_GROUPS, DEFAULT_BUDGET_CONFIG } from '../../utils/geltConstants';
 
 export const GeltPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data: geltState, isLoading } = useGelt();
   const updateGelt = useUpdateGelt();
   const resetGelt = useResetGelt();
@@ -48,11 +48,72 @@ export const GeltPage: React.FC = () => {
   const [showCalculationResults, setShowCalculationResults] = useState(true);
   const [showGroupChildrenModal, setShowGroupChildrenModal] = useState(false);
   const [selectedGroupForChildren, setSelectedGroupForChildren] = useState<AgeGroup | null>(null);
+  const [loadedTemplateId, setLoadedTemplateId] = useState<string | null>(null); // Track which template was loaded
+  const [loadedTemplate, setLoadedTemplate] = useState<GeltTemplate | null>(null); // Track the full loaded template
   
   const saveTemplate = useSaveGeltTemplate();
+  const updateTemplate = useUpdateGeltTemplate();
   const hasInitializedRef = useRef(false);
   const skipNextAutoSaveRef = useRef(false);
   const lastSavedStateRef = useRef<string | null>(null);
+
+  // Helper function to check if current state matches a template
+  // This is used to identify which template is currently loaded, even after refresh
+  const findMatchingTemplate = (state: GeltState | null, templates: GeltTemplate[]): GeltTemplate | null => {
+    if (!state) return null;
+    
+    // Check each template to see if it matches the current state
+    for (const template of templates) {
+      // Compare ageGroups (id, minAge, maxAge, amountPerChild, isIncluded)
+      if (state.ageGroups.length !== template.ageGroups.length) continue;
+      
+      const ageGroupsMatch = state.ageGroups.every(stateGroup => {
+        const templateGroup = template.ageGroups.find(g => g.id === stateGroup.id);
+        if (!templateGroup) return false;
+        return templateGroup.minAge === stateGroup.minAge &&
+               templateGroup.maxAge === stateGroup.maxAge &&
+               templateGroup.amountPerChild === stateGroup.amountPerChild &&
+               templateGroup.isIncluded === stateGroup.isIncluded;
+      });
+      
+      if (!ageGroupsMatch) continue;
+      
+      // Compare budgetConfig
+      const budgetConfigMatch = 
+        state.budgetConfig.participants === template.budgetConfig.participants &&
+        state.budgetConfig.allowedOverflowPercentage === template.budgetConfig.allowedOverflowPercentage &&
+        (state.budgetConfig.customBudget ?? null) === (template.budgetConfig.customBudget ?? null);
+      
+      if (!budgetConfigMatch) continue;
+      
+      // Compare customGroupSettings
+      const stateHasCustomSettings = state.customGroupSettings !== null && state.customGroupSettings.length > 0;
+      const templateHasCustomSettings = template.customGroupSettings !== null && template.customGroupSettings.length > 0;
+      
+      if (stateHasCustomSettings !== templateHasCustomSettings) continue;
+      
+      if (stateHasCustomSettings && templateHasCustomSettings) {
+        // Both have custom settings, compare them
+        if (state.customGroupSettings!.length !== template.customGroupSettings!.length) continue;
+        
+        const customSettingsMatch = state.customGroupSettings!.every(stateGroup => {
+          const templateGroup = template.customGroupSettings!.find(g => g.id === stateGroup.id);
+          if (!templateGroup) return false;
+          return templateGroup.minAge === stateGroup.minAge &&
+                 templateGroup.maxAge === stateGroup.maxAge &&
+                 templateGroup.amountPerChild === stateGroup.amountPerChild &&
+                 templateGroup.isIncluded === stateGroup.isIncluded;
+        });
+        
+        if (!customSettingsMatch) continue;
+      }
+      
+      // All checks passed - this template matches!
+      return template;
+    }
+    
+    return null;
+  };
 
   // Helper function to check if state is empty/reset
   // State is considered empty if it has no children and no custom configurations
@@ -103,6 +164,23 @@ export const GeltPage: React.FC = () => {
     
     return true;
   };
+
+  // Find matching template from current state (for after refresh)
+  // Priority: 1. loadedTemplate (if user loaded a template), 2. loadedTemplateId (find by ID), 3. findMatchingTemplate (match by state)
+  const matchingTemplate = useMemo(() => {
+    // First priority: if we have loadedTemplate, use it (even if state changed)
+    if (loadedTemplate) return loadedTemplate;
+    
+    // Second priority: if we have loadedTemplateId, find it in existingTemplates
+    if (loadedTemplateId && loadedTemplateId !== 'system-default') {
+      const template = existingTemplates.find(t => t.id === loadedTemplateId);
+      if (template) return template;
+    }
+    
+    // Third priority: try to find matching template by comparing state (for after refresh)
+    if (!localState) return null;
+    return findMatchingTemplate(localState, existingTemplates);
+  }, [localState, existingTemplates, loadedTemplate, loadedTemplateId]);
 
   // Initialize local state from server state or default profile (only on first load)
   useEffect(() => {
@@ -269,21 +347,49 @@ export const GeltPage: React.FC = () => {
         }
       } else {
         // No default profile, use state from server but clean budgetConfig
+        // Check if customGroupSettings is valid
+        const hasValidCustomGroupSettings = geltState.customGroupSettings !== null && 
+                                           Array.isArray(geltState.customGroupSettings) && 
+                                           geltState.customGroupSettings.length > 0;
+        
+        // Only keep customBudget if customGroupSettings is valid
         const cleanedBudgetConfig: BudgetConfig = {
           participants: geltState.budgetConfig.participants,
           allowedOverflowPercentage: geltState.budgetConfig.allowedOverflowPercentage,
           ...(geltState.budgetConfig.customBudget !== undefined && 
               geltState.budgetConfig.customBudget !== null && 
-              geltState.budgetConfig.customBudget > 0
+              geltState.budgetConfig.customBudget > 0 &&
+              hasValidCustomGroupSettings
             ? { customBudget: geltState.budgetConfig.customBudget }
             : {}),
         };
         
-        setLocalState({
+        const newState = {
           ...geltState,
           budgetConfig: cleanedBudgetConfig,
-        });
+          // Also clean customGroupSettings if it's invalid
+          customGroupSettings: hasValidCustomGroupSettings ? geltState.customGroupSettings : null,
+        };
+        
+        setLocalState(newState);
         skipNextAutoSaveRef.current = true;
+        lastSavedStateRef.current = JSON.stringify(newState);
+        
+        // If we cleaned customBudget or customGroupSettings, save immediately to DB
+        const needsCleanup = (!hasValidCustomGroupSettings && geltState.budgetConfig.customBudget) ||
+                            (!hasValidCustomGroupSettings && geltState.customGroupSettings);
+        
+        if (needsCleanup) {
+          console.log('[GeltPage] Cleaning up orphaned customBudget/customGroupSettings (no default template), saving immediately');
+          updateGelt.mutate(newState, {
+            onSuccess: () => {
+              lastSavedStateRef.current = JSON.stringify(newState);
+            },
+            onError: (err) => {
+              console.error('Failed to save cleaned state:', err);
+            },
+          });
+        }
       }
       hasInitializedRef.current = true;
     }
@@ -485,7 +591,12 @@ export const GeltPage: React.FC = () => {
                 : {}),
             };
             
-            setLocalState({
+            // Check if customGroupSettings is valid
+            const hasValidCustomGroupSettings = defaultTemplate.customGroupSettings !== null && 
+                                               Array.isArray(defaultTemplate.customGroupSettings) && 
+                                               defaultTemplate.customGroupSettings.length > 0;
+            
+            const resetState = {
               children: [],
               ageGroups: defaultTemplate.ageGroups.map(group => ({ ...group })),
               budgetConfig: defaultBudgetConfig,
@@ -495,17 +606,37 @@ export const GeltPage: React.FC = () => {
                 maxAllowed: 0,
                 groupTotals: {},
               },
-              customGroupSettings: defaultTemplate.customGroupSettings 
-                ? defaultTemplate.customGroupSettings.map(group => ({ ...group }))
+              customGroupSettings: hasValidCustomGroupSettings
+                ? defaultTemplate.customGroupSettings!.map(group => ({ ...group }))
                 : null,
               includedChildren: [],
+            };
+            
+            setLocalState(resetState);
+            setLoadedTemplateId(null); // Reset loaded template tracking
+            skipNextAutoSaveRef.current = true;
+            lastSavedStateRef.current = JSON.stringify(resetState);
+            
+            // Save immediately to ensure DB is clean
+            updateGelt.mutate(resetState, {
+              onSuccess: () => {
+                lastSavedStateRef.current = JSON.stringify(resetState);
+                console.log('[GeltPage] Reset with default template completed and saved successfully');
+              },
+              onError: (err) => {
+                console.error('Failed to save reset state:', err);
+              },
             });
           } else {
-            // No default profile, use system defaults
-            setLocalState({
+            // No default profile, use system defaults - identical to handleLoadSystemDefault
+            const resetState = {
               children: [],
               ageGroups: DEFAULT_AGE_GROUPS.map(group => ({ ...group })),
-              budgetConfig: { ...DEFAULT_BUDGET_CONFIG },
+              budgetConfig: { 
+                participants: DEFAULT_BUDGET_CONFIG.participants,
+                allowedOverflowPercentage: DEFAULT_BUDGET_CONFIG.allowedOverflowPercentage,
+                // Explicitly no customBudget - same as handleLoadSystemDefault
+              },
               calculation: {
                 totalRequired: 0,
                 amountPerParticipant: 0,
@@ -514,6 +645,22 @@ export const GeltPage: React.FC = () => {
               },
               customGroupSettings: null,
               includedChildren: [],
+            };
+            
+            setLocalState(resetState);
+            setLoadedTemplateId(null); // Reset loaded template tracking
+            skipNextAutoSaveRef.current = true;
+            lastSavedStateRef.current = JSON.stringify(resetState);
+            
+            // Save immediately to ensure DB is clean
+            updateGelt.mutate(resetState, {
+              onSuccess: () => {
+                lastSavedStateRef.current = JSON.stringify(resetState);
+                console.log('[GeltPage] Reset completed and saved successfully');
+              },
+              onError: (err) => {
+                console.error('Failed to save reset state:', err);
+              },
             });
           }
           success(t('gelt.resetSuccess'));
@@ -532,8 +679,62 @@ export const GeltPage: React.FC = () => {
       localState.ageGroups,
       localState.children
     );
-    const csv = exportToCSV(exportData);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    
+    // יצירת headers מתורגמים עם fallback
+    const getHeader = (key: string, fallback: string) => {
+      const translated = t(`gelt.csvHeaders.${key}`);
+      // אם התרגום מחזיר את המפתח עצמו, נשתמש ב-fallback
+      return translated.startsWith('gelt.csvHeaders.') ? fallback : translated;
+    };
+    
+    const csvHeaders = i18n.language === 'he' ? {
+      budgetSummary: getHeader('budgetSummary', 'סיכום תקציב'),
+      totalRequired: getHeader('totalRequired', 'סה"כ נדרש'),
+      perParticipant: getHeader('perParticipant', 'למשתתף'),
+      participants: getHeader('participants', 'משתתפים'),
+      allowedOverflow: getHeader('allowedOverflow', 'חריגה מותרת'),
+      ageGroups: getHeader('ageGroups', 'קבוצות גיל'),
+      name: getHeader('name', 'שם'),
+      minAge: getHeader('minAge', 'גיל מינימלי'),
+      maxAge: getHeader('maxAge', 'גיל מקסימלי'),
+      amountPerChild: getHeader('amountPerChild', 'סכום לילד'),
+      childrenCount: getHeader('childrenCount', 'מספר ילדים'),
+      total: getHeader('total', 'סה"כ'),
+      children: getHeader('children', 'ילדים'),
+      age: getHeader('age', 'גיל'),
+      ageModified: getHeader('ageModified', 'גיל שונה'),
+      originalAge: getHeader('originalAge', 'גיל מקורי')
+    } : {
+      budgetSummary: getHeader('budgetSummary', 'Budget Summary'),
+      totalRequired: getHeader('totalRequired', 'Total Required'),
+      perParticipant: getHeader('perParticipant', 'Per Participant'),
+      participants: getHeader('participants', 'Participants'),
+      allowedOverflow: getHeader('allowedOverflow', 'Allowed Overflow'),
+      ageGroups: getHeader('ageGroups', 'Age Groups'),
+      name: getHeader('name', 'Name'),
+      minAge: getHeader('minAge', 'Min Age'),
+      maxAge: getHeader('maxAge', 'Max Age'),
+      amountPerChild: getHeader('amountPerChild', 'Amount Per Child'),
+      childrenCount: getHeader('childrenCount', 'Children Count'),
+      total: getHeader('total', 'Total'),
+      children: getHeader('children', 'Children'),
+      age: getHeader('age', 'Age'),
+      ageModified: getHeader('ageModified', 'Age Modified'),
+      originalAge: getHeader('originalAge', 'Original Age')
+    };
+    
+    const csv = exportToCSV(exportData, csvHeaders);
+    
+    // יצירת קובץ CSV עם UTF-8 BOM לתמיכה נכונה בעברית
+    // BOM bytes: 0xEF, 0xBB, 0xBF
+    const BOM = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    const encoder = new TextEncoder();
+    const csvBytes = encoder.encode(csv);
+    const fileContent = new Uint8Array(BOM.length + csvBytes.length);
+    fileContent.set(BOM, 0);
+    fileContent.set(csvBytes, BOM.length);
+    
+    const blob = new Blob([fileContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
@@ -542,6 +743,7 @@ export const GeltPage: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     success(t('gelt.exportSuccess'));
   };
 
@@ -556,12 +758,44 @@ export const GeltPage: React.FC = () => {
     try {
       await saveTemplate.mutateAsync(template);
       success(t('gelt.profileSaved'));
+      setShowSaveTemplateModal(false);
     } catch {
       showError(t('gelt.profileSaveError'));
     }
   };
 
+  const handleUpdateTemplate = async (template: {
+    name?: string;
+    description?: string;
+    ageGroups?: AgeGroup[];
+    budgetConfig?: BudgetConfig;
+    customGroupSettings?: AgeGroup[] | null;
+    is_default?: boolean;
+  }) => {
+    if (!loadedTemplateId) {
+      showError(t('gelt.noTemplateToUpdate'));
+      return;
+    }
+    try {
+      await updateTemplate.mutateAsync({
+        templateId: loadedTemplateId,
+        template,
+      });
+      success(t('gelt.profileUpdated'));
+      setShowSaveTemplateModal(false);
+    } catch {
+      showError(t('gelt.profileUpdateError'));
+    }
+  };
+
   const handleLoadTemplate = (template: GeltTemplate) => {
+    console.log('[GeltPage] handleLoadTemplate called with template:', {
+      id: template.id,
+      name: template.name,
+      isSystemDefault: template.id === 'system-default',
+      hasId: !!template.id
+    });
+    
     // Prepare budgetConfig - only include customBudget if it exists in the template
     const budgetConfigToLoad: BudgetConfig = {
       participants: template.budgetConfig.participants,
@@ -571,27 +805,45 @@ export const GeltPage: React.FC = () => {
         : {}),
     };
 
+    // Check if customGroupSettings is valid
+    const hasValidCustomGroupSettings = template.customGroupSettings !== null &&
+                                       Array.isArray(template.customGroupSettings) &&
+                                       template.customGroupSettings.length > 0;
+
     // Create new state explicitly - don't use spread to avoid including old customBudget
     const newState: GeltState = {
       children: localState!.children,
       ageGroups: template.ageGroups.map(group => ({ ...group })),
       budgetConfig: budgetConfigToLoad, // This explicitly excludes customBudget if not in template
       calculation: localState!.calculation,
-      customGroupSettings: template.customGroupSettings 
-        ? template.customGroupSettings.map(group => ({ ...group }))
+      customGroupSettings: hasValidCustomGroupSettings
+        ? template.customGroupSettings!.map(group => ({ ...group }))
         : null,
       includedChildren: localState!.includedChildren,
     };
 
     setLocalState(newState);
+    // Track which template was loaded
+    // Always save the template, even if it's system-default, so we know what was loaded
+    if (template.id) {
+      console.log('[GeltPage] Loading template:', template.name, 'ID:', template.id, 'isSystemDefault:', template.id === 'system-default');
+      setLoadedTemplateId(template.id);
+      setLoadedTemplate(template); // Save the full template
+    } else {
+      console.log('[GeltPage] Template has no ID, clearing loaded template');
+      setLoadedTemplateId(null);
+      setLoadedTemplate(null);
+    }
     skipNextAutoSaveRef.current = true; // Skip auto-save since we're saving immediately
     lastSavedStateRef.current = JSON.stringify(newState); // Update last saved state
     
     // Save to server immediately to override any old state
+    // This ensures that customBudget and customGroupSettings are properly cleaned in DB
     updateGelt.mutate(newState, {
       onSuccess: () => {
         // Ensure last saved state is updated after successful save
         lastSavedStateRef.current = JSON.stringify(newState);
+        console.log('[GeltPage] Template loaded and saved successfully. State:', JSON.stringify(newState.budgetConfig, null, 2));
       },
       onError: (err) => {
         console.error('Failed to save state after loading profile:', err);
@@ -694,8 +946,28 @@ export const GeltPage: React.FC = () => {
             icon={<Save className="w-4 h-4" />}
             size="sm"
           >
-            <span className="hidden sm:inline">{t('gelt.saveProfile')}</span>
-            <span className="sm:hidden">{t('gelt.save')}</span>
+            {matchingTemplate && matchingTemplate.id !== 'system-default' ? (
+              <>
+                <span className="hidden sm:inline">{t('gelt.updateProfile')}</span>
+                <span className="sm:hidden">{t('gelt.update')}</span>
+                <span className="ml-1 sm:ml-2 text-[10px] sm:text-xs bg-blue-50 text-blue-700 px-1.5 sm:px-2 py-0.5 rounded-md font-medium whitespace-nowrap">
+                  {matchingTemplate.name}
+                </span>
+              </>
+            ) : loadedTemplateId && loadedTemplateId !== 'system-default' && existingTemplates.find(t => t.id === loadedTemplateId) ? (
+              <>
+                <span className="hidden sm:inline">{t('gelt.updateProfile')}</span>
+                <span className="sm:hidden">{t('gelt.update')}</span>
+                <span className="ml-1 sm:ml-2 text-[10px] sm:text-xs bg-blue-50 text-blue-700 px-1.5 sm:px-2 py-0.5 rounded-md font-medium whitespace-nowrap">
+                  {existingTemplates.find(t => t.id === loadedTemplateId)?.name || ''}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="hidden sm:inline">{t('gelt.saveProfile')}</span>
+                <span className="sm:hidden">{t('gelt.save')}</span>
+              </>
+            )}
           </Button>
           <Button
             variant="outline"
@@ -703,7 +975,7 @@ export const GeltPage: React.FC = () => {
             icon={<Download className="w-4 h-4" />}
             size="sm"
           >
-            {t('gelt.export')}
+            <span dir="auto">{t('gelt.export')}</span>
           </Button>
           <Button
             variant="danger"
@@ -811,13 +1083,35 @@ export const GeltPage: React.FC = () => {
       {/* Save Profile Modal */}
       <GeltTemplateModal
         isOpen={showSaveTemplateModal}
-        onClose={() => setShowSaveTemplateModal(false)}
+        onClose={() => {
+          console.log('[GeltPage] Closing save template modal');
+          setShowSaveTemplateModal(false);
+        }}
         onSave={handleSaveTemplate}
+        onUpdate={(matchingTemplate && matchingTemplate.id !== 'system-default') || (loadedTemplateId && loadedTemplateId !== 'system-default') ? handleUpdateTemplate : undefined}
+        templateToUpdate={(() => {
+          // Prefer loadedTemplate (saved when template was loaded)
+          // Fallback to matchingTemplate (found by comparing state)
+          // Only return template if it's not system-default (system-default can't be updated)
+          const template = loadedTemplate ?? (matchingTemplate || undefined);
+          const isSystemDefault = template?.id === 'system-default';
+          const finalTemplate = isSystemDefault ? undefined : template;
+          console.log('[GeltPage] templateToUpdate calculation:', {
+            templateName: template?.name || 'undefined',
+            loadedTemplateName: loadedTemplate?.name || 'null',
+            matchingTemplateName: matchingTemplate?.name || 'null',
+            loadedTemplateId,
+            isSystemDefault,
+            finalTemplateName: finalTemplate?.name || 'undefined (filtered out system-default)',
+            existingTemplatesCount: existingTemplates.length
+          });
+          return finalTemplate;
+        })()}
         currentAgeGroups={localState.ageGroups}
         currentBudgetConfig={localState.budgetConfig}
         currentCustomGroupSettings={localState.customGroupSettings}
         existingTemplates={existingTemplates}
-        isLoading={saveTemplate.isPending}
+        isLoading={saveTemplate.isPending || updateTemplate.isPending}
       />
 
       {/* Load Profile Modal */}

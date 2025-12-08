@@ -74,33 +74,48 @@ export const geltService = {
 
       // Clean budgetConfig - remove customBudget if it's not valid
       const budgetConfig = data.budgetConfig || { ...DEFAULT_BUDGET_CONFIG };
-      const shouldCleanCustomBudget = !data.customGroupSettings && budgetConfig.customBudget !== undefined && 
-                                      budgetConfig.customBudget !== null && budgetConfig.customBudget > 0;
-      console.log('[getGeltState] Should clean customBudget?', shouldCleanCustomBudget, 
-                  '(customGroupSettings:', data.customGroupSettings ? 'exists' : 'null', 
+      
+      // Check if customGroupSettings is valid (not null and not empty array)
+      const hasValidCustomGroupSettings = data.customGroupSettings !== null && 
+                                         Array.isArray(data.customGroupSettings) && 
+                                         data.customGroupSettings.length > 0;
+      
+      // Only keep customBudget if:
+      // 1. customBudget exists and is > 0
+      // 2. AND customGroupSettings exists and is valid (not empty)
+      // Otherwise, it's orphaned data that should be cleaned
+      const shouldKeepCustomBudget = budgetConfig.customBudget !== undefined && 
+                                     budgetConfig.customBudget !== null && 
+                                     budgetConfig.customBudget > 0 &&
+                                     hasValidCustomGroupSettings;
+      
+      console.log('[getGeltState] Should keep customBudget?', shouldKeepCustomBudget, 
+                  '(customGroupSettings:', hasValidCustomGroupSettings ? 'valid' : 'null/empty', 
                   ', customBudget:', budgetConfig.customBudget, ')');
       
       const cleanedBudgetConfig: BudgetConfig = {
         participants: budgetConfig.participants,
         allowedOverflowPercentage: budgetConfig.allowedOverflowPercentage,
-        // Only include customBudget if it exists, is not null, and is greater than 0
-        // AND if customGroupSettings exists (otherwise it's orphaned data)
-        ...(budgetConfig.customBudget !== undefined && 
-            budgetConfig.customBudget !== null && 
-            budgetConfig.customBudget > 0 &&
-            data.customGroupSettings !== null
+        // Only include customBudget if all conditions are met
+        ...(shouldKeepCustomBudget
           ? { customBudget: budgetConfig.customBudget }
           : {}),
       };
 
       console.log('[getGeltState] Final cleanedBudgetConfig:', JSON.stringify(cleanedBudgetConfig, null, 2));
+      
+      // Also clean customGroupSettings if it's invalid (null or empty array)
+      // If we cleaned customBudget, we should also clean customGroupSettings
+      const cleanedCustomGroupSettings = shouldKeepCustomBudget && hasValidCustomGroupSettings
+        ? data.customGroupSettings
+        : null;
 
       return {
         children: data.children || [],
         ageGroups: data.ageGroups || DEFAULT_AGE_GROUPS.map(group => ({ ...group })),
         budgetConfig: cleanedBudgetConfig,
         calculation,
-        customGroupSettings: data.customGroupSettings || null,
+        customGroupSettings: cleanedCustomGroupSettings,
         includedChildren: data.includedChildren || [],
       };
     });
@@ -123,22 +138,40 @@ export const geltService = {
       const hasCustomBudget = state.budgetConfig.customBudget !== undefined && 
                               state.budgetConfig.customBudget !== null && 
                               state.budgetConfig.customBudget > 0;
+      
+      // Check if customGroupSettings is valid
+      const hasValidCustomGroupSettings = state.customGroupSettings !== null && 
+                                         Array.isArray(state.customGroupSettings) && 
+                                         state.customGroupSettings.length > 0;
+      
+      // Only keep customBudget if customGroupSettings is valid
+      const finalCustomBudget = (hasCustomBudget && hasValidCustomGroupSettings) 
+        ? state.budgetConfig.customBudget 
+        : null;
+      
       console.log('[saveGeltState] hasCustomBudget:', hasCustomBudget);
+      console.log('[saveGeltState] hasValidCustomGroupSettings:', hasValidCustomGroupSettings);
+      console.log('[saveGeltState] finalCustomBudget:', finalCustomBudget);
       
       const budgetConfigToSave: { participants: number; allowedOverflowPercentage: number; customBudget: number | null } = {
         participants: state.budgetConfig.participants,
         allowedOverflowPercentage: state.budgetConfig.allowedOverflowPercentage,
-        // Always include customBudget - null if not set, value if set
-        customBudget: hasCustomBudget ? (state.budgetConfig.customBudget ?? null) : null,
+        // Always include customBudget - null if not set or if customGroupSettings is invalid
+        customBudget: finalCustomBudget,
       };
       console.log('[saveGeltState] budgetConfigToSave:', JSON.stringify(budgetConfigToSave, null, 2));
+
+      // Also clean customGroupSettings if it's invalid
+      const finalCustomGroupSettings = hasValidCustomGroupSettings 
+        ? state.customGroupSettings 
+        : null;
 
       const stateData: Partial<GeltStateDocument> = {
         tenant_id: tenantId,
         children: state.children,
         ageGroups: state.ageGroups,
         budgetConfig: budgetConfigToSave,
-        customGroupSettings: state.customGroupSettings,
+        customGroupSettings: finalCustomGroupSettings,
         includedChildren: state.includedChildren,
         updated_at: serverTimestamp(),
         updated_by: userId,
@@ -157,7 +190,7 @@ export const geltService = {
           children: state.children,
           ageGroups: state.ageGroups,
           budgetConfig: budgetConfigToSave,
-          customGroupSettings: state.customGroupSettings, // This will be null if template has no customGroupSettings
+          customGroupSettings: finalCustomGroupSettings, // This will be null if invalid
           includedChildren: state.includedChildren,
           updated_at: serverTimestamp(),
           updated_by: userId,
@@ -165,6 +198,7 @@ export const geltService = {
         
         console.log('[saveGeltState] Updating document. customGroupSettings:', updateData.customGroupSettings ? 'exists' : 'null');
         console.log('[saveGeltState] Full updateData.customGroupSettings:', updateData.customGroupSettings);
+        console.log('[saveGeltState] Full updateData.budgetConfig:', JSON.stringify(updateData.budgetConfig, null, 2));
         
         await updateDoc(docRef, updateData);
         console.log('[saveGeltState] Document updated successfully');

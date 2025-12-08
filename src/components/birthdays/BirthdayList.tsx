@@ -536,12 +536,63 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                           showToast(t('messages.error', 'שגיאה'), 'error');
                           return;
                         }
+                        // יצירת headers מתורגמים עם fallback
+                        const getHeader = (key: string, fallback: string) => {
+                          const translated = t(`birthday.csvHeaders.${key}`);
+                          // אם התרגום מחזיר את המפתח עצמו, נשתמש ב-fallback
+                          return translated.startsWith('birthday.csvHeaders.') ? fallback : translated;
+                        };
+                        
+                        const csvHeaders = i18n.language === 'he' ? {
+                          recordId: getHeader('recordId', 'מזהה רשומה'),
+                          firstName: getHeader('firstName', 'שם פרטי'),
+                          lastName: getHeader('lastName', 'שם משפחה'),
+                          birthDateGregorian: getHeader('birthDateGregorian', 'תאריך לידה לועזי'),
+                          afterSunset: getHeader('afterSunset', 'אחרי שקיעה'),
+                          gender: getHeader('gender', 'מגדר'),
+                          currentAge: getHeader('currentAge', 'גיל נוכחי'),
+                          ageAtNextBirthday: getHeader('ageAtNextBirthday', 'גיל ביום הולדת הבא'),
+                          gregorianZodiacSign: getHeader('gregorianZodiacSign', 'מזל לועזי'),
+                          hebrewDate: getHeader('hebrewDate', 'תאריך לידה עברי'),
+                          hebrewZodiacSign: getHeader('hebrewZodiacSign', 'מזל עברי'),
+                          hebrewYear: getHeader('hebrewYear', 'שנה עברית'),
+                          nextHebrewBirthday: getHeader('nextHebrewBirthday', 'יום הולדת עברי הבא'),
+                          nextGregorianBirthday: getHeader('nextGregorianBirthday', 'יום הולדת לועזי הבא'),
+                          groupName: getHeader('groupName', 'שם קבוצה'),
+                          groupId: getHeader('groupId', 'מזהה קבוצה'),
+                          notes: getHeader('notes', 'הערות'),
+                          calendarPreferenceGroup: getHeader('calendarPreferenceGroup', 'העדפת לוח שנה - קבוצה'),
+                          calendarPreferenceRecord: getHeader('calendarPreferenceRecord', 'העדפת לוח שנה - רשומה'),
+                          wishlist: getHeader('wishlist', 'רשימת משאלות')
+                        } : {
+                          recordId: getHeader('recordId', 'Record ID'),
+                          firstName: getHeader('firstName', 'First Name'),
+                          lastName: getHeader('lastName', 'Last Name'),
+                          birthDateGregorian: getHeader('birthDateGregorian', 'Birth Date (Gregorian)'),
+                          afterSunset: getHeader('afterSunset', 'After Sunset'),
+                          gender: getHeader('gender', 'Gender'),
+                          currentAge: getHeader('currentAge', 'Current Age'),
+                          ageAtNextBirthday: getHeader('ageAtNextBirthday', 'Age at Next Birthday'),
+                          gregorianZodiacSign: getHeader('gregorianZodiacSign', 'Gregorian Zodiac Sign'),
+                          hebrewDate: getHeader('hebrewDate', 'Hebrew Date'),
+                          hebrewZodiacSign: getHeader('hebrewZodiacSign', 'Hebrew Zodiac Sign'),
+                          hebrewYear: getHeader('hebrewYear', 'Hebrew Year'),
+                          nextHebrewBirthday: getHeader('nextHebrewBirthday', 'Next Hebrew Birthday'),
+                          nextGregorianBirthday: getHeader('nextGregorianBirthday', 'Next Gregorian Birthday'),
+                          groupName: getHeader('groupName', 'Group Name'),
+                          groupId: getHeader('groupId', 'Group ID'),
+                          notes: getHeader('notes', 'Notes'),
+                          calendarPreferenceGroup: getHeader('calendarPreferenceGroup', 'Calendar Preference - Group'),
+                          calendarPreferenceRecord: getHeader('calendarPreferenceRecord', 'Calendar Preference - Record'),
+                          wishlist: getHeader('wishlist', 'Wishlist')
+                        };
                         await exportBirthdaysToCSV(
                           selectedBirthdays, 
                           groups, 
                           currentTenant.id,
                           `birthdays-${new Date().toISOString().split('T')[0]}.csv`, 
-                          i18n.language
+                          i18n.language,
+                          csvHeaders
                         );
                         showToast(t('birthday.exportSuccess', 'הייצוא הושלם בהצלחה'), 'success');
                       } catch (error) {
@@ -637,12 +688,63 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                           showToast(t('messages.error', 'שגיאה'), 'error');
                           return;
                         }
+                        // יצירת headers מתורגמים עם fallback
+                        const getHeader = (key: string, fallback: string) => {
+                          const translated = t(`birthday.csvHeaders.${key}`);
+                          // אם התרגום מחזיר את המפתח עצמו, נשתמש ב-fallback
+                          return translated.startsWith('birthday.csvHeaders.') ? fallback : translated;
+                        };
+                        
+                        const csvHeaders = i18n.language === 'he' ? {
+                          recordId: getHeader('recordId', 'מזהה רשומה'),
+                          firstName: getHeader('firstName', 'שם פרטי'),
+                          lastName: getHeader('lastName', 'שם משפחה'),
+                          birthDateGregorian: getHeader('birthDateGregorian', 'תאריך לידה לועזי'),
+                          afterSunset: getHeader('afterSunset', 'אחרי שקיעה'),
+                          gender: getHeader('gender', 'מגדר'),
+                          currentAge: getHeader('currentAge', 'גיל נוכחי'),
+                          ageAtNextBirthday: getHeader('ageAtNextBirthday', 'גיל ביום הולדת הבא'),
+                          gregorianZodiacSign: getHeader('gregorianZodiacSign', 'מזל לועזי'),
+                          hebrewDate: getHeader('hebrewDate', 'תאריך לידה עברי'),
+                          hebrewZodiacSign: getHeader('hebrewZodiacSign', 'מזל עברי'),
+                          hebrewYear: getHeader('hebrewYear', 'שנה עברית'),
+                          nextHebrewBirthday: getHeader('nextHebrewBirthday', 'יום הולדת עברי הבא'),
+                          nextGregorianBirthday: getHeader('nextGregorianBirthday', 'יום הולדת לועזי הבא'),
+                          groupName: getHeader('groupName', 'שם קבוצה'),
+                          groupId: getHeader('groupId', 'מזהה קבוצה'),
+                          notes: getHeader('notes', 'הערות'),
+                          calendarPreferenceGroup: getHeader('calendarPreferenceGroup', 'העדפת לוח שנה - קבוצה'),
+                          calendarPreferenceRecord: getHeader('calendarPreferenceRecord', 'העדפת לוח שנה - רשומה'),
+                          wishlist: getHeader('wishlist', 'רשימת משאלות')
+                        } : {
+                          recordId: getHeader('recordId', 'Record ID'),
+                          firstName: getHeader('firstName', 'First Name'),
+                          lastName: getHeader('lastName', 'Last Name'),
+                          birthDateGregorian: getHeader('birthDateGregorian', 'Birth Date (Gregorian)'),
+                          afterSunset: getHeader('afterSunset', 'After Sunset'),
+                          gender: getHeader('gender', 'Gender'),
+                          currentAge: getHeader('currentAge', 'Current Age'),
+                          ageAtNextBirthday: getHeader('ageAtNextBirthday', 'Age at Next Birthday'),
+                          gregorianZodiacSign: getHeader('gregorianZodiacSign', 'Gregorian Zodiac Sign'),
+                          hebrewDate: getHeader('hebrewDate', 'Hebrew Date'),
+                          hebrewZodiacSign: getHeader('hebrewZodiacSign', 'Hebrew Zodiac Sign'),
+                          hebrewYear: getHeader('hebrewYear', 'Hebrew Year'),
+                          nextHebrewBirthday: getHeader('nextHebrewBirthday', 'Next Hebrew Birthday'),
+                          nextGregorianBirthday: getHeader('nextGregorianBirthday', 'Next Gregorian Birthday'),
+                          groupName: getHeader('groupName', 'Group Name'),
+                          groupId: getHeader('groupId', 'Group ID'),
+                          notes: getHeader('notes', 'Notes'),
+                          calendarPreferenceGroup: getHeader('calendarPreferenceGroup', 'Calendar Preference - Group'),
+                          calendarPreferenceRecord: getHeader('calendarPreferenceRecord', 'Calendar Preference - Record'),
+                          wishlist: getHeader('wishlist', 'Wishlist')
+                        };
                         await exportBirthdaysToCSV(
                           selectedBirthdays, 
                           groups, 
                           currentTenant.id,
                           `birthdays-${new Date().toISOString().split('T')[0]}.csv`, 
-                          i18n.language
+                          i18n.language,
+                          csvHeaders
                         );
                         showToast(t('birthday.exportSuccess', 'הייצוא הושלם בהצלחה'), 'success');
                       } catch (error) {
