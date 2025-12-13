@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { birthdayService } from '../services/birthday.service';
 import { BirthdayFormData, Birthday } from '../types';
@@ -8,6 +9,24 @@ import { ensureTokenWithClaims } from '../utils/tokenRefresh';
 
 export const useBirthdays = (includeArchived = false) => {
   const { currentTenant } = useTenant();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!currentTenant) return;
+
+    const unsubscribe = birthdayService.subscribeToTenantBirthdays(
+      currentTenant.id,
+      includeArchived,
+      (birthdays) => {
+        queryClient.setQueryData(
+          ['birthdays', currentTenant.id, includeArchived],
+          birthdays
+        );
+      }
+    );
+
+    return () => unsubscribe();
+  }, [currentTenant, includeArchived, queryClient]);
 
   return useQuery({
     queryKey: ['birthdays', currentTenant?.id, includeArchived],
@@ -16,6 +35,7 @@ export const useBirthdays = (includeArchived = false) => {
       return await birthdayService.getTenantBirthdays(currentTenant.id, includeArchived);
     },
     enabled: !!currentTenant,
+    staleTime: Infinity,
   });
 };
 

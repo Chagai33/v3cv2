@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import * as functions from 'firebase-functions';
+import pLimit from 'p-limit';
 
 export interface CalendarEventsMap {
   [key: string]: string; // e.g., "gregorian_2025": "eventId123"
@@ -130,4 +131,30 @@ export async function rateLimitExecutor<T>(
   // Wait for all remaining tasks to finish
   await Promise.all(executing);
   return results;
+}
+
+/**
+ * Processes a batch of tasks with concurrency limit and separates results.
+ */
+export async function batchProcessor<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number
+): Promise<{ successful: T[]; failed: any[] }> {
+  const limit = pLimit(concurrency);
+  const promises = tasks.map(task => limit(() => task()));
+  
+  const results = await Promise.allSettled(promises);
+  
+  const successful: T[] = [];
+  const failed: any[] = [];
+  
+  results.forEach(result => {
+    if (result.status === 'fulfilled') {
+      successful.push(result.value);
+    } else {
+      failed.push(result.reason);
+    }
+  });
+  
+  return { successful, failed };
 }

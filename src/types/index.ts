@@ -92,6 +92,15 @@ export interface Birthday {
     hebrew?: string[];
   } | null;
   lastSyncedAt?: string | null;
+  googleCalendarEventsMap?: { [key: string]: string };
+  syncMetadata?: {
+    status: 'SYNCED' | 'PARTIAL_SYNC' | 'ERROR' | 'PENDING';
+    lastAttemptAt: string;
+    failedKeys: string[];
+    lastErrorMessage: string | null;
+    retryCount: number;
+    dataHash: string;
+  };
   created_at: string;
   created_by: string;
   updated_at: string;

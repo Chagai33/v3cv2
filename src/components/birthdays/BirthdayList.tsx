@@ -579,13 +579,6 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                   </button>
                   )}
                   <button
-                    onClick={() => handleBulkRefresh()}
-                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-violet-50 text-violet-600 border border-violet-200 hover:bg-violet-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">{t('birthday.refresh')}</span>
-                  </button>
-                  <button
                     onClick={() => handleBulkDelete()}
                     className="px-2 sm:px-3 py-1 sm:py-1.5 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1"
                   >
@@ -617,13 +610,6 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                   >
                     <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">{t('common.delete')}</span>
-                  </button>
-                  <button
-                    onClick={() => handleBulkRefresh()}
-                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-violet-50 text-violet-600 border border-violet-200 hover:bg-violet-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">{t('birthday.refresh')}</span>
                   </button>
                   <button
                     onClick={async () => {
@@ -1049,14 +1035,6 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                           title={t('wishlist.title')}
                         >
                           <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleRefresh(birthday.id)}
-                          disabled={refreshHebrewData.isPending}
-                          className="p-1 sm:p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title={t('birthday.refresh')}
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${refreshHebrewData.isPending ? 'animate-spin' : ''}`} />
                         </button>
                         {isConnected && (
                           (birthday.googleCalendarEventId || birthday.googleCalendarEventIds) ? (

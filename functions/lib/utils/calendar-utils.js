@@ -32,13 +32,18 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.calculateEventHash = calculateEventHash;
 exports.generateEventKey = generateEventKey;
 exports.withRetry = withRetry;
 exports.rateLimitExecutor = rateLimitExecutor;
+exports.batchProcessor = batchProcessor;
 const crypto = __importStar(require("crypto"));
 const functions = __importStar(require("firebase-functions"));
+const p_limit_1 = __importDefault(require("p-limit"));
 /**
  * Generates a unique hash for the event content to detect changes.
  * We include only the fields that should trigger an update.
@@ -123,5 +128,24 @@ async function rateLimitExecutor(tasks, concurrency, delayMs = 0) {
     // Wait for all remaining tasks to finish
     await Promise.all(executing);
     return results;
+}
+/**
+ * Processes a batch of tasks with concurrency limit and separates results.
+ */
+async function batchProcessor(tasks, concurrency) {
+    const limit = (0, p_limit_1.default)(concurrency);
+    const promises = tasks.map(task => limit(() => task()));
+    const results = await Promise.allSettled(promises);
+    const successful = [];
+    const failed = [];
+    results.forEach(result => {
+        if (result.status === 'fulfilled') {
+            successful.push(result.value);
+        }
+        else {
+            failed.push(result.reason);
+        }
+    });
+    return { successful, failed };
 }
 //# sourceMappingURL=calendar-utils.js.map

@@ -10,7 +10,9 @@ import {
   where,
   orderBy,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  onSnapshot,
+  Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Birthday, BirthdayFormData } from '../types';
@@ -196,6 +198,32 @@ export const birthdayService = {
 
     const snapshot = await getDocs(q);
     return snapshot.docs.map((doc) => this.docToBirthday(doc.id, doc.data()));
+  },
+
+  subscribeToTenantBirthdays(
+    tenantId: string,
+    includeArchived: boolean,
+    callback: (birthdays: Birthday[]) => void
+  ): Unsubscribe {
+    let q = query(
+      collection(db, 'birthdays'),
+      where('tenant_id', '==', tenantId),
+      orderBy('birth_date_gregorian', 'asc')
+    );
+
+    if (!includeArchived) {
+      q = query(
+        collection(db, 'birthdays'),
+        where('tenant_id', '==', tenantId),
+        where('archived', '==', false),
+        orderBy('birth_date_gregorian', 'asc')
+      );
+    }
+
+    return onSnapshot(q, (snapshot) => {
+      const birthdays = snapshot.docs.map((doc) => this.docToBirthday(doc.id, doc.data()));
+      callback(birthdays);
+    });
   },
 
   async getUpcomingBirthdays(tenantId: string, days: number = 30): Promise<Birthday[]> {

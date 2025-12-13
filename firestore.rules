@@ -67,10 +67,16 @@ service cloud.firestore {
                      isTenantMember(resource.data.tenant_id);
       allow create: if isAuthenticated() &&
                        (hasCustomClaims() ? request.resource.data.tenant_id == getUserTenantId() : true);
-      allow update, delete: if isAuthenticated() &&
-                               resource != null &&
-                               isTenantMember(resource.data.tenant_id) &&
-                               resource.data.tenant_id == request.resource.data.tenant_id; // Prevent tenant_id change
+                       
+      // Split Update and Delete
+      allow update: if isAuthenticated() &&
+                       resource != null &&
+                       isTenantMember(resource.data.tenant_id) &&
+                       resource.data.tenant_id == request.resource.data.tenant_id; // Prevent tenant_id change
+                       
+      allow delete: if isAuthenticated() &&
+                       resource != null &&
+                       isTenantMember(resource.data.tenant_id);
     }
 
     match /birthdays/{birthdayId} {
@@ -79,10 +85,16 @@ service cloud.firestore {
                      isTenantMember(resource.data.tenant_id);
       allow create: if isAuthenticated() &&
                        (hasCustomClaims() ? request.resource.data.tenant_id == getUserTenantId() : true);
-      allow update, delete: if isAuthenticated() &&
-                               resource != null &&
-                               isTenantMember(resource.data.tenant_id) &&
-                               resource.data.tenant_id == request.resource.data.tenant_id; // Prevent tenant_id change
+                       
+      // Split Update and Delete
+      allow update: if isAuthenticated() &&
+                       resource != null &&
+                       isTenantMember(resource.data.tenant_id) &&
+                       resource.data.tenant_id == request.resource.data.tenant_id; // Prevent tenant_id change
+                       
+      allow delete: if isAuthenticated() &&
+                       resource != null &&
+                       isTenantMember(resource.data.tenant_id);
     }
 
     match /wishlist_items/{itemId} {
@@ -91,10 +103,16 @@ service cloud.firestore {
                      isTenantMember(resource.data.tenant_id);
       allow create: if isAuthenticated() &&
                        (hasCustomClaims() ? request.resource.data.tenant_id == getUserTenantId() : true);
-      allow update, delete: if isAuthenticated() &&
-                               resource != null &&
-                               isTenantMember(resource.data.tenant_id) &&
-                               resource.data.tenant_id == request.resource.data.tenant_id; // Prevent tenant_id change
+                       
+      // Split Update and Delete
+      allow update: if isAuthenticated() &&
+                       resource != null &&
+                       isTenantMember(resource.data.tenant_id) &&
+                       resource.data.tenant_id == request.resource.data.tenant_id; // Prevent tenant_id change
+                       
+      allow delete: if isAuthenticated() &&
+                       resource != null &&
+                       isTenantMember(resource.data.tenant_id);
     }
 
     // --- Gelt Calculations (Secured Version) ---
