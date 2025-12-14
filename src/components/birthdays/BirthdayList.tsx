@@ -11,6 +11,7 @@ import { useTenant } from '../../contexts/TenantContext';
 import { useGoogleCalendar } from '../../contexts/GoogleCalendarContext';
 import { Edit, Trash2, Calendar, Search, CalendarDays, Filter, Gift, Download, Users, X, UploadCloud, CloudOff, Sparkles, Copy, Check } from 'lucide-react';
 import { SyncStatusButton } from './SyncStatusButton';
+import { BirthdayQuickActionsModal } from '../modals/BirthdayQuickActionsModal';
 import { FutureBirthdaysModal } from '../modals/FutureBirthdaysModal';
 import { UpcomingGregorianBirthdaysModal } from '../modals/UpcomingGregorianBirthdaysModal';
 import { WishlistModal } from '../modals/WishlistModal';
@@ -44,6 +45,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   const { isConnected, syncSingleBirthday, syncMultipleBirthdays, removeBirthdayFromCalendar, isSyncing, calendarId, isPrimaryCalendar } = useGoogleCalendar();
   const { showToast } = useToast();
   const [showBlockModal, setShowBlockModal] = useState(false);
+  const [quickActionsBirthday, setQuickActionsBirthday] = useState<Birthday | null>(null);
   
   // Local state for tracking which IDs are currently syncing
   const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
@@ -950,9 +952,17 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                       </td>
                       <td className="px-2 sm:px-6 py-2 sm:py-4">
                         <div className="flex items-center gap-1.5 sm:gap-3">
-                          <span className="text-xs sm:text-sm font-medium text-gray-900">
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                console.log('Opening quick actions for:', birthday.first_name);
+                                setQuickActionsBirthday(birthday);
+                            }}
+                            className="text-xs sm:text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline transition-colors text-start"
+                          >
                             {birthday.first_name} {birthday.last_name}
-                          </span>
+                          </button>
                           {duplicateIds?.has(birthday.id) && (
                             <div className="relative group/tooltip">
                               <Copy className="w-3 h-3 sm:w-4 sm:h-4 text-orange-500" />
@@ -1122,15 +1132,6 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                             />
                           </div>
                         )}
-                        {onAddToCalendar && (
-                          <button
-                            onClick={() => onAddToCalendar(birthday)}
-                            className="p-1 sm:p-2 text-green-600 hover:bg-green-100 rounded-lg transition-all hover:scale-110"
-                            title={t('birthday.addToCalendar')}
-                          >
-                            <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          </button>
-                        )}
                         {(!birthday.group_ids || birthday.group_ids.length === 0) && (
                           <button
                             onClick={() => onEdit(birthday)}
@@ -1191,6 +1192,26 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
             setSelectedBirthday(null);
           }}
           birthday={selectedBirthday}
+        />
+      )}
+
+      {quickActionsBirthday && (
+        <BirthdayQuickActionsModal
+          isOpen={!!quickActionsBirthday}
+          onClose={() => setQuickActionsBirthday(null)}
+          birthday={quickActionsBirthday}
+          isConnected={isConnected}
+          isSyncing={isSyncing}
+          isPendingChange={unsyncedMap.get(quickActionsBirthday.id) || false}
+          isSyncLoading={syncingIds.has(quickActionsBirthday.id)}
+          onSync={handleSyncToCalendar}
+          onRemove={handleRemoveFromCalendar}
+          onWishlist={(b) => {
+            setSelectedBirthday(b);
+            setShowWishlistModal(true);
+          }}
+          onEdit={onEdit}
+          onDelete={handleDelete}
         />
       )}
 

@@ -35,14 +35,10 @@ var __importStar = (this && this.__importStar) || (function () {
 var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.guestPortalOps = exports.updateNextBirthdayScheduled = exports.resetBirthdaySyncData = exports.deleteAccount = exports.getAccountDeletionSummary = exports.previewDeletion = exports.cleanupOrphanEvents = exports.listGoogleCalendars = exports.updateGoogleCalendarSelection = exports.getGoogleAccountInfo = exports.getGoogleCalendarStatus = exports.disconnectGoogleCalendar = exports.removeBirthdayFromGoogleCalendar = exports.onUserCreate = exports.deleteAllSyncedEventsFromGoogleCalendar = exports.deleteGoogleCalendar = exports.createGoogleCalendar = exports.exchangeGoogleAuthCode = exports.triggerDeleteAllEvents = exports.processDeletionJob = exports.syncMultipleBirthdaysToGoogleCalendar = exports.processCalendarSyncJob = exports.retryFailedSyncs = exports.syncBirthdayToGoogleCalendar = exports.refreshBirthdayHebrewData = exports.onBirthdayWrite = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
-const node_fetch_1 = __importDefault(require("node-fetch"));
 const googleapis_1 = require("googleapis");
 const calendar_utils_1 = require("./utils/calendar-utils");
 const tasks_1 = require("@google-cloud/tasks");
@@ -61,55 +57,9 @@ if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     functions.logger.warn('Missing Google Client Credentials in functions.config()!');
 }
 const tasksClient = new tasks_1.CloudTasksClient();
+// --- Interfaces ---
 // --- Helper Functions: Hebcal & Zodiac ---
-async function fetchHebcalData(gregorianDate, afterSunset) {
-    const year = gregorianDate.getFullYear();
-    const month = String(gregorianDate.getMonth() + 1).padStart(2, '0');
-    const day = String(gregorianDate.getDate()).padStart(2, '0');
-    const params = new URLSearchParams({
-        cfg: 'json',
-        gy: year.toString(),
-        gm: month,
-        gd: day,
-        g2h: '1',
-        lg: 's',
-    });
-    if (afterSunset)
-        params.append('gs', 'on');
-    const url = `https://www.hebcal.com/converter?${params.toString()}`;
-    try {
-        const response = await (0, node_fetch_1.default)(url);
-        if (!response.ok)
-            throw new Error(`Hebcal API error: ${response.statusText}`);
-        return await response.json();
-    }
-    catch (error) {
-        functions.logger.error('Error fetching Hebcal data:', error);
-        throw error;
-    }
-}
-async function getCurrentHebrewYear() {
-    const today = new Date();
-    const params = new URLSearchParams({
-        cfg: 'json',
-        gy: today.getFullYear().toString(),
-        gm: String(today.getMonth() + 1).padStart(2, '0'),
-        gd: String(today.getDate()).padStart(2, '0'),
-        g2h: '1',
-        lg: 's',
-    });
-    try {
-        const response = await (0, node_fetch_1.default)(`https://www.hebcal.com/converter?${params.toString()}`);
-        if (!response.ok)
-            throw new Error('Failed to get current Hebrew year');
-        const data = await response.json();
-        return data.hy;
-    }
-    catch (error) {
-        functions.logger.error('Error getting current Hebrew year:', error);
-        throw error;
-    }
-}
+// Helper Functions (Zodiac)
 function getGregorianZodiacSign(date) {
     const month = date.getMonth() + 1;
     const day = date.getDate();
@@ -167,31 +117,6 @@ function getZodiacSignNameEn(sign) {
 function getZodiacSignNameHe(sign) {
     const names = { 'aries': 'טלה', 'taurus': 'שור', 'gemini': 'תאומים', 'cancer': 'סרטן', 'leo': 'אריה', 'virgo': 'בתולה', 'libra': 'מאזניים', 'scorpio': 'עקרב', 'sagittarius': 'קשת', 'capricorn': 'גדי', 'aquarius': 'דלי', 'pisces': 'דגים' };
     return names[sign] || sign;
-}
-async function fetchNextHebrewBirthdays(startHebrewYear, hebrewMonth, hebrewDay, yearsAhead = 10) {
-    const futureDates = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const fetchPromises = [];
-    for (let i = 0; i <= yearsAhead; i++) {
-        const yearToFetch = startHebrewYear + i;
-        const params = new URLSearchParams({ cfg: 'json', hy: yearToFetch.toString(), hm: hebrewMonth, hd: hebrewDay.toString(), h2g: '1' });
-        fetchPromises.push((0, node_fetch_1.default)(`https://www.hebcal.com/converter?${params.toString()}`)
-            .then(res => res.ok ? res.json() : null)
-            .then(data => {
-            if (data && data.gy && data.gm && data.gd) {
-                const date = new Date(data.gy, data.gm - 1, data.gd);
-                date.setHours(0, 0, 0, 0);
-                if (date >= today)
-                    return { gregorianDate: date, hebrewYear: yearToFetch };
-            }
-            return null;
-        })
-            .catch(err => { functions.logger.error(`Error fetching Hebrew year ${yearToFetch}:`, err); return null; }));
-    }
-    const results = await Promise.all(fetchPromises);
-    futureDates.push(...results.filter((date) => date !== null));
-    return futureDates.sort((a, b) => a.gregorianDate.getTime() - b.gregorianDate.getTime());
 }
 // --- Helper Functions: Google Auth & Calendar ---
 async function getValidAccessToken(userId, minValidityMillis = 60000) {
@@ -543,65 +468,20 @@ exports.onBirthdayWrite = functions.firestore.document('birthdays/{birthdayId}')
         }
         return null;
     }
-    if (!afterData.birth_date_gregorian)
-        return null;
-    // 2. Hebcal Logic
-    const hasHebrew = afterData.birth_date_hebrew_string && afterData.future_hebrew_birthdays?.length;
-    let skipCalc = hasHebrew && !beforeData; // New with data
-    if (beforeData) {
-        const changed = beforeData.birth_date_gregorian !== afterData.birth_date_gregorian || beforeData.after_sunset !== afterData.after_sunset;
-        if (!changed && hasHebrew)
-            skipCalc = true;
-        if (!changed && !hasHebrew)
-            skipCalc = false; // Need calc
-    }
-    let updateData = {};
-    if (!skipCalc) {
-        try {
-            const bDate = new Date(afterData.birth_date_gregorian);
-            const hebcal = await fetchHebcalData(bDate, afterData.after_sunset || false);
-            const currHy = await getCurrentHebrewYear();
-            const futures = await fetchNextHebrewBirthdays(currHy, hebcal.hm, hebcal.hd, 10);
-            updateData = {
-                birth_date_hebrew_string: hebcal.hebrew, birth_date_hebrew_year: hebcal.hy,
-                birth_date_hebrew_month: hebcal.hm, birth_date_hebrew_day: hebcal.hd,
-                gregorian_year: bDate.getFullYear(), gregorian_month: bDate.getMonth() + 1, gregorian_day: bDate.getDate(),
-                hebrew_year: hebcal.hy, hebrew_month: hebcal.hm, hebrew_day: hebcal.hd,
-                updated_at: admin.firestore.FieldValue.serverTimestamp()
-            };
-            if (futures.length > 0) {
-                const next = futures[0];
-                updateData.next_upcoming_hebrew_birthday = `${next.gregorianDate.toISOString().split('T')[0]}`;
-                updateData.next_upcoming_hebrew_year = next.hebrewYear;
-                updateData.future_hebrew_birthdays = futures.map(f => ({
-                    gregorian: f.gregorianDate.toISOString().split('T')[0], hebrewYear: f.hebrewYear
-                }));
-            }
-            else {
-                updateData.future_hebrew_birthdays = [];
-                updateData.next_upcoming_hebrew_year = null;
-            }
-            await change.after.ref.update(updateData);
-        }
-        catch (e) {
-            functions.logger.error('Hebcal error:', e);
-        }
-    }
-    // 3. Smart Sync
-    const finalData = { ...afterData, ...updateData };
+    // 2. Smart Sync
     // CRITICAL FIX: Only sync if explicitly enabled via 'isSynced' flag
-    if (finalData.tenant_id && finalData.isSynced === true) {
+    if (afterData.tenant_id && afterData.isSynced === true) {
         try {
-            await processBirthdaySync(context.params.birthdayId, finalData, finalData.tenant_id);
+            await processBirthdaySync(context.params.birthdayId, afterData, afterData.tenant_id);
         }
         catch (e) {
             functions.logger.error('Sync error:', e);
         }
     }
-    else if (finalData.tenant_id && beforeData?.isSynced === true && finalData.isSynced === false) {
+    else if (afterData.tenant_id && beforeData?.isSynced === true && afterData.isSynced === false) {
         // If it was synced and now turned off -> Trigger removal
         try {
-            await processBirthdaySync(context.params.birthdayId, { ...finalData, archived: true }, finalData.tenant_id);
+            await processBirthdaySync(context.params.birthdayId, { ...afterData, archived: true }, afterData.tenant_id);
         }
         catch (e) {
             functions.logger.error('Removal error:', e);

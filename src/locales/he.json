@@ -142,7 +142,8 @@
         "PARTIAL": "הושלם חלקית",
         "FAILED": "נכשל",
         "IDLE": "ממתין",
-        "IN_PROGRESS": "בתהליך"
+        "IN_PROGRESS": "בתהליך",
+        "DELETING": "מוחק..."
     },
     "syncDataReset": "נתוני הסנכרון אופסו בהצלחה",
     "strictModeTitle": "בואו נעשה סדר ביומן! 📅",
@@ -155,7 +156,15 @@
     "currentCalendar": "יומן נוכחי",
     "createNew": "צור יומן חדש",
     "syncHistoryFull": "היסטוריית סנכרונים",
-    "appCreatedCalendarDescription": "יומן ימי הולדת - נוצר על ידי אפליקציית ימי הולדת עבריים"
+    "appCreatedCalendarDescription": "יומן ימי הולדת - נוצר על ידי אפליקציית ימי הולדת עבריים",
+    "startSyncing": "לחץ לסנכרון",
+    "stopSyncing": "מסונכרן ותקין. לחץ להסרה",
+    "confirmRemove": "האם להסיר את יום ההולדת מיומן Google?",
+    "partialSync": "סנכרון חלקי (חלק מהאירועים לא עברו)",
+    "unsyncedChanges": "יש שינויים הממתינים לסנכרון",
+    "setupRequired": "נדרשת הגדרה",
+    "primaryCalendarWarning": "האפליקציה מחוברת כרגע ליומן הראשי. כדי לסנכרן ימי הולדת, עליך ליצור או לבחור יומן ייעודי.",
+    "cannotSyncToPrimary": "לא ניתן לסנכרן ליומן הראשי. אנא בחר יומן ייעודי."
   },
   "common": {
     "save": "שמור",
@@ -358,7 +367,8 @@
     "next10Years": "עשר השנים הבאות",
     "noFutureDates": "אין תאריכים זמינים",
     "next": "הבא",
-    "past": "עבר"
+    "past": "עבר",
+    "deleteConfirmWithCalendar": "האם אתה בטוח? פעולה זו תמחק את יום ההולדת וגם תסיר את כל האירועים המקושרים מיומן Google."
   },
   "zodiac": {
     "aries": "טלה",

@@ -173,7 +173,24 @@
     "currentCalendar": "Current Calendar",
     "createNew": "Create New Calendar",
     "syncHistoryFull": "Sync History",
-    "appCreatedCalendarDescription": "Hebrew Birthdays Calendar - Created by HebBirthday App"
+    "appCreatedCalendarDescription": "Hebrew Birthdays Calendar - Created by HebBirthday App",
+    "startSyncing": "Click to sync",
+    "stopSyncing": "Synced. Click to remove",
+    "confirmRemove": "Remove birthday from Google Calendar?",
+    "partialSync": "Partial sync (some events failed)",
+    "unsyncedChanges": "There are changes waiting to sync",
+    "setupRequired": "Setup Required",
+    "primaryCalendarWarning": "The app is currently connected to the primary calendar. To sync birthdays, you must create or select a dedicated calendar.",
+    "cannotSyncToPrimary": "Cannot sync to primary calendar. Please select a dedicated calendar.",
+    "syncInProgress": "Sync in progress...",
+    "status": {
+        "SUCCESS": "Completed Successfully",
+        "PARTIAL": "Completed Partially",
+        "FAILED": "Failed",
+        "IDLE": "Idle",
+        "IN_PROGRESS": "In Progress",
+        "DELETING": "Deleting..."
+    }
   },
   "auth": {
     "signIn": "Sign In",
@@ -309,7 +326,8 @@
     "addToGoogleCalendar": "Add to Google Calendar",
     "exportSelected": "Export Selected",
     "unsyncedChanges": "There are changes not synced to Google Calendar",
-    "notesSyncHint": "Notes will be displayed in the Google Calendar event description if you choose to sync"
+    "notesSyncHint": "Notes will be displayed in the Google Calendar event description if you choose to sync",
+    "deleteConfirmWithCalendar": "Are you sure? This action will delete the birthday and also remove all linked events from Google Calendar."
   },
   "groups": {
     "title": "Groups",
