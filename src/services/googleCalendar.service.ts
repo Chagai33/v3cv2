@@ -71,9 +71,9 @@ class GoogleCalendarService {
          return res.data;
     }
 
-    async deleteAllSyncedEvents(tenantId: string, forceDBOnly?: boolean): Promise<{ totalDeleted: number; failedCount: number; calendarName?: string }> {
-        const fn = httpsCallable<{tenantId: string; forceDBOnly?: boolean}, { totalDeleted: number; failedCount: number; calendarName?: string }>(functions, 'deleteAllSyncedEventsFromGoogleCalendar');
-        const res = await fn({ tenantId, forceDBOnly });
+    async deleteAllSyncedEvents(tenantId: string, forceDBOnly?: boolean): Promise<{ success: boolean; message: string }> {
+        const fn = httpsCallable<{tenantId: string}, { success: boolean; message: string }>(functions, 'triggerDeleteAllEvents');
+        const res = await fn({ tenantId });
         return res.data;
     }
 

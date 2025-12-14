@@ -398,10 +398,14 @@ export const GoogleCalendarButton: React.FC<GoogleCalendarButtonProps> = ({ init
             
             {/* Sync Status / History Link */}
             <div className="flex items-center gap-2">
-               {syncStatus === 'IN_PROGRESS' ? (
-                  <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-medium">
-                    <Loader className="w-3 h-3 animate-spin" />
-                    <span className="hidden sm:inline">{t('googleCalendar.syncInProgress')}</span>
+               {(syncStatus === 'IN_PROGRESS' || syncStatus === 'DELETING') ? (
+                  <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium ${
+                      syncStatus === 'DELETING' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'
+                  }`}>
+                    <Loader className={`w-3 h-3 animate-spin ${syncStatus === 'DELETING' ? 'text-red-600' : 'text-blue-600'}`} />
+                    <span className="hidden sm:inline">
+                        {syncStatus === 'DELETING' ? t('googleCalendar.deleting') : t('googleCalendar.syncInProgress')}
+                    </span>
                   </div>
                ) : (
                   <button 

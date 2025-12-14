@@ -310,7 +310,7 @@ export interface GoogleCalendarStatus {
   picture: string;
   calendarId: string;
   calendarName: string;
-  syncStatus: 'IDLE' | 'IN_PROGRESS';
+  syncStatus: 'IDLE' | 'IN_PROGRESS' | 'DELETING';
   lastSyncStart: number;
   recentActivity: SyncHistoryItem[];
 }
@@ -322,13 +322,13 @@ export interface GoogleCalendarContextType {
   userEmail: string | null;
   calendarId: string | null;
   calendarName: string | null;
-  syncStatus: 'IDLE' | 'IN_PROGRESS'; // Added
+  syncStatus: 'IDLE' | 'IN_PROGRESS' | 'DELETING'; // Added
   recentActivity: SyncHistoryItem[]; // Added
   connectToGoogle: () => Promise<void>;
   syncSingleBirthday: (birthdayId: string) => Promise<SyncResult>;
   syncMultipleBirthdays: (birthdayIds: string[]) => Promise<BulkSyncResult>;
   removeBirthdayFromCalendar: (birthdayId: string) => Promise<void>;
-  deleteAllSyncedEvents: (tenantId: string, forceDBOnly?: boolean) => Promise<{ totalDeleted: number; failedCount: number; calendarName?: string }>; // Added calendarName
+  deleteAllSyncedEvents: (tenantId: string, forceDBOnly?: boolean) => Promise<{ success: boolean; message: string }>; // Updated to async job response
   disconnect: () => Promise<void>;
   refreshStatus: () => Promise<void>;
   createCalendar: (name: string) => Promise<{ calendarId: string; calendarName: string }>;

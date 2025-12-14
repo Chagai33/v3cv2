@@ -33,7 +33,7 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [calendarId, setCalendarId] = useState<string | null>(null);
   const [calendarName, setCalendarName] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<'IDLE' | 'IN_PROGRESS'>('IDLE');
+  const [syncStatus, setSyncStatus] = useState<'IDLE' | 'IN_PROGRESS' | 'DELETING'>('IDLE');
   const [recentActivity, setRecentActivity] = useState<SyncHistoryItem[]>([]);
 
   useEffect(() => {
@@ -232,7 +232,7 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     }
   };
 
-  const deleteAllSyncedEvents = async (tenantId: string): Promise<{ totalDeleted: number; failedCount: number }> => {
+  const deleteAllSyncedEvents = async (tenantId: string): Promise<{ success: boolean; message: string }> => {
     if (!isConnected) {
       showToast(t('googleCalendar.connectFirst'), 'error');
       throw new Error('Not connected to Google Calendar');
@@ -241,7 +241,7 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     try {
       setIsSyncing(true);
       const result = await googleCalendarService.deleteAllSyncedEvents(tenantId);
-      showToast(t('googleCalendar.eventsDeletedSuccess', { count: result.totalDeleted }), 'success');
+      showToast(result.message || 'Cleanup job started in background', 'success');
       return result;
     } catch (error: any) {
       logger.error('Error deleting all synced events:', error);

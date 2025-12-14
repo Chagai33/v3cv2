@@ -713,6 +713,151 @@ export const syncMultipleBirthdaysToGoogleCalendar = functions.https.onCall(asyn
     return { success: true, message: 'Batch started', jobId, status: 'queued', totalAttempted: birthdayIds.length };
 });
 
+// --- NEW: Async Delete All Logic ---
+
+export const processDeletionJob = functions.runWith({ timeoutSeconds: 540, memory: '256MB' }).https.onRequest(async (req, res) => {
+    if (req.method !== 'POST') { res.status(405).send('Method Not Allowed'); return; }
+    
+    // Verify payload
+    const { userId, tenantId } = req.body;
+    if (!userId) { res.status(400).send('Missing userId'); return; }
+
+    try {
+        // 1. Setup Google Client
+        const accessToken = await getValidAccessToken(userId);
+        const oauth2Client = new google.auth.OAuth2(); 
+        oauth2Client.setCredentials({ access_token: accessToken });
+        const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+        const calendarId = await getCalendarId(userId);
+
+        functions.logger.log(`[DeleteJob] Starting cleanup for user ${userId}, tenant ${tenantId || 'all'}, cal ${calendarId}`);
+
+        let pageToken;
+        let deletedCount = 0;
+        let foundCount = 0; 
+        let failedCount = 0;
+        const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+        // 2. Iterate and Delete from Google Calendar
+        do {
+            const resList: any = await calendar.events.list({ 
+                calendarId, 
+                privateExtendedProperty: ['createdByApp=hebbirthday'], 
+                maxResults: 250, 
+                pageToken, 
+                singleEvents: true 
+            });
+            
+            const items = resList.data.items || [];
+            functions.logger.log(`[DeleteJob] Found page with ${items.length} items`);
+
+            for (const ev of items) {
+                if (ev.id) {
+                    foundCount++;
+                    try { 
+                        await calendar.events.delete({ calendarId, eventId: ev.id }); 
+                        deletedCount++; 
+                        // Serial processing with delay to avoid Rate Limits (403/429)
+                        await sleep(150); 
+                    } catch (e: any) { 
+                        // Ignore 404/410 (already deleted)
+                        if (e.code === 404 || e.code === 410) {
+                            deletedCount++; // Count as deleted for success tracking
+                        } else {
+                            failedCount++; 
+                            functions.logger.warn(`[DeleteJob] Delete fail ${ev.id}: ${e.message}`); 
+                        }
+                    }
+                }
+            }
+            pageToken = resList.data.nextPageToken;
+        } while (pageToken);
+
+        functions.logger.log(`[DeleteJob] Calendar cleanup done. Found: ${foundCount}, Deleted: ${deletedCount}, Failed: ${failedCount}`);
+
+        // 3. Cleanup Firestore Metadata (Unsync All)
+        // Only if tenantId provided, otherwise we can't safely target specific documents without scanning all
+        if (tenantId) {
+            const docs = await db.collection('birthdays').where('tenant_id', '==', tenantId).get();
+            
+            // Chunking batches (limit is 500)
+            let opCount = 0;
+            let batchCount = 0;
+            let currentBatch = db.batch();
+
+            for (const doc of docs.docs) {
+                currentBatch.update(doc.ref, { 
+                    googleCalendarEventsMap: admin.firestore.FieldValue.delete(), 
+                    syncMetadata: admin.firestore.FieldValue.delete(), 
+                    lastSyncedAt: admin.firestore.FieldValue.delete(),
+                    googleCalendarEventId: admin.firestore.FieldValue.delete(), // Legacy
+                    googleCalendarEventIds: admin.firestore.FieldValue.delete(), // Legacy
+                    syncedCalendarId: admin.firestore.FieldValue.delete(),
+                    isSynced: false
+                });
+                opCount++;
+
+                if (opCount >= 450) { // Safety margin
+                    await currentBatch.commit();
+                    currentBatch = db.batch();
+                    opCount = 0;
+                    batchCount++;
+                }
+            }
+            if (opCount > 0) await currentBatch.commit();
+            functions.logger.log(`[DeleteJob] Firestore cleanup done. Updated ${docs.size} docs in ${batchCount + 1} batches.`);
+        }
+
+        // 4. Update Token Status
+        await db.collection('googleCalendarTokens').doc(userId).set({ 
+            syncStatus: 'IDLE', 
+            lastDeletionJob: { timestamp: admin.firestore.FieldValue.serverTimestamp(), deleted: deletedCount, found: foundCount } 
+        }, { merge: true });
+
+        res.status(200).send({ success: true, deletedCount, foundCount });
+
+    } catch (e: any) {
+        functions.logger.error('[DeleteJob] Fatal error:', e);
+        // Reset status to IDLE so user isn't stuck, but log error
+        await db.collection('googleCalendarTokens').doc(userId).set({ syncStatus: 'ERROR', lastError: e.message }, { merge: true });
+        res.status(500).send({ error: e.message });
+    }
+});
+
+export const triggerDeleteAllEvents = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Auth required');
+    
+    const userId = context.auth.uid;
+    const { tenantId } = data;
+
+    // Mark as in progress immediately
+    await db.collection('googleCalendarTokens').doc(userId).set({ 
+        syncStatus: 'DELETING', // New status for UI
+        lastSyncStart: admin.firestore.FieldValue.serverTimestamp() 
+    }, { merge: true });
+
+    const parent = tasksClient.queuePath(PROJECT_ID, LOCATION, QUEUE);
+    const task = {
+        httpRequest: {
+            httpMethod: 'POST' as const,
+            url: `https://${LOCATION}-${PROJECT_ID}.cloudfunctions.net/processDeletionJob`,
+            body: Buffer.from(JSON.stringify({ userId, tenantId })).toString('base64'),
+            headers: { 'Content-Type': 'application/json' },
+            oidcToken: { serviceAccountEmail: `${PROJECT_ID}@appspot.gserviceaccount.com` }
+        },
+        // Start immediately
+        scheduleTime: { seconds: Math.floor(Date.now() / 1000) }
+    };
+
+    try {
+        await tasksClient.createTask({ parent, task });
+        return { success: true, message: 'Deletion job started' };
+    } catch (e: any) {
+        await db.collection('googleCalendarTokens').doc(userId).set({ syncStatus: 'IDLE' }, { merge: true });
+        throw new functions.https.HttpsError('internal', 'Failed to queue job: ' + e.message);
+    }
+});
+
 // Calendar Management & Maintenance
 export const exchangeGoogleAuthCode = functions.https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Auth required');
