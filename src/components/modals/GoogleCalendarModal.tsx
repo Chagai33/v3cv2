@@ -1,7 +1,8 @@
 import React from 'react';
-import { X, ArrowLeft, ArrowRight } from 'lucide-react';
+import { X, ArrowLeft, ArrowRight, AlertTriangle } from 'lucide-react';
 import { GoogleCalendarButton } from '../calendar/GoogleCalendarButton';
 import { useTranslation } from 'react-i18next';
+import { useGoogleCalendar } from '../../contexts/GoogleCalendarContext';
 
 interface GoogleCalendarModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface GoogleCalendarModalProps {
 
 export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({ isOpen, onClose, initialStrictMode }) => {
   const { t, i18n } = useTranslation();
+  const { isConnected, isPrimaryCalendar } = useGoogleCalendar();
 
   if (!isOpen) return null;
 
@@ -28,6 +30,21 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({ isOpen
         </div>
         
         <div className="flex flex-col items-center gap-4 pb-20 sm:pb-4">
+          
+          {isConnected && isPrimaryCalendar && (
+            <div className="w-full bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3 text-start mb-2">
+                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                    <p className="font-semibold text-amber-900 text-sm">
+                        {t('googleCalendar.setupRequired', 'נדרשת הגדרה')}
+                    </p>
+                    <p className="text-xs text-amber-800">
+                        {t('googleCalendar.primaryCalendarWarning', 'האפליקציה מחוברת כרגע ליומן הראשי. כדי לסנכרן ימי הולדת, עליך ליצור או לבחור יומן ייעודי.')}
+                    </p>
+                </div>
+            </div>
+          )}
+
           <p className="text-sm text-gray-600 text-center">
             {t('googleCalendar.modalDescription')}
           </p>

@@ -1053,10 +1053,14 @@ exports.getGoogleCalendarStatus = functions.https.onCall(async (data, context) =
         catch (e) { /* ignore info fetch fail */ }
         const historySnap = await db.collection('users').doc(userId).collection('sync_history').orderBy('timestamp', 'desc').limit(5).get();
         const recentActivity = historySnap.docs.map(d => ({ id: d.id, ...d.data(), timestamp: d.data().timestamp?.toMillis() || 0 }));
+        // Determine isPrimary securely on server
+        const currentCalId = tokenData?.calendarId || 'primary';
+        const isPrimary = currentCalId === 'primary' || (email && currentCalId === email);
         return {
             isConnected: true, email, name, picture,
-            calendarId: tokenData?.calendarId || 'primary',
+            calendarId: currentCalId,
             calendarName: tokenData?.calendarName || 'Primary Calendar',
+            isPrimary, // Explicit flag for frontend
             syncStatus: tokenData?.syncStatus || 'IDLE',
             lastSyncStart: tokenData?.lastSyncStart?.toMillis() || 0,
             recentActivity
@@ -1102,7 +1106,7 @@ exports.listGoogleCalendars = functions.https.onCall(async (data, context) => {
         const calendar = googleapis_1.google.calendar({ version: 'v3', auth: oauth2Client });
         const list = await calendar.calendarList.list({ minAccessRole: 'writer' });
         return { success: true, calendars: (list.data.items || []).map((cal) => ({
-                id: cal.id, summary: cal.summary, description: cal.description, primary: cal.primary, accessRole: cal.accessRole
+                id: cal.id, summary: cal.summary, description: cal.description, primary: cal.primary, accessRole: cal.accessRole, extendedProperties: cal.extendedProperties
             })) };
     }
     catch (e) {

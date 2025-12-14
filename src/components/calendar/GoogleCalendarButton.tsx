@@ -15,6 +15,12 @@ interface CalendarOption {
   summary: string;
   description: string;
   primary: boolean;
+  extendedProperties?: {
+    private?: {
+      createdByApp?: string;
+      [key: string]: any;
+    };
+  };
 }
 
 interface GoogleCalendarButtonProps {
@@ -34,6 +40,7 @@ export const GoogleCalendarButton: React.FC<GoogleCalendarButtonProps> = ({ init
     calendarName,
     syncStatus,
     recentActivity,
+    isPrimaryCalendar,
     connectToGoogle, 
     deleteAllSyncedEvents, 
     disconnect, 
@@ -132,10 +139,37 @@ export const GoogleCalendarButton: React.FC<GoogleCalendarButtonProps> = ({ init
   }, [isConnected, isSyncing, calendarId, hasShownStrictMode, initialStrictMode]);
 
 
+  const checkAppCalendarsAndRoute = async () => {
+      try {
+          const calendars = await listCalendars();
+          setAvailableCalendars(calendars);
+
+          // Find app-created calendars
+          const appCalendars = calendars.filter(cal => 
+              cal.id !== 'primary' && !cal.primary && isCreatedByApp(cal)
+          );
+
+          if (appCalendars.length === 0) {
+              // Case 0: No app calendars -> Force create
+              setShowCreateCalendar(true);
+          } else if (appCalendars.length === 1) {
+              // Case 1: Single app calendar -> Auto select
+              const target = appCalendars[0];
+              await updateCalendarSelection(target.id, target.summary);
+          } else {
+              // Case 2: Multiple app calendars -> Force selection
+              setShowCalendarSelector(true);
+          }
+      } catch (error) {
+          console.error('Error checking app calendars:', error);
+      }
+  };
+
   const handleConnect = async () => {
     try {
       await connectToGoogle();
-      // Modal trigger moved to useEffect to avoid render-cycle crash
+      // After connection, check for existing calendars and route appropriately
+      await checkAppCalendarsAndRoute();
     } catch (error) {
       console.error('Error connecting:', error);
     }
@@ -216,13 +250,15 @@ export const GoogleCalendarButton: React.FC<GoogleCalendarButtonProps> = ({ init
     // שמירת השם זמנית לפני הניקוי
     const nameToCreate = newCalendarName.trim();
     
-    // סגירת המודל מיד לתחושת תגובתיות
-    setShowCreateCalendar(false);
-    setNewCalendarName('');
+    // לא סוגרים את המודל מיד - מחכים לסיום הפעולה כדי לתת פידבק למשתמש
 
     try {
       // 1. יצירת היומן - הפונקציה ב-Context כבר מעדכנת את ה-State הגלובלי (calendarId/Name)
       const result = await createCalendar(nameToCreate);
+      
+      // סגירת המודל רק לאחר הצלחה
+      setShowCreateCalendar(false);
+      setNewCalendarName('');
       
       // 2. וידוא בחירה (למקרה שה-Context לא תפס)
       if (result?.calendarId) {
@@ -331,15 +367,27 @@ export const GoogleCalendarButton: React.FC<GoogleCalendarButtonProps> = ({ init
     }
   };
 
-  const isCreatedByApp = (calendarIdToCheck: string, calendarDescription?: string): boolean => {
-    // בדיקה ראשונה: האם היומן נמצא ב-createdCalendars (יומנים שנוצרו אחרי הוספת הפיצ'ר)
-    if (createdCalendars.some(cal => cal.calendarId === calendarIdToCheck)) {
+  const isCreatedByApp = (calendar: CalendarOption): boolean => {
+    // 1. בדיקה ראשונה והכי אמינה: חותמת דיגיטלית בנכסים פרטיים
+    if (calendar.extendedProperties?.private?.createdByApp === 'true') {
+        return true;
+    }
+
+    // 2. בדיקה שנייה: האם היומן נמצא ב-createdCalendars ב-DB
+    if (createdCalendars.some(cal => cal.calendarId === calendar.id)) {
       return true;
     }
     
-    // בדיקה שנייה: האם היומן נוצר על ידי האפליקציה לפי description (יומנים שנוצרו לפני הוספת הפיצ'ר)
-    if (calendarDescription && calendarDescription.includes('יומן ימי הולדת - נוצר על ידי אפליקציית ימי הולדת עבריים')) {
-      return true;
+    // 3. בדיקה שלישית: חתימות טקסט (Fallback ליומנים ישנים)
+    const description = calendar.description || '';
+    const signatures = [
+        'יומן ימי הולדת - נוצר על ידי אפליקציית ימי הולדת עבריים',
+        'Birthday Calendar - Created by Hebrew Birthday App',
+        'Created by Hebrew Birthday App'
+    ];
+
+    if (signatures.some(sig => description.includes(sig))) {
+        return true;
     }
     
     return false;
@@ -355,10 +403,10 @@ export const GoogleCalendarButton: React.FC<GoogleCalendarButtonProps> = ({ init
         >
           {/* Icon & Status */}
           <div className="relative">
-            <Calendar className="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors" />
+            <Calendar className={`w-4 h-4 ${isPrimaryCalendar ? 'text-amber-600 group-hover:text-amber-700' : 'text-gray-600 group-hover:text-blue-600'} transition-colors`} />
             <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500 border border-white"></span>
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isPrimaryCalendar ? 'bg-amber-400' : 'bg-green-400'} opacity-75`}></span>
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isPrimaryCalendar ? 'bg-amber-500' : 'bg-green-500'} border border-white`}></span>
             </span>
           </div>
 
@@ -370,7 +418,11 @@ export const GoogleCalendarButton: React.FC<GoogleCalendarButtonProps> = ({ init
             <span className="font-medium text-gray-900 hidden xl:inline">{t('googleCalendar.connected')}</span>
             <span className="text-gray-500 hidden lg:inline">{userEmail}</span>
             <span className="text-gray-400 hidden lg:inline">•</span>
-            <span className="text-blue-700 font-medium">{calendarName || t('googleCalendar.primaryCalendar')}</span>
+            {isPrimaryCalendar ? (
+                <span className="text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded animate-pulse">{t('googleCalendar.setupRequired', 'נדרשת הגדרה')}</span>
+            ) : (
+                <span className="text-blue-700 font-medium">{calendarName || t('googleCalendar.primaryCalendar')}</span>
+            )}
           </div>
         </button>
       );
@@ -390,8 +442,10 @@ export const GoogleCalendarButton: React.FC<GoogleCalendarButtonProps> = ({ init
               <div>
                 <h3 className="font-semibold text-gray-900 text-sm">{t('googleCalendar.title')}</h3>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-xs text-green-700 font-medium">{t('googleCalendar.connected')}</span>
+                  <div className={`w-2 h-2 rounded-full ${isPrimaryCalendar ? 'bg-amber-500 animate-ping' : 'bg-green-500 animate-pulse'}`} />
+                  <span className={`text-xs font-medium ${isPrimaryCalendar ? 'text-amber-700' : 'text-green-700'}`}>
+                      {isPrimaryCalendar ? t('googleCalendar.setupRequired', 'נדרשת הגדרה') : t('googleCalendar.connected')}
+                  </span>
                 </div>
               </div>
             </div>
@@ -658,7 +712,7 @@ export const GoogleCalendarButton: React.FC<GoogleCalendarButtonProps> = ({ init
                   {availableCalendars
                     .filter(cal => cal.id !== 'primary' && !cal.primary)
                     .map((calendar) => {
-                      const isCreated = isCreatedByApp(calendar.id, calendar.description);
+                      const isCreated = isCreatedByApp(calendar);
                       const isCurrent = calendarId === calendar.id;
                       const canDelete = isCreated && !isCurrent;
                       

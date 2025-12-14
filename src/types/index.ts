@@ -323,6 +323,7 @@ export interface GoogleCalendarContextType {
   userEmail: string | null;
   calendarId: string | null;
   calendarName: string | null;
+  isPrimaryCalendar: boolean; // Added
   syncStatus: 'IDLE' | 'IN_PROGRESS' | 'DELETING'; // Added
   recentActivity: SyncHistoryItem[]; // Added
   connectToGoogle: () => Promise<void>;

@@ -33,6 +33,7 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [calendarId, setCalendarId] = useState<string | null>(null);
   const [calendarName, setCalendarName] = useState<string | null>(null);
+  const [isPrimaryCalendar, setIsPrimaryCalendar] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<'IDLE' | 'IN_PROGRESS' | 'DELETING'>('IDLE');
   const [recentActivity, setRecentActivity] = useState<SyncHistoryItem[]>([]);
 
@@ -74,6 +75,7 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
       setUserEmail(status.email || null);
       setCalendarId(status.calendarId || null);
       setCalendarName(status.calendarName || null);
+      setIsPrimaryCalendar(!!status.isPrimary);
       
     } catch (error) {
       logger.error('Error refreshing Google Calendar status:', error);
@@ -116,6 +118,18 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
       throw new Error('Not connected to Google Calendar');
     }
 
+    if (calendarId === 'primary') {
+      const msg = t('googleCalendar.cannotSyncToPrimary', 'לא ניתן לסנכרן ליומן הראשי. אנא בחר יומן ייעודי.');
+      showToast(msg, 'error');
+      throw new Error(msg);
+    }
+
+    if (calendarId === 'primary') {
+      const msg = t('googleCalendar.cannotSyncToPrimary', 'לא ניתן לסנכרן ליומן הראשי. אנא בחר יומן ייעודי.');
+      showToast(msg, 'error');
+      throw new Error(msg);
+    }
+
     try {
       setIsSyncing(true);
       const result = await googleCalendarService.syncBirthdayToCalendar(birthdayId);
@@ -142,6 +156,18 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     if (!isConnected) {
       showToast(t('googleCalendar.connectFirst'), 'error');
       throw new Error('Not connected to Google Calendar');
+    }
+
+    if (calendarId === 'primary') {
+      const msg = t('googleCalendar.cannotSyncToPrimary', 'לא ניתן לסנכרן ליומן הראשי. אנא בחר יומן ייעודי.');
+      showToast(msg, 'error');
+      throw new Error(msg);
+    }
+
+    if (calendarId === 'primary') {
+      const msg = t('googleCalendar.cannotSyncToPrimary', 'לא ניתן לסנכרן ליומן הראשי. אנא בחר יומן ייעודי.');
+      showToast(msg, 'error');
+      throw new Error(msg);
     }
 
     try {
@@ -287,6 +313,9 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
       setCalendarId(result.calendarId);
       setCalendarName(result.calendarName);
       
+      // A newly created calendar is never primary
+      setIsPrimaryCalendar(false);
+      
       showToast(t('googleCalendar.createdSuccess'), 'success');
       return result;
     } catch (error: any) {
@@ -304,16 +333,31 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
       throw new Error('Not connected to Google Calendar');
     }
 
+    // Save previous state for potential rollback
+    const prevId = calendarId;
+    const prevName = calendarName;
+    const prevIsPrimary = isPrimaryCalendar;
+
     try {
-      setIsSyncing(true);
-      await googleCalendarService.updateCalendarSelection(selectedCalendarId, selectedCalendarName);
-      
-      // Update local state immediately
+      // Optimistic Update
       setCalendarId(selectedCalendarId);
       setCalendarName(selectedCalendarName);
       
+      // Update isPrimaryCalendar based on selection
+      // We assume if it's not explicitly 'primary' (or the user's email), it's a secondary calendar
+      const isPrimary = selectedCalendarId === 'primary' || (userEmail && selectedCalendarId === userEmail);
+      setIsPrimaryCalendar(!!isPrimary);
+
+      setIsSyncing(true);
+      await googleCalendarService.updateCalendarSelection(selectedCalendarId, selectedCalendarName);
+      
       showToast(t('googleCalendar.calendarSelectionUpdated'), 'success');
     } catch (error: any) {
+      // Rollback on error
+      setCalendarId(prevId);
+      setCalendarName(prevName);
+      setIsPrimaryCalendar(prevIsPrimary);
+
       logger.error('Error updating calendar selection:', error);
       showToast(error.message || t('common.error'), 'error');
       throw error;
@@ -385,6 +429,7 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     userEmail,
     calendarId,
     calendarName,
+    isPrimaryCalendar,
     syncStatus,
     recentActivity,
     connectToGoogle,

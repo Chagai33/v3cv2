@@ -41,8 +41,9 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   const { data: groups = [] } = useGroups();
   const { currentTenant } = useTenant();
   const { selectedGroupIds, toggleGroupFilter, clearGroupFilters } = useGroupFilter();
-  const { isConnected, syncSingleBirthday, syncMultipleBirthdays, removeBirthdayFromCalendar, isSyncing, calendarId } = useGoogleCalendar();
+  const { isConnected, syncSingleBirthday, syncMultipleBirthdays, removeBirthdayFromCalendar, isSyncing, calendarId, isPrimaryCalendar } = useGoogleCalendar();
   const { showToast } = useToast();
+  const [showBlockModal, setShowBlockModal] = useState(false);
   
   // Local state for tracking which IDs are currently syncing
   const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
@@ -270,7 +271,18 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   }, [enrichedBirthdays, searchTerm, sortBy, selectedGroupIds, genderFilter]);
 
   const handleDelete = async (id: string) => {
-    if (window.confirm(t('common.confirmDelete', 'Are you sure?'))) {
+    const birthdayToDelete = birthdays.find(b => b.id === id);
+    
+    // Logic aligned with SyncStatusButton
+    const hasEvents = birthdayToDelete?.googleCalendarEventsMap && Object.keys(birthdayToDelete.googleCalendarEventsMap).length > 0;
+    const isLegacySynced = !!(birthdayToDelete?.googleCalendarEventId || (birthdayToDelete?.googleCalendarEventIds && Object.keys(birthdayToDelete.googleCalendarEventIds).length > 0));
+    const isSynced = (birthdayToDelete?.isSynced === true) || hasEvents || isLegacySynced;
+
+    const confirmMessage = isSynced
+        ? t('birthday.deleteConfirmWithCalendar', 'האם אתה בטוח? פעולה זו תמחק את יום ההולדת וגם תסיר את כל האירועים המקושרים מיומן Google.')
+        : t('common.confirmDelete', 'האם אתה בטוח שברצונך למחוק?');
+
+    if (window.confirm(confirmMessage)) {
       await deleteBirthday.mutateAsync(id);
     }
   };
@@ -341,13 +353,14 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
 
   const handleSyncToCalendar = async (birthdayId: string) => {
     if (!isConnected) {
-      showToast('יש להתחבר ליומן Google תחילה', 'error');
+      if (onOpenCalendarSettings) onOpenCalendarSettings();
       return;
     }
 
     // Strict Mode Check
-    if (calendarId === 'primary' || !calendarId) {
+    if (isPrimaryCalendar || !calendarId) {
       if (onOpenCalendarSettings) {
+        showToast(t('googleCalendar.cannotSyncToPrimary', 'לא ניתן לסנכרן ליומן הראשי. אנא בחר יומן ייעודי.'), 'error');
         onOpenCalendarSettings();
       }
       return;
@@ -398,13 +411,14 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
 
   const handleBulkSyncToCalendar = async () => {
     if (!isConnected) {
-      showToast('יש להתחבר ליומן Google תחילה', 'error');
+      if (onOpenCalendarSettings) onOpenCalendarSettings();
       return;
     }
 
     // Strict Mode Check
-    if (calendarId === 'primary' || !calendarId) {
+    if (isPrimaryCalendar || !calendarId) {
       if (onOpenCalendarSettings) {
+        showToast(t('googleCalendar.cannotSyncToPrimary', 'לא ניתן לסנכרן ליומן הראשי. אנא בחר יומן ייעודי.'), 'error');
         onOpenCalendarSettings();
       }
       return;
@@ -1178,6 +1192,49 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
           }}
           birthday={selectedBirthday}
         />
+      )}
+
+      {showBlockModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowBlockModal(false)}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+                <div className="p-6 text-center space-y-4">
+                    <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Calendar className="w-8 h-8 text-amber-600" />
+                    </div>
+                    
+                    <h3 className="text-xl font-bold text-gray-900">
+                        {t('googleCalendar.setupRequired', 'נדרשת הגדרה')}
+                    </h3>
+                    
+                    <div className="space-y-2 text-gray-600">
+                        <p>
+                            {t('googleCalendar.cannotSyncToPrimary', 'לא ניתן לסנכרן ליומן הראשי.')}
+                        </p>
+                        <p className="text-sm">
+                            {t('googleCalendar.protectDataExplanation', 'כדי לשמור על הסדר ביומן האישי שלך, האפליקציה עובדת עם יומן ייעודי בלבד.')}
+                        </p>
+                    </div>
+
+                    <div className="pt-4 flex flex-col gap-3">
+                        <button
+                            onClick={() => {
+                                setShowBlockModal(false);
+                                if (onOpenCalendarSettings) onOpenCalendarSettings();
+                            }}
+                            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-blue-200"
+                        >
+                            {t('googleCalendar.goToSettings', 'עבור להגדרות יומן')}
+                        </button>
+                        <button
+                            onClick={() => setShowBlockModal(false)}
+                            className="w-full py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium rounded-xl transition-colors"
+                        >
+                            {t('common.cancel', 'ביטול')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
       )}
     </div>
   );
