@@ -93,6 +93,7 @@ export interface Birthday {
   } | null;
   lastSyncedAt?: string | null;
   googleCalendarEventsMap?: { [key: string]: string };
+  isSynced?: boolean; // Added for frontend logic
   syncMetadata?: {
     status: 'SYNCED' | 'PARTIAL_SYNC' | 'ERROR' | 'PENDING';
     lastAttemptAt: string;

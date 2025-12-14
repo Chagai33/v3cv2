@@ -9,7 +9,8 @@ import { useGroups } from '../../hooks/useGroups';
 import { useGroupFilter } from '../../contexts/GroupFilterContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { useGoogleCalendar } from '../../contexts/GoogleCalendarContext';
-import { Edit, Trash2, Calendar, Search, CalendarDays, RefreshCw, Filter, Gift, Download, Users, X, UploadCloud, CloudOff, Sparkles, Copy, AlertCircle, Check } from 'lucide-react';
+import { Edit, Trash2, Calendar, Search, CalendarDays, Filter, Gift, Download, Users, X, UploadCloud, CloudOff, Sparkles, Copy, Check } from 'lucide-react';
+import { SyncStatusButton } from './SyncStatusButton';
 import { FutureBirthdaysModal } from '../modals/FutureBirthdaysModal';
 import { UpcomingGregorianBirthdaysModal } from '../modals/UpcomingGregorianBirthdaysModal';
 import { WishlistModal } from '../modals/WishlistModal';
@@ -42,6 +43,9 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   const { selectedGroupIds, toggleGroupFilter, clearGroupFilters } = useGroupFilter();
   const { isConnected, syncSingleBirthday, syncMultipleBirthdays, removeBirthdayFromCalendar, isSyncing, calendarId } = useGoogleCalendar();
   const { showToast } = useToast();
+  
+  // Local state for tracking which IDs are currently syncing
+  const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
 
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('birthday-search') || '');
   const [sortBy, setSortBy] = useState<'upcoming' | 'upcoming-latest' | 'upcoming-hebrew' | 'upcoming-hebrew-latest' | 'name-az' | 'name-za' | 'age-youngest' | 'age-oldest'>(() => (localStorage.getItem('birthday-sort') as any) || 'upcoming');
@@ -349,6 +353,9 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
       return;
     }
 
+    // Set Loading State
+    setSyncingIds(prev => new Set(prev).add(birthdayId));
+
     try {
       const result = await syncSingleBirthday(birthdayId);
       if (result.success) {
@@ -359,16 +366,33 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
     } catch (error: any) {
       logger.error('Error syncing birthday:', error);
       showToast(error.message || 'שגיאה בסנכרון ליומן Google', 'error');
+    } finally {
+      // Clear Loading State
+      setSyncingIds(prev => {
+        const next = new Set(prev);
+        next.delete(birthdayId);
+        return next;
+      });
     }
   };
 
   const handleRemoveFromCalendar = async (birthdayId: string) => {
+    // Set Loading State
+    setSyncingIds(prev => new Set(prev).add(birthdayId));
+    
     try {
       await removeBirthdayFromCalendar(birthdayId);
       showToast('יום ההולדת הוסר מיומן Google', 'success');
     } catch (error: any) {
       logger.error('Error removing birthday from calendar:', error);
       showToast(error.message || 'שגיאה בהסרת יום ההולדת מיומן Google', 'error');
+    } finally {
+      // Clear Loading State
+      setSyncingIds(prev => {
+        const next = new Set(prev);
+        next.delete(birthdayId);
+        return next;
+      });
     }
   };
 
@@ -1074,46 +1098,14 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                         </button>
                         {isConnected && (
                           <div className="flex items-center justify-center mx-1">
-                            {(() => {
-                              const isSynced = !!(birthday.googleCalendarEventId || birthday.googleCalendarEventIds);
-                              const isError = birthday.syncMetadata?.status === 'ERROR';
-                              const isPending = unsyncedMap.get(birthday.id);
-                              
-                              let iconColorClass = "text-gray-300 hover:text-gray-500 hover:bg-gray-50"; // ברירת מחדל: לא מסונכרן (אפור בהיר)
-                              let tooltipContent = t('googleCalendar.startSyncing', 'לחץ לסנכרון');
-
-                              if (isSynced) {
-                                if (isError) {
-                                  iconColorClass = "text-red-500 hover:text-red-600 hover:bg-red-50 animate-pulse";
-                                  tooltipContent = t('googleCalendar.syncError', 'שגיאה בסנכרון');
-                                } else if (isPending) {
-                                  iconColorClass = "text-amber-400 hover:text-amber-500 hover:bg-amber-50";
-                                  tooltipContent = t('googleCalendar.unsyncedChanges', 'יש שינויים הממתינים לסנכרון');
-                                } else {
-                                  iconColorClass = "text-green-500 hover:text-green-600 hover:bg-green-50";
-                                  tooltipContent = t('googleCalendar.stopSyncing', 'מסונכרן. לחץ להסרה');
-                                }
-                              }
-
-                              return (
-                                <Tooltip content={tooltipContent}>
-                                  <button
-                                    onClick={() => {
-                                      if (isSyncing) return;
-                                      if (isSynced) {
-                                        handleRemoveFromCalendar(birthday.id);
-                                      } else {
-                                        handleSyncToCalendar(birthday.id);
-                                      }
-                                    }}
-                                    disabled={isSyncing}
-                                    className={`p-1 sm:p-2 rounded-lg transition-all duration-200 transform hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed ${iconColorClass}`}
-                                  >
-                                    <UploadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={isSynced ? 2.5 : 2} />
-                                  </button>
-                                </Tooltip>
-                              );
-                            })()}
+                            <SyncStatusButton
+                              birthday={birthday}
+                              isPendingChange={unsyncedMap.get(birthday.id)}
+                              isLoading={syncingIds.has(birthday.id)}
+                              isDisabled={isSyncing}
+                              onSync={handleSyncToCalendar}
+                              onRemove={handleRemoveFromCalendar}
+                            />
                           </div>
                         )}
                         {onAddToCalendar && (
