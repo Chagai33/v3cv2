@@ -399,11 +399,18 @@ async function processBirthdaySync(birthdayId, currentData, tenantId, force = fa
         const currentHebYear = new core_1.HDate().getFullYear();
         for (const [key, eventId] of Object.entries(currentMap)) {
             if (!desiredEvents.has(key)) {
-                const parts = key.split('_');
-                const year = parseInt(parts[1], 10);
-                let isFuture = (parts[0] === 'gregorian' && year >= currentGregYear) || (parts[0] === 'hebrew' && year >= currentHebYear);
-                if (isFuture)
+                // Fix: If explicitly archived (removal requested), delete ALL events regardless of date.
+                // Otherwise (just smart diff), only delete future events to preserve history.
+                if (currentData.archived) {
                     deletes.push({ key, eventId });
+                }
+                else {
+                    const parts = key.split('_');
+                    const year = parseInt(parts[1], 10);
+                    let isFuture = (parts[0] === 'gregorian' && year >= currentGregYear) || (parts[0] === 'hebrew' && year >= currentHebYear);
+                    if (isFuture)
+                        deletes.push({ key, eventId });
+                }
             }
         }
         // D. Execution
@@ -461,15 +468,22 @@ async function processBirthdaySync(birthdayId, currentData, tenantId, force = fa
         });
         updates.forEach(item => tasks.push(async () => {
             try {
-                await calendar.events.patch({ calendarId, eventId: item.eventId, requestBody: item.resource });
+                // FORCE status='confirmed' on updates to resurrect cancelled events
+                const resourceWithStatus = { ...item.resource, status: 'confirmed' };
+                await calendar.events.patch({ calendarId, eventId: item.eventId, requestBody: resourceWithStatus });
             }
             catch (e) {
                 if (e.code === 404 || e.code === 410) { // Desync Trap Fix
-                    functions.logger.log(`Event ${item.eventId} deleted externally, recreating...`);
+                    functions.logger.log(`Event ${item.eventId} deleted externally (404/410), recreating...`);
                     try {
-                        const res = await calendar.events.insert({ calendarId, requestBody: item.resource });
-                        if (res.data.id)
+                        // Re-calculate Deterministic ID to link it back correctly (Gemini Improvement)
+                        const uniqueStr = `${birthdayId}_${item.key}`;
+                        const deterministicId = 'hb' + crypto.createHash('md5').update(uniqueStr).digest('hex');
+                        const resourceWithId = { ...item.resource, id: deterministicId };
+                        const res = await calendar.events.insert({ calendarId, requestBody: resourceWithId });
+                        if (res.data.id) {
                             currentMap[item.key] = res.data.id;
+                        }
                     }
                     catch (e2) {
                         failedKeys.push(item.key);
@@ -779,6 +793,7 @@ exports.deleteAllSyncedEventsFromGoogleCalendar = functions.https.onCall(async (
         }
         // Define dryRun if not present in data (default to false for forceful delete)
         const dryRun = false;
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         do {
             const res = await calendar.events.list({ ...queryParams, pageToken });
             const items = res.data.items || [];
@@ -789,6 +804,7 @@ exports.deleteAllSyncedEventsFromGoogleCalendar = functions.https.onCall(async (
                         try {
                             await calendar.events.delete({ calendarId, eventId: ev.id });
                             deletedCount++;
+                            await sleep(150); // Rate Limit Protection
                         }
                         catch (e) {
                             failedCount++;
@@ -951,6 +967,7 @@ exports.cleanupOrphanEvents = functions.runWith({ timeoutSeconds: 540, memory: '
         let deletedCount = 0, foundCount = 0, failedCount = 0;
         // Check tenantId usage (suppress unused variable warning if logically not needed here but kept for API compat)
         if (tenantId) { /* Logic that might use tenantId in future or logs */ }
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         do {
             // שינוי קריטי: חיפוש רחב יותר רק לפי שם האפליקציה, ללא תלות ב-TenantId
             // זה מבטיח שנמצא גם אירועים "שבורים"
@@ -969,6 +986,7 @@ exports.cleanupOrphanEvents = functions.runWith({ timeoutSeconds: 540, memory: '
                         try {
                             await calendar.events.delete({ calendarId, eventId: ev.id });
                             deletedCount++;
+                            await sleep(150); // Rate Limit Protection
                         }
                         catch (e) {
                             failedCount++;
