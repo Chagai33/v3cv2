@@ -1,5 +1,6 @@
 // RemoveSyncUseCase - הסרת סנכרון של יום הולדת מ-Google Calendar
 
+import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
 import { BirthdayRepository } from '../../../infrastructure/database/repositories/BirthdayRepository';
 import { SyncBirthdayUseCase } from './SyncBirthdayUseCase';
@@ -30,13 +31,13 @@ export class RemoveSyncUseCase {
       birthday.tenant_id
     );
 
-    // Cleanup metadata
+    // Cleanup metadata - use FieldValue.delete() to properly remove fields
     await this.birthdayRepo.update(birthdayId, {
-      googleCalendarEventsMap: {} as any,
-      syncMetadata: undefined,
-      googleCalendarEventId: undefined,
-      googleCalendarEventIds: undefined,
-      lastSyncedAt: undefined
+      googleCalendarEventsMap: admin.firestore.FieldValue.delete() as any,
+      syncMetadata: admin.firestore.FieldValue.delete() as any,
+      googleCalendarEventId: admin.firestore.FieldValue.delete() as any,
+      googleCalendarEventIds: admin.firestore.FieldValue.delete() as any,
+      lastSyncedAt: admin.firestore.FieldValue.delete() as any
     });
   }
 }

@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RemoveSyncUseCase = void 0;
+const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions"));
 class RemoveSyncUseCase {
     constructor(birthdayRepo, syncUseCase) {
@@ -53,13 +54,13 @@ class RemoveSyncUseCase {
         await this.birthdayRepo.update(birthdayId, { isSynced: false });
         // Perform deletion (archived: true tells SyncBirthdayUseCase to delete ALL events)
         await this.syncUseCase.execute(birthdayId, { ...birthday, isSynced: false, archived: true }, birthday.tenant_id);
-        // Cleanup metadata
+        // Cleanup metadata - use FieldValue.delete() to properly remove fields
         await this.birthdayRepo.update(birthdayId, {
-            googleCalendarEventsMap: {},
-            syncMetadata: undefined,
-            googleCalendarEventId: undefined,
-            googleCalendarEventIds: undefined,
-            lastSyncedAt: undefined
+            googleCalendarEventsMap: admin.firestore.FieldValue.delete(),
+            syncMetadata: admin.firestore.FieldValue.delete(),
+            googleCalendarEventId: admin.firestore.FieldValue.delete(),
+            googleCalendarEventIds: admin.firestore.FieldValue.delete(),
+            lastSyncedAt: admin.firestore.FieldValue.delete()
         });
     }
 }
