@@ -57,9 +57,7 @@ if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     functions.logger.warn('Missing Google Client Credentials in functions.config()!');
 }
 const tasksClient = new tasks_1.CloudTasksClient();
-// --- Interfaces ---
 // --- Helper Functions: Hebcal & Zodiac ---
-// Helper Functions (Zodiac)
 function getGregorianZodiacSign(date) {
     const month = date.getMonth() + 1;
     const day = date.getDate();
@@ -117,6 +115,61 @@ function getZodiacSignNameEn(sign) {
 function getZodiacSignNameHe(sign) {
     const names = { 'aries': 'טלה', 'taurus': 'שור', 'gemini': 'תאומים', 'cancer': 'סרטן', 'leo': 'אריה', 'virgo': 'בתולה', 'libra': 'מאזניים', 'scorpio': 'עקרב', 'sagittarius': 'קשת', 'capricorn': 'גדי', 'aquarius': 'דלי', 'pisces': 'דגים' };
     return names[sign] || sign;
+}
+// --- Restored Hebcal Logic Functions ---
+async function getCurrentHebrewYear() {
+    return new core_1.HDate().getFullYear();
+}
+async function fetchHebcalData(date, afterSunset) {
+    const hDate = new core_1.HDate(date);
+    if (afterSunset) {
+        hDate.next();
+    }
+    return {
+        // render('he') returns full Hebrew string like "כ״ו בכסלו תשע״ו"
+        hebrew: hDate.renderGematriya(),
+        hy: hDate.getFullYear(),
+        hm: hDate.getMonthName(),
+        hd: hDate.getDate()
+    };
+}
+async function fetchNextHebrewBirthdays(currentYear, month, day, count) {
+    const results = [];
+    for (let i = 0; i <= count; i++) {
+        const nextYear = currentYear + i;
+        try {
+            let nextHDate;
+            try {
+                nextHDate = new core_1.HDate(day, month, nextYear);
+            }
+            catch (e) {
+                // Handle Adar/Leap year mismatches and day 30 vs 29
+                if (day === 30) {
+                    nextHDate = new core_1.HDate(29, month, nextYear);
+                }
+                else if (month === 'Adar I' && !core_1.HDate.isLeapYear(nextYear)) {
+                    nextHDate = new core_1.HDate(day, 'Adar', nextYear);
+                }
+                else if (month === 'Adar II' && !core_1.HDate.isLeapYear(nextYear)) {
+                    nextHDate = new core_1.HDate(day, 'Adar', nextYear);
+                }
+                else if (month === 'Adar' && core_1.HDate.isLeapYear(nextYear)) {
+                    nextHDate = new core_1.HDate(day, 'Adar II', nextYear);
+                }
+                else {
+                    throw e;
+                }
+            }
+            results.push({
+                gregorianDate: nextHDate.greg(),
+                hebrewYear: nextYear
+            });
+        }
+        catch (e) {
+            // Skip invalid calculations silently
+        }
+    }
+    return results;
 }
 // --- Helper Functions: Google Auth & Calendar ---
 async function getValidAccessToken(userId, minValidityMillis = 60000) {
@@ -259,7 +312,7 @@ async function calculateExpectedEvents(birthday) {
     return events;
 }
 // --- CORE SYNC LOGIC (V3.2) ---
-async function processBirthdaySync(birthdayId, currentData, tenantId, force = false) {
+async function processBirthdaySync(birthdayId, currentData, tenantId, force = false, skipUpdate = false) {
     const tenantDoc = await db.collection('tenants').doc(tenantId).get();
     const ownerId = tenantDoc.data()?.owner_id;
     if (!ownerId) {
@@ -439,6 +492,10 @@ async function processBirthdaySync(birthdayId, currentData, tenantId, force = fa
         // This is more robust than sleep() and ensures stability.
         await (0, calendar_utils_1.batchProcessor)(tasks, 1);
         // E. Reconciliation
+        if (skipUpdate) {
+            functions.logger.log(`Skipping DB update for deleted/archived doc ${birthdayId}`);
+            return;
+        }
         const newStatus = failedKeys.length > 0 ? 'PARTIAL_SYNC' : 'SYNCED';
         let retryCount = currentData.syncMetadata?.retryCount || 0;
         if (newStatus === 'SYNCED')
@@ -460,7 +517,7 @@ exports.onBirthdayWrite = functions.firestore.document('birthdays/{birthdayId}')
     if (!afterData) {
         if (beforeData && beforeData.tenant_id) {
             try {
-                await processBirthdaySync(context.params.birthdayId, { ...beforeData, archived: true }, beforeData.tenant_id);
+                await processBirthdaySync(context.params.birthdayId, { ...beforeData, archived: true }, beforeData.tenant_id, false, true);
             }
             catch (e) {
                 functions.logger.error('Cleanup error:', e);
@@ -468,20 +525,78 @@ exports.onBirthdayWrite = functions.firestore.document('birthdays/{birthdayId}')
         }
         return null;
     }
-    // 2. Smart Sync
-    // CRITICAL FIX: Only sync if explicitly enabled via 'isSynced' flag
-    if (afterData.tenant_id && afterData.isSynced === true) {
+    if (!afterData.birth_date_gregorian)
+        return null;
+    // 2. Hebcal Logic (Restored & Local)
+    const hasHebrew = afterData.birth_date_hebrew_string && afterData.future_hebrew_birthdays?.length;
+    let skipCalc = hasHebrew && !beforeData; // New with data
+    if (beforeData) {
+        const changed = beforeData.birth_date_gregorian !== afterData.birth_date_gregorian || beforeData.after_sunset !== afterData.after_sunset;
+        if (!changed && hasHebrew)
+            skipCalc = true;
+        if (!changed && !hasHebrew)
+            skipCalc = false; // Need calc
+    }
+    // Force calc if system update flag is missing (to ensure we fix broken records)
+    if (afterData._systemUpdate)
+        skipCalc = true;
+    let updateData = {};
+    if (!skipCalc) {
         try {
-            await processBirthdaySync(context.params.birthdayId, afterData, afterData.tenant_id);
+            functions.logger.log(`Calculating Hebrew data for ${context.params.birthdayId}`);
+            const dateParts = afterData.birth_date_gregorian.split('-');
+            const bDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+            const hebcal = await fetchHebcalData(bDate, afterData.after_sunset || false);
+            const currHy = await getCurrentHebrewYear();
+            const futures = await fetchNextHebrewBirthdays(currHy, hebcal.hm, hebcal.hd, 10);
+            updateData = {
+                birth_date_hebrew_string: hebcal.hebrew,
+                birth_date_hebrew_year: hebcal.hy,
+                birth_date_hebrew_month: hebcal.hm,
+                birth_date_hebrew_day: hebcal.hd,
+                gregorian_year: bDate.getFullYear(),
+                gregorian_month: bDate.getMonth() + 1,
+                gregorian_day: bDate.getDate(),
+                hebrew_year: hebcal.hy,
+                hebrew_month: hebcal.hm,
+                hebrew_day: hebcal.hd,
+                updated_at: admin.firestore.FieldValue.serverTimestamp(),
+                _systemUpdate: true // Mark as system update
+            };
+            if (futures.length > 0) {
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                const next = futures.find(f => f.gregorianDate >= now) || futures[0];
+                updateData.next_upcoming_hebrew_birthday = `${next.gregorianDate.toISOString().split('T')[0]}`;
+                updateData.next_upcoming_hebrew_year = next.hebrewYear;
+                updateData.future_hebrew_birthdays = futures.map(f => ({
+                    gregorian: f.gregorianDate.toISOString().split('T')[0], hebrewYear: f.hebrewYear
+                }));
+            }
+            else {
+                updateData.future_hebrew_birthdays = [];
+                updateData.next_upcoming_hebrew_year = null;
+            }
+            await change.after.ref.update(updateData);
+            return null;
+        }
+        catch (e) {
+            functions.logger.error('Hebcal error:', e);
+        }
+    }
+    // 3. Smart Sync
+    const finalData = { ...afterData, ...updateData };
+    if (finalData.tenant_id && finalData.isSynced === true) {
+        try {
+            await processBirthdaySync(context.params.birthdayId, finalData, finalData.tenant_id);
         }
         catch (e) {
             functions.logger.error('Sync error:', e);
         }
     }
-    else if (afterData.tenant_id && beforeData?.isSynced === true && afterData.isSynced === false) {
-        // If it was synced and now turned off -> Trigger removal
+    else if (finalData.tenant_id && beforeData?.isSynced === true && finalData.isSynced === false) {
         try {
-            await processBirthdaySync(context.params.birthdayId, { ...afterData, archived: true }, afterData.tenant_id);
+            await processBirthdaySync(context.params.birthdayId, { ...finalData, archived: true }, finalData.tenant_id);
         }
         catch (e) {
             functions.logger.error('Removal error:', e);
