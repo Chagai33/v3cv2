@@ -21,10 +21,12 @@ export const db = getFirestore(app);
 export const functions = getFunctions(app);
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 
+// חיבור לאימולטור בפיתוח (רק אם VITE_USE_FIREBASE_EMULATOR=true)
 if (import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
   connectAuthEmulator(auth, 'http://localhost:9099');
   connectFirestoreEmulator(db, 'localhost', 8080);
   connectFunctionsEmulator(functions, 'localhost', 5001);
+  console.log('🔧 Connected to Firebase Emulators');
 }
 
 export default app;

@@ -136,12 +136,12 @@ export const birthdayService = {
       const currentAfterSunset = currentData?.after_sunset ?? false;
       const newAfterSunset = data.afterSunset ?? false;
       
+      // תמיד שלח את הערך המנורמל (כדי למנוע undefined)
+      updateData.after_sunset = newAfterSunset;
+      
       // אם afterSunset השתנה, צריך לאפס את הנתונים העבריים
       if (currentAfterSunset !== newAfterSunset) {
-        updateData.after_sunset = data.afterSunset;
         shouldResetHebrewData = true;
-      } else {
-        updateData.after_sunset = data.afterSunset;
       }
     }
     

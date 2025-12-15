@@ -104,8 +104,13 @@ async function validateSession(token) {
     if (!doc.exists)
         return { isValid: false };
     const data = doc.data();
-    const now = admin.firestore.Timestamp.now();
-    if (data.expiresAt <= now) {
+    if (!data)
+        return { isValid: false };
+    const now = Date.now();
+    const expiresAt = typeof data.expiresAt === 'string'
+        ? new Date(data.expiresAt).getTime()
+        : data.expiresAt?.toMillis?.() || 0;
+    if (expiresAt <= now) {
         // Expired
         await doc.ref.delete(); // Cleanup
         return { isValid: false };

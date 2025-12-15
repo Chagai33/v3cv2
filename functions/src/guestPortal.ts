@@ -23,13 +23,6 @@ interface RateLimitData {
   blockedUntil: admin.firestore.Timestamp;
 }
 
-interface SessionData {
-  birthdayId: string;
-  tenantId: string;
-  expiresAt: admin.firestore.Timestamp;
-  createdAt: admin.firestore.Timestamp;
-}
-
 // --- Rate Limiting Logic ---
 async function checkRateLimit(ip: string): Promise<{ allowed: boolean; waitSeconds?: number }> {
   const rateLimitRef = db.collection('rate_limits').doc(ip.replace(/\./g, '_')); // Sanitize IP for doc ID
@@ -106,10 +99,15 @@ async function validateSession(token: string): Promise<{ isValid: boolean; birth
     const doc = await db.collection('guest_sessions').doc(token).get();
     if (!doc.exists) return { isValid: false };
 
-    const data = doc.data() as SessionData;
-    const now = admin.firestore.Timestamp.now();
+    const data = doc.data();
+    if (!data) return { isValid: false };
+    
+    const now = Date.now();
+    const expiresAt = typeof data.expiresAt === 'string' 
+        ? new Date(data.expiresAt).getTime() 
+        : data.expiresAt?.toMillis?.() || 0;
 
-    if (data.expiresAt <= now) {
+    if (expiresAt <= now) {
         // Expired
         await doc.ref.delete(); // Cleanup
         return { isValid: false };

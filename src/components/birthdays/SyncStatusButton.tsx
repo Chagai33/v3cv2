@@ -104,3 +104,4 @@ export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({
     </Tooltip>
   );
 };
+
