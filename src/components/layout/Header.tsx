@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -23,6 +23,26 @@ export const Header: React.FC = () => {
   const { selectedGroupIds, toggleGroupFilter, clearGroupFilters } = useGroupFilter();
   const { data: allGroups = [] } = useGroups();
   const { data: birthdays = [] } = useBirthdays();
+  const filterRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setShowGroupFilter(false);
+      }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    }
+
+    if (showGroupFilter || mobileMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showGroupFilter, mobileMenuOpen]);
   
   // Check if we're on a public page (terms, privacy) without user
   const isPublicPage = !user && (location.pathname === '/terms' || location.pathname === '/privacy');
@@ -136,7 +156,7 @@ export const Header: React.FC = () => {
             </div>
 
             {/* תפריט ביניים (Tablet/Small Laptop) */}
-            <div className="hidden sm:flex md:hidden relative">
+            <div className="hidden sm:flex md:hidden relative" ref={mobileMenuRef}>
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1"
@@ -166,14 +186,7 @@ export const Header: React.FC = () => {
                     {user && location.pathname === '/' && (
                       <div className="relative">
                         <button
-                          onClick={() => {
-                            if (selectedGroupIds.length > 0) {
-                              clearGroupFilters();
-                              setShowGroupFilter(false);
-                            } else {
-                              setShowGroupFilter(!showGroupFilter);
-                            }
-                          }}
+                          onClick={() => setShowGroupFilter(!showGroupFilter)}
                           className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors text-sm ${
                             selectedGroupIds.length > 0
                               ? 'bg-blue-50 text-blue-700'
@@ -290,16 +303,9 @@ export const Header: React.FC = () => {
 
             {user && location.pathname === '/' && (
               <>
-                <div className="relative">
+                <div className="relative" ref={filterRef}>
                   <button
-                    onClick={() => {
-                      if (selectedGroupIds.length > 0) {
-                        clearGroupFilters();
-                        setShowGroupFilter(false);
-                      } else {
-                        setShowGroupFilter(!showGroupFilter);
-                      }
-                    }}
+                    onClick={() => setShowGroupFilter(!showGroupFilter)}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
                       selectedGroupIds.length > 0
                         ? 'bg-blue-600 text-white'
