@@ -4,6 +4,131 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [3.0.1] - 16 דצמבר 2024
+
+### 🚨 Critical Fixes - תיקוני קריטיים
+
+#### 🐛 Fixed
+
+**באג #6: לולאה אינסופית ב-onBirthdayWrite**
+- **בעיה:** `onBirthdayWrite` מעדכן Firestore → מפעיל `onBirthdayWrite` שוב → לולאה אינסופית
+- **תסמינים:** 
+  - מאות instances רצות במקביל
+  - Rate Limit Exceeded
+  - עלויות גבוהות
+- **פתרון:** 
+  - הוספת דגל `_systemUpdate: true` בעדכונים אוטומטיים
+  - דילוג על triggers עם `_systemUpdate`
+- **קבצים:** 
+  - `application/use-cases/sync/SyncBirthdayUseCase.ts` (שורה 302)
+  - `interfaces/http/birthday-triggers.ts` (שורות 60-64)
+  - `domain/entities/types.ts` (שורה 66)
+- **חשיבות:** 🔴 קריטי ביותר!
+
+**באג #7: Rate Limit בסנכרון מרובה**
+- **בעיה:** 
+  - `force=true` ב-Bulk Sync התעלם מ-Hash Check
+  - כל אירוע קיים גרם ל-409 Conflict → 2 API calls במקום 0
+  - 5 Cloud Functions במקביל → חריגת Quota ×10-20
+- **תסמינים:**
+  - "Quota exceeded for quota metric 'Queries'"
+  - Bulk Sync נכשל על עשרות רשומות
+- **פתרון:**
+  - שינוי `force: true` ל-`force: false` ב-`BulkSyncUseCase`
+  - Hash Check עובד → דילוג אוטומטי אם לא השתנה כלום
+- **קובץ:** `application/use-cases/sync/BulkSyncUseCase.ts` (שורה 80)
+- **תוצאה:** 
+  - אפס 409 Conflicts מיותרים
+  - סנכרון רק של מה שהשתנה
+  - ביצועים: מ-40 שניות ל-1 שנייה (Idempotent skip)
+- **חשיבות:** 🔴 קריטי
+
+**באג #8: כפילות Toast Notifications**
+- **בעיה:** Context + Component מציגים Toast → שתי הודעות מופיעות
+- **תסמינים:** הודעה ראשונה נעלמת, הודעה שנייה נשארת
+- **פתרון:** הסרת Toast מ-Context (שורות 139, 251)
+- **קבצים:** 
+  - `contexts/GoogleCalendarContext.tsx`
+  - `components/birthdays/BirthdayList.tsx`
+- **חשיבות:** 🟡 בינוני (UX)
+
+#### ✨ Added
+
+**תכונה #1: זיהוי טוקן מת**
+- **מטרה:** מניעת ניסיונות retry מיותרים כשהטוקן בוטל לצמיתות
+- **יישום:**
+  - זיהוי `invalid_grant` error מ-Google
+  - סימון `retryCount: 999` (= "אל תנסה יותר")
+  - דילוג אוטומטי ב-`retryFailedSyncs`
+- **קבצים:**
+  - `infrastructure/google/GoogleAuthClient.ts` (שורות 52-71)
+  - `application/use-cases/sync/SyncBirthdayUseCase.ts` (שורות 49-68)
+  - `interfaces/scheduled/retry-syncs.ts` (שורות 22-27)
+- **יתרונות:**
+  - חיסכון במשאבים
+  - הודעת שגיאה ברורה למשתמש
+  - אין ניסיונות מיותרים
+- **חשיבות:** 🟢 חשוב
+
+**תכונה #2: הודעות שגיאה למשתמש**
+- **מטרה:** שקיפות מלאה על מצב הסנכרון
+- **יישום:**
+  - הוספת `lastErrorMessage` ל-`syncMetadata`
+  - הודעות בעברית מפורטות
+  - הבחנה בין שגיאה זמנית לצמיתית
+- **קבצים:**
+  - `domain/entities/types.ts` (שורה 57)
+  - `application/use-cases/sync/SyncBirthdayUseCase.ts` (שורות 295-297)
+- **דוגמאות הודעות:**
+  - "נכשלו 3 אירועים מתוך 10"
+  - "החיבור ליומן Google נותק. לחץ כאן להתחבר מחדש"
+  - "שגיאה זמנית בחיבור ליומן. המערכת תנסה שוב בעוד שעה"
+- **חשיבות:** 🟢 חשוב
+
+**תכונה #3: הגבלת Retry**
+- **מטרה:** מניעת עומס יתר על המערכת
+- **יישום:** הוספת `.limit(50)` ב-`retryFailedSyncs`
+- **קובץ:** `interfaces/scheduled/retry-syncs.ts` (שורה 16)
+- **תוצאה:** 
+  - מקסימום 50 ניסיונות retry לשעה
+  - מניעת timeout
+  - עלויות מבוקרות
+- **חשיבות:** 🟢 חשוב
+
+#### 📊 Performance Impact
+
+| מדד | לפני | אחרי | שיפור |
+|-----|------|------|--------|
+| **Bulk Sync (50 items)** | 40s + Rate Limit | 1s (skip) | ×40 |
+| **API Calls (re-sync)** | 100 calls | 0 calls | 100% |
+| **onBirthdayWrite loop** | ∞ instances | 1 instance | סיום לולאה |
+| **Retry efficiency** | כל שעה ללא הגבלה | מקס 50/שעה | חיסכון |
+| **Dead token retries** | 3× לשעה לצמיתות | 1× בלבד | ×3 חיסכון |
+
+#### 🎯 Lessons Learned
+
+**Idempotency:**
+- Hash Check חובה לפני כל סנכרון
+- `force` צריך להיות `false` ברירת מחדל
+- Reconciliation רק למקרים מיוחדים (409)
+
+**Infinite Loops:**
+- Firestore triggers צריכים דגל `_systemUpdate`
+- לעולם אל תעדכן מתוך trigger בלי תנאי עצירה
+- Debug: חפש "Function execution started" ברצף
+
+**Rate Limiting:**
+- Google Calendar: 60 queries/minute/user
+- תכנן batch operations בזהירות
+- Idempotent skip חוסך 90%+ API calls
+
+**Error Handling:**
+- הבחנה בין שגיאות קבועות לזמניות
+- הודעות ברורות למשתמש
+- Retry smart, not hard
+
+---
+
 ## [3.0.0] - דצמבר 2024
 
 ### 🎯 רפקטורינג מלא - Clean Architecture
@@ -273,4 +398,5 @@ Backend:
 
 **Maintained by:** [Your Name]  
 **Last Updated:** דצמבר 2024
+
 

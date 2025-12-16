@@ -49,9 +49,26 @@ export class GoogleAuthClient {
       });
       
       return credentials.access_token!;
-    } catch (error) {
+    } catch (error: any) {
       functions.logger.error(`Failed to refresh token for user ${userId}:`, error);
-      throw new functions.https.HttpsError('permission-denied', 'googleCalendar.connectFirst');
+      
+      // ✅ שינוי 4: הבחנה בין טוקן מת לשגיאה זמנית
+      const isTokenRevoked = error.message?.includes('invalid_grant') || 
+                             error.code === 400 ||
+                             error.response?.data?.error === 'invalid_grant';
+      
+      if (isTokenRevoked) {
+        functions.logger.warn(`Token revoked for user ${userId} - marking as disconnected`);
+        // מחק את הטוכן כדי לאלץ חיבור מחדש
+        await this.tokenRepo.update(userId, {
+          accessToken: '',
+          refreshToken: ''
+        });
+        throw new functions.https.HttpsError('permission-denied', 'TOKEN_REVOKED');
+      }
+      
+      // שגיאה זמנית (רשת/שרת)
+      throw new functions.https.HttpsError('unavailable', 'TEMPORARY_ERROR');
     }
   }
 
@@ -88,5 +105,6 @@ export class GoogleAuthClient {
     await this.tokenRepo.save(userId, update);
   }
 }
+
 
 

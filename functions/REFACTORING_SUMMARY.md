@@ -272,3 +272,4 @@ describe('SyncBirthdayUseCase', () => {
 זמן כולל: ~3 שעות (במקום 11-17 המשוערות)
 
 
+

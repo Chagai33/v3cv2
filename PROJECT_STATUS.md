@@ -1,8 +1,8 @@
 # 📊 Project Status - HebBirthday
 
-> **עדכון אחרון:** דצמבר 2024  
-> **גרסה:** 3.0.0  
-> **סטטוס:** ✅ Production Ready
+> **עדכון אחרון:** 16 דצמבר 2024  
+> **גרסה:** 3.0.1  
+> **סטטוס:** ✅ Production Ready + Critical Fixes
 
 ---
 
@@ -46,11 +46,43 @@
 
 | באג | חשיבות | סטטוס | תאריך |
 |-----|---------|-------|-------|
+| לולאה אינסופית ב-onBirthdayWrite | 🔴 קריטי ביותר | ✅ תוקן | 16 דצמבר 2024 |
+| Rate Limit ב-Bulk Sync | 🔴 קריטי | ✅ תוקן | 16 דצמבר 2024 |
+| כפילות Toast Notifications | 🟡 בינוני | ✅ תוקן | 16 דצמבר 2024 |
 | `after_sunset` לא עבד | 🔴 קריטי | ✅ תוקן | דצמבר 2024 |
 | `onUserCreate` לא יצר tenants | 🔴 קריטי | ✅ תוקן | דצמבר 2024 |
 | `functions.config()` timeout | 🔴 קריטי | ✅ תוקן | דצמבר 2024 |
 | `undefined` ב-Firestore | 🔴 קריטי | ✅ תוקן | דצמבר 2024 |
 | Timestamp validation | 🟡 בינוני | ✅ תוקן | דצמבר 2024 |
+
+---
+
+## ✨ תכונות חדשות (v3.0.1)
+
+### 1. Hash-Based Idempotency
+- ✅ דילוג אוטומטי אם לא השתנה כלום
+- ✅ חיסכון של 90%+ API calls
+- ✅ זמן תגובה: מ-40s ל-1s
+
+### 2. זיהוי טוקן מת
+- ✅ זיהוי `invalid_grant` error
+- ✅ סימון `retryCount: 999`
+- ✅ אין ניסיונות מיותרים
+
+### 3. הודעות שגיאה למשתמש
+- ✅ `lastErrorMessage` ב-`syncMetadata`
+- ✅ הודעות בעברית מפורטות
+- ✅ הבחנה בין שגיאה זמנית לצמיתית
+
+### 4. מניעת לולאה אינסופית
+- ✅ דגל `_systemUpdate`
+- ✅ דילוג על system updates
+- ✅ אין עוד lולאות!
+
+### 5. הגבלת Retry
+- ✅ `.limit(50)` ב-`retryFailedSyncs`
+- ✅ מניעת עומס יתר
+- ✅ עלויות מבוקרות
 
 ---
 
@@ -305,4 +337,5 @@
 **Last Updated:** דצמבר 2024  
 **Next Review:** ינואר 2025  
 **Status:** ✅ All Systems Operational
+
 

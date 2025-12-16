@@ -46,6 +46,181 @@ export function createDependencies() {
 
 ---
 
+## 🔥 תיקונים קריטיים - 16 דצמבר 2024
+
+### ⚠️ לולאה אינסופית ב-Firestore Triggers
+
+**הבעיה:**
+```typescript
+// onBirthdayWrite trigger
+await birthdayRepo.update(id, { syncMetadata: {...} });
+// ↓ זה מפעיל את onBirthdayWrite שוב!
+// ↓ לולאה אינסופית → מאות instances → Rate Limit → 💥
+```
+
+**הפתרון:**
+```typescript
+// ✅ STEP 1: הוסף דגל _systemUpdate
+await birthdayRepo.update(id, { 
+  syncMetadata: {...},
+  _systemUpdate: true  // ← זה!
+});
+
+// ✅ STEP 2: דלג על system updates
+export const onBirthdayWriteFn = functions.firestore
+  .document('birthdays/{birthdayId}')
+  .onWrite(async (change, context) => {
+    const afterData = change.after.data();
+    
+    // דלג!
+    if (afterData?._systemUpdate) {
+      functions.logger.log('Skipping sync - system update');
+      return null;
+    }
+    
+    // המשך לסנכרון...
+  });
+```
+
+**קבצים:**
+- `application/use-cases/sync/SyncBirthdayUseCase.ts:302`
+- `interfaces/http/birthday-triggers.ts:60-64`
+- `domain/entities/types.ts:66`
+
+**איך לזהות:**
+```bash
+# בלוגים תראה:
+onBirthdayWrite... Function execution started
+onBirthdayWrite... Function execution started  # ← זהה!
+onBirthdayWrite... Function execution started  # ← זהה!
+# מאות פעמים ברצף → לולאה!
+```
+
+---
+
+### ⚠️ Rate Limit ב-Bulk Sync
+
+**הבעיה:**
+```typescript
+// ❌ WRONG - force=true מתעלם מ-Hash Check
+await syncUseCase.execute(id, data, tenantId, true);
+// ↓ סנכרון מחדש של הכל
+// ↓ כל אירוע קיים → 409 Conflict → 2 API calls
+// ↓ 50 birthdays × 20 events × 2 = 2000 API calls
+// ↓ Google Quota: 60/min → 💥
+```
+
+**הפתרון:**
+```typescript
+// ✅ CORRECT - force=false מכבד Hash Check
+await syncUseCase.execute(id, data, tenantId, false);
+// ↓ בודק Hash
+// ↓ אם זהה → Idempotent skip → 0 API calls
+// ↓ אם שונה → סנכרון רק מה שהשתנה
+```
+
+**קובץ:** `application/use-cases/sync/BulkSyncUseCase.ts:80`
+
+**Hash Check Logic:**
+```typescript
+// בתוך SyncBirthdayUseCase
+if (
+  !force &&  // ← אם false, בודק!
+  hasMappedEvents && 
+  currentData.syncMetadata?.dataHash === currentDataHash && 
+  currentData.syncMetadata?.status === 'SYNCED'
+) {
+  functions.logger.log(`Idempotent skip for ${birthdayId}`);
+  return;  // ← יוצא מיד, אפס API calls!
+}
+```
+
+**תוצאה:**
+- לפני: 40 שניות + Rate Limit
+- אחרי: 1 שנייה (skip) ✅
+
+---
+
+### ⚠️ טוקן מת (Token Revoked)
+
+**הבעיה:**
+```typescript
+// משתמש ניתק את החיבור ליומן Google
+// הטוקן בוטל לצמיתות
+// אבל... המערכת מנסה לסנכרן כל שעה! 💸
+```
+
+**הפתרון:**
+```typescript
+// ✅ STEP 1: זיהוי בGoogle AuthClient
+catch (error) {
+  if (error.message?.includes('invalid_grant')) {
+    // טוקן מת!
+    throw new Error('TOKEN_REVOKED');
+  }
+}
+
+// ✅ STEP 2: סימון ב-SyncBirthdayUseCase
+catch (e) {
+  if (e.message === 'TOKEN_REVOKED') {
+    await update({
+      syncMetadata: {
+        status: 'ERROR',
+        retryCount: 999,  // ← 999 = "אל תנסה שוב"
+        lastErrorMessage: 'החיבור ליומן Google נותק'
+      }
+    });
+  }
+}
+
+// ✅ STEP 3: דילוג ב-retryFailedSyncs
+if (retryCount === 999 || retryCount >= 3) {
+  return null;  // דלג!
+}
+```
+
+**קבצים:**
+- `infrastructure/google/GoogleAuthClient.ts:52-71`
+- `application/use-cases/sync/SyncBirthdayUseCase.ts:49-68`
+- `interfaces/scheduled/retry-syncs.ts:22-27`
+
+---
+
+### ⚠️ כפילות Toast Notifications
+
+**הבעיה:**
+```typescript
+// Context מציג Toast:
+showToast('סונכרן בהצלחה', 'success');
+
+// Component גם מציג Toast:
+showToast('יום ההולדת סונכרן ליומן Google בהצלחה', 'success');
+
+// תוצאה: שתי הודעות! 😵
+```
+
+**הפתרון:**
+```typescript
+// ✅ Context - רק לוגיקה, לא UI
+if (result.success) {
+  setLastSyncTime(new Date());
+  // ✅ לא showToast כאן!
+  refreshStatus();
+}
+
+// ✅ Component - אחראי על UI
+const result = await syncSingleBirthday(id);
+if (result.success) {
+  showToast('יום ההולדת סונכרן בהצלחה', 'success');
+}
+```
+
+**קבצים:**
+- `contexts/GoogleCalendarContext.tsx:139,251`
+- `components/birthdays/BirthdayList.tsx:377,400`
+
+---
+
 ## 🐛 בעיות נפוצות ופתרונות
 
 ### בעיה #1: onUserCreate לא יוצר tenants/tenant_members
@@ -538,4 +713,5 @@ grep "undefined" functions-debug.log
 
 **עדכון אחרון:** דצמבר 2024  
 **גרסה:** 3.0.0 (לאחר רפקטורינג)
+
 

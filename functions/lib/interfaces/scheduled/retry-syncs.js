@@ -46,14 +46,17 @@ exports.retryFailedSyncsFn = functions.pubsub
         .collection('birthdays')
         .where('archived', '==', false)
         .where('syncMetadata.status', 'in', ['PARTIAL_SYNC', 'ERROR'])
+        .limit(50) // ✅ שינוי 3: הגבלת כמות למניעת עומס
         .get();
     const tasks = snap.docs
         .map((doc) => {
         const d = doc.data();
-        if ((d.syncMetadata?.retryCount || 0) < 3) {
-            return () => deps.syncBirthdayUseCase.execute(doc.id, d, d.tenant_id);
+        const retryCount = d.syncMetadata?.retryCount || 0;
+        // דלג על טוקנים מתים (999) או מי שעבר את המכסה (>=3)
+        if (retryCount === 999 || retryCount >= 3) {
+            return null;
         }
-        return null;
+        return () => deps.syncBirthdayUseCase.execute(doc.id, d, d.tenant_id);
     })
         .filter((t) => t !== null);
     if (tasks.length) {

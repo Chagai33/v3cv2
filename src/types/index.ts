@@ -106,6 +106,7 @@ export interface Birthday {
   created_by: string;
   updated_at: string;
   updated_by: string;
+  _systemUpdate?: boolean;  // ✅ דגל למניעת לולאה אינסופית ב-triggers
 }
 
 export interface WishlistItem {

@@ -77,7 +77,7 @@ export class BulkSyncUseCase {
             bid,
             { ...birthday, isSynced: true },
             birthday.tenant_id,
-            true // force
+            false // ✅ שינוי: false כדי לכבד hash checking
           );
         }
         successes++;
@@ -126,5 +126,6 @@ export class BulkSyncUseCase {
     await this.db.collection('calendar_sync_jobs').doc(jobId).update(update);
   }
 }
+
 
 

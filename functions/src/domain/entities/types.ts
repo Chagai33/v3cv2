@@ -54,6 +54,7 @@ export interface BirthdayData {
     status?: string;
     lastAttemptAt?: string;
     failedKeys?: string[];
+    lastErrorMessage?: string | null;
     retryCount?: number;
     dataHash?: string;
   };
@@ -62,6 +63,7 @@ export interface BirthdayData {
   created_by?: string;
   updated_at?: any;
   updated_by?: string;
+  _systemUpdate?: boolean;  // ✅ דגל למניעת לולאה אינסופית ב-triggers
 }
 
 export interface TenantData {

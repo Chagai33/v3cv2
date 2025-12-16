@@ -136,7 +136,7 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
 
       if (result.success) {
         setLastSyncTime(new Date());
-        showToast(t('googleCalendar.syncSuccess'), 'success');
+        // ✅ Toast מוצג בקומפוננטה - אין צורך כאן
         refreshStatus(); // Refresh to update history
       } else {
         showToast(result.error || t('googleCalendar.syncError'), 'error');
@@ -248,7 +248,7 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
     try {
       setIsSyncing(true);
       await googleCalendarService.removeBirthdayFromCalendar(birthdayId);
-      showToast(t('googleCalendar.removedSuccess'), 'success');
+      // ✅ Toast מוצג בקומפוננטה - אין צורך כאן
     } catch (error: any) {
       logger.error('Error removing birthday:', error);
       showToast(error.message || t('common.error'), 'error');

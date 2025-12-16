@@ -65,7 +65,21 @@ class SyncBirthdayUseCase {
             accessToken = await this.authClient.getValidAccessToken(ownerId);
         }
         catch (e) {
-            functions.logger.log(`No token for ${ownerId}, skipping`);
+            functions.logger.error(`Auth error for ${ownerId}:`, e);
+            // ✅ שינוי 1+4: No Silent Failure + זיהוי טוקן מת
+            const isTokenRevoked = e.message === 'TOKEN_REVOKED';
+            await this.birthdayRepo.update(birthdayId, {
+                syncMetadata: {
+                    status: 'ERROR',
+                    lastAttemptAt: new Date().toISOString(),
+                    failedKeys: [],
+                    lastErrorMessage: isTokenRevoked
+                        ? 'החיבור ליומן Google נותק. לחץ כאן להתחבר מחדש בהגדרות.'
+                        : 'שגיאה זמנית בחיבור ליומן. המערכת תנסה שוב בעוד שעה.',
+                    retryCount: isTokenRevoked ? 999 : (currentData.syncMetadata?.retryCount || 0) + 1,
+                    dataHash: ''
+                }
+            });
             return;
         }
         if (!accessToken)
@@ -250,10 +264,14 @@ class SyncBirthdayUseCase {
                 status: newStatus,
                 lastAttemptAt: new Date().toISOString(),
                 failedKeys,
+                lastErrorMessage: failedKeys.length > 0
+                    ? `נכשלו ${failedKeys.length} אירועים מתוך ${desiredEvents.size}`
+                    : null, // ✅ שינוי 2: אכלוס lastErrorMessage
                 retryCount,
                 dataHash: currentDataHash
             },
-            lastSyncedAt: new Date()
+            lastSyncedAt: new Date(),
+            _systemUpdate: true // ✅ מניעת לולאה אינסופית
         });
     }
 }

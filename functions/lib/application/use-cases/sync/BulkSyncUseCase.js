@@ -86,7 +86,7 @@ class BulkSyncUseCase {
                 const birthday = await this.birthdayRepo.findById(bid);
                 if (birthday && birthday.tenant_id) {
                     await this.birthdayRepo.update(bid, { isSynced: true });
-                    await this.syncUseCase.execute(bid, { ...birthday, isSynced: true }, birthday.tenant_id, true // force
+                    await this.syncUseCase.execute(bid, { ...birthday, isSynced: true }, birthday.tenant_id, false // ✅ שינוי: false כדי לכבד hash checking
                     );
                 }
                 successes++;
