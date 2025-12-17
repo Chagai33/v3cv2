@@ -1,4 +1,7 @@
 "use strict";
+// ⚠️ MANUALLY EDITED - Error messages updated (Dec 17, 2025)
+// This file is compiled JS - changes may be overwritten if TypeScript source is recompiled
+
 // SyncBirthdayUseCase - סנכרון יום הולדת ל-Google Calendar
 // מקור: processBirthdaySync שורות 285-474 מ-index.ts
 // העתקה מדויקת של הלוגיקה עם DI
@@ -74,8 +77,8 @@ class SyncBirthdayUseCase {
                     lastAttemptAt: new Date().toISOString(),
                     failedKeys: [],
                     lastErrorMessage: isTokenRevoked
-                        ? 'החיבור ליומן Google נותק. לחץ כאן להתחבר מחדש בהגדרות.'
-                        : 'שגיאה זמנית בחיבור ליומן. המערכת תנסה שוב בעוד שעה.',
+                        ? 'החיבור ליומן Google נותק. יש להתחבר מחדש.'
+                        : 'שגיאה בחיבור ליומן Google. לחץ לנסות שוב.',
                     retryCount: isTokenRevoked ? 999 : (currentData.syncMetadata?.retryCount || 0) + 1,
                     dataHash: ''
                 }

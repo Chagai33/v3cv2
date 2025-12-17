@@ -61,7 +61,7 @@ export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({
     icon = <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />; // Error Icon
     colorClass = "text-red-500 hover:text-red-600 hover:bg-red-50"; // Red
     tooltipContent = status === 'ERROR' 
-        ? t('googleCalendar.syncError', 'שגיאה בסנכרון (כל הניסיונות נכשלו)')
+        ? (birthday.syncMetadata?.lastErrorMessage || t('googleCalendar.syncError', 'שגיאה בסנכרון (כל הניסיונות נכשלו)'))
         : t('googleCalendar.partialSync', 'סנכרון חלקי (חלק מהאירועים לא עברו)');
     onClickAction = () => onSync(birthday.id); // Retry
   }
