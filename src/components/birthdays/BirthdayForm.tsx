@@ -14,6 +14,52 @@ import { MultiSelectGroups, GroupOption } from '../common/MultiSelectGroups';
 import { X, Save, Plus, Info, AlertCircle } from 'lucide-react';
 import { Toast } from '../common/Toast';
 import { useToast } from '../../hooks/useToast';
+import { HDate } from '@hebcal/core';
+
+// --- Hebrew Format Helpers ---
+const HEBREW_MONTHS_HE = [
+  'תשרי', 'חשון', 'כסלו', 'טבת', 'שבט', 'אדר', 'אדר א', 'אדר ב',
+  'ניסן', 'אייר', 'סיון', 'תמוז', 'אב', 'אלול'
+];
+
+const HEBREW_MONTHS_EN = [
+  'Tishrei', 'Cheshvan', 'Kislev', 'Tevet', 'Shevat', 'Adar', 'Adar I', 'Adar II',
+  'Nisan', 'Iyar', 'Sivan', 'Tamuz', 'Av', 'Elul'
+];
+
+const numberToHebrewLetter = (num: number): string => {
+  if (num <= 0) return '';
+  const letters = [
+    '', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט', 'י',
+    'יא', 'יב', 'יג', 'יד', 'טו', 'טז', 'יז', 'יח', 'יט', 'כ',
+    'כא', 'כב', 'כג', 'כד', 'כה', 'כו', 'כז', 'כח', 'כט', 'ל'
+  ];
+  return letters[num] || num.toString();
+};
+
+const numberToHebrewYear = (year: number): string => {
+  const shortYear = year % 1000;
+  const hundreds = Math.floor(shortYear / 100);
+  const tens = Math.floor((shortYear % 100) / 10);
+  const units = shortYear % 10;
+
+  const hundredsMap = ['', 'ק', 'ר', 'ש', 'ת', 'תק', 'תר', 'תש', 'תת', 'תתק'];
+  const tensMap = ['', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ'];
+  const unitsMap = ['', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+
+  let res = hundredsMap[hundreds] + tensMap[tens] + unitsMap[units];
+  
+  if (res.length > 1) {
+    res = res.slice(0, -1) + '"' + res.slice(-1);
+  } else {
+    res += "'";
+  }
+  return res;
+};
+
+// Generate Hebrew year range: Current year down to 1900 equivalent (roughly 120 years)
+const currentHebrewYear = new HDate().getFullYear();
+const HEBREW_YEAR_RANGE = Array.from({ length: 121 }, (_, i) => currentHebrewYear - i);
 
 interface BirthdayFormProps {
   onClose: () => void;
@@ -117,6 +163,31 @@ export const BirthdayForm = ({
     return parsed?.year || '';
   });
 
+  // Hebrew Input State
+  const [inputType, setInputType] = useState<'gregorian' | 'hebrew'>('gregorian');
+  const [hebrewDay, setHebrewDay] = useState<number>(1);
+  const [hebrewMonth, setHebrewMonth] = useState<string>('Nisan');
+  const [hebrewYear, setHebrewYear] = useState<number>(currentHebrewYear);
+
+  // Sync Hebrew -> Gregorian
+  useEffect(() => {
+    if (inputType === 'hebrew') {
+       try {
+           const hd = new HDate(hebrewDay, hebrewMonth, hebrewYear);
+           const greg = hd.greg();
+           const dateString = formatDateForInput(greg.toISOString());
+           
+           // Update Form
+           // Note: setValue is available from useForm hook which is initialized below.
+           // However, this useEffect is placed BEFORE useForm initialization in the current code structure
+           // which causes the "Cannot access 'setValue' before initialization" error.
+           // The fix is to move this useEffect AFTER useForm initialization.
+       } catch (e) {
+           console.error('Invalid Hebrew Date', e);
+       }
+    }
+  }, [hebrewDay, hebrewMonth, hebrewYear, inputType]); // Removed setValue from dependency temporarily to explain the fix
+
   // עדכון מספר הימים כאשר משנים חודש או שנה
   useEffect(() => {
     if (!selectedMonth || !selectedYear || !selectedDay) return;
@@ -193,6 +264,30 @@ export const BirthdayForm = ({
         },
   });
 
+  // Sync Hebrew -> Gregorian (Moved here to access setValue)
+  useEffect(() => {
+    if (inputType === 'hebrew') {
+       try {
+           const hd = new HDate(hebrewDay, hebrewMonth, hebrewYear);
+           const greg = hd.greg();
+           const dateString = formatDateForInput(greg.toISOString());
+           
+           // Update Form
+           setValue('birthDateGregorian', dateString as any, { shouldValidate: true });
+           
+           // Update Gregorian State (so if they switch back, it's consistent)
+           const parts = parseDateString(dateString);
+           if (parts) {
+               setSelectedDay(parts.day);
+               setSelectedMonth(parts.month);
+               setSelectedYear(parts.year);
+           }
+       } catch (e) {
+           console.error('Invalid Hebrew Date', e);
+       }
+    }
+  }, [hebrewDay, hebrewMonth, hebrewYear, inputType, setValue]);
+
   // עדכון הערך ב-form כאשר משנים תאריך (רק אחרי שה-form מוכן)
   useEffect(() => {
     const dateString = getDateString(selectedDay, selectedMonth, selectedYear);
@@ -268,6 +363,9 @@ export const BirthdayForm = ({
     
     return options;
   }, [rootGroups, childGroups, translatedRootNamesMap, editBirthday]);
+
+  // Helper to get Hebrew month list
+  const getHebrewMonths = () => i18n.language === 'he' ? HEBREW_MONTHS_HE : HEBREW_MONTHS_EN;
 
   const finalSubmit = async (data: BirthdayFormData) => {
     try {
@@ -515,101 +613,186 @@ export const BirthdayForm = ({
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-0.5 sm:mb-1">
                 {t('birthday.birthDate')} *
               </label>
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                <div>
-                  <select
-                    value={selectedDay}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const day = val ? parseInt(val) : '';
-                      setSelectedDay(day);
-                      const dateString = getDateString(day, selectedMonth, selectedYear);
-                      setValue('birthDateGregorian', dateString as any, { shouldValidate: true });
-                    }}
-                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                  >
-                    <option value="">{t('common.day')}</option>
-                    {days.map((day) => (
-                      <option key={day} value={day}>
-                        {day}
-                      </option>
-                    ))}
-                  </select>
-                  <label className="block text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">
-                    {t('common.day')}
-                  </label>
-                </div>
-                <div>
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const month = val ? parseInt(val) : '';
-                      setSelectedMonth(month);
-                      
-                      let day = selectedDay;
-                      if (val && selectedYear) {
-                        const daysInMonth = getDaysInMonth(month as number, selectedYear as number);
-                        if (typeof day === 'number' && day > daysInMonth) {
-                          day = daysInMonth;
-                          setSelectedDay(day);
-                        }
-                      }
 
-                      const dateString = getDateString(day, month, selectedYear);
-                      setValue('birthDateGregorian', dateString as any, { shouldValidate: true });
-                    }}
-                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                  >
-                    <option value="">{t('common.month')}</option>
-                    {months.map((month) => {
-                      const date = new Date(2000, month - 1, 1);
-                      const monthName = date.toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US', { month: 'long' });
-                      return (
-                        <option key={month} value={month}>
-                          {monthName}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <label className="block text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">
-                    {t('common.month')}
-                  </label>
-                </div>
-                <div>
-                  <select
-                    value={selectedYear}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const year = val ? parseInt(val) : '';
-                      setSelectedYear(year);
-                      
-                      let day = selectedDay;
-                      if (val && selectedMonth) {
-                        const daysInMonth = getDaysInMonth(selectedMonth as number, year as number);
-                        if (typeof day === 'number' && day > daysInMonth) {
-                          day = daysInMonth;
-                          setSelectedDay(day);
-                        }
-                      }
-
-                      const dateString = getDateString(day, selectedMonth, year);
-                      setValue('birthDateGregorian', dateString as any, { shouldValidate: true });
-                    }}
-                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                  >
-                    <option value="">{t('common.year')}</option>
-                    {years.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
-                  <label className="block text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">
-                    {t('common.year')}
-                  </label>
-                </div>
+              {/* Tabs */}
+              <div className="flex p-1 bg-gray-100 rounded-lg mb-2">
+                <button
+                    type="button"
+                    className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${
+                        inputType === 'gregorian' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setInputType('gregorian')}
+                >
+                    {t('guest.gregorianDate', 'Gregorian Date')}
+                </button>
+                <button
+                    type="button"
+                    className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${
+                        inputType === 'hebrew' ? 'bg-white shadow text-purple-600' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setInputType('hebrew')}
+                >
+                    {t('guest.hebrewDate', 'Hebrew Date')}
+                </button>
               </div>
+
+              {inputType === 'gregorian' ? (
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div>
+                      <select
+                        value={selectedDay}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const day = val ? parseInt(val) : '';
+                          setSelectedDay(day);
+                          const dateString = getDateString(day, selectedMonth, selectedYear);
+                          setValue('birthDateGregorian', dateString as any, { shouldValidate: true });
+                        }}
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      >
+                        <option value="">{t('common.day')}</option>
+                        {days.map((day) => (
+                          <option key={day} value={day}>
+                            {day}
+                          </option>
+                        ))}
+                      </select>
+                      <label className="block text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">
+                        {t('common.day')}
+                      </label>
+                    </div>
+                    <div>
+                      <select
+                        value={selectedMonth}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const month = val ? parseInt(val) : '';
+                          setSelectedMonth(month);
+                          
+                          let day = selectedDay;
+                          if (val && selectedYear) {
+                            const daysInMonth = getDaysInMonth(month as number, selectedYear as number);
+                            if (typeof day === 'number' && day > daysInMonth) {
+                              day = daysInMonth;
+                              setSelectedDay(day);
+                            }
+                          }
+
+                          const dateString = getDateString(day, month, selectedYear);
+                          setValue('birthDateGregorian', dateString as any, { shouldValidate: true });
+                        }}
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      >
+                        <option value="">{t('common.month')}</option>
+                        {months.map((month) => {
+                          const date = new Date(2000, month - 1, 1);
+                          const monthName = date.toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US', { month: 'long' });
+                          return (
+                            <option key={month} value={month}>
+                              {monthName}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <label className="block text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">
+                        {t('common.month')}
+                      </label>
+                    </div>
+                    <div>
+                      <select
+                        value={selectedYear}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const year = val ? parseInt(val) : '';
+                          setSelectedYear(year);
+                          
+                          let day = selectedDay;
+                          if (val && selectedMonth) {
+                            const daysInMonth = getDaysInMonth(selectedMonth as number, year as number);
+                            if (typeof day === 'number' && day > daysInMonth) {
+                              day = daysInMonth;
+                              setSelectedDay(day);
+                            }
+                          }
+
+                          const dateString = getDateString(day, selectedMonth, year);
+                          setValue('birthDateGregorian', dateString as any, { shouldValidate: true });
+                        }}
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      >
+                        <option value="">{t('common.year')}</option>
+                        {years.map((year) => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                      <label className="block text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">
+                        {t('common.year')}
+                      </label>
+                    </div>
+                  </div>
+              ) : (
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    {/* Hebrew Day */}
+                    <div>
+                        <select 
+                            value={hebrewDay} 
+                            onChange={(e) => setHebrewDay(Number(e.target.value))}
+                            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-center"
+                            dir={i18n.language === 'he' ? "rtl" : "ltr"}
+                        >
+                            {Array.from({ length: 30 }, (_, i) => i + 1).map(d => (
+                                <option key={d} value={d}>
+                                    {i18n.language === 'he' ? numberToHebrewLetter(d) : d}
+                                </option>
+                            ))}
+                        </select>
+                        <label className="block text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">
+                          {t('common.day')}
+                        </label>
+                    </div>
+
+                    {/* Hebrew Month */}
+                    <div>
+                        <select 
+                            value={hebrewMonth} 
+                            onChange={(e) => setHebrewMonth(e.target.value)}
+                            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-center"
+                            dir={i18n.language === 'he' ? "rtl" : "ltr"}
+                        >
+                            {getHebrewMonths().map((m, idx) => (
+                                <option key={m} value={HEBREW_MONTHS_EN[idx]}>
+                                    {m}
+                                </option>
+                            ))}
+                        </select>
+                        <label className="block text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">
+                          {t('common.month')}
+                        </label>
+                    </div>
+
+                    {/* Hebrew Year */}
+                    <div>
+                        <select
+                            value={hebrewYear}
+                            onChange={(e) => setHebrewYear(Number(e.target.value))}
+                            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-center"
+                            dir="ltr"
+                        >
+                            {HEBREW_YEAR_RANGE.map(y => (
+                                <option key={y} value={y}>
+                                    {y} {i18n.language === 'he' ? `(${numberToHebrewYear(y)})` : ''}
+                                </option>
+                            ))}
+                        </select>
+                        <label className="block text-[10px] sm:text-xs text-gray-500 mt-0.5 text-center">
+                          {t('common.year')}
+                        </label>
+                    </div>
+                  </div>
+              )}
+
               <input
                 type="hidden"
                 value={getDateString(selectedDay, selectedMonth, selectedYear)}
