@@ -11,7 +11,7 @@ import { DuplicateVerificationModal } from '../modals/DuplicateVerificationModal
 import { SunsetVerificationModal } from '../modals/SunsetVerificationModal';
 import { GenderVerificationModal } from '../modals/GenderVerificationModal';
 import { MultiSelectGroups, GroupOption } from '../common/MultiSelectGroups';
-import { X, Save, Plus, Info, AlertCircle } from 'lucide-react';
+import { X, Save, Plus, Info, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Toast } from '../common/Toast';
 import { useToast } from '../../hooks/useToast';
 import { HDate } from '@hebcal/core';
@@ -96,6 +96,7 @@ export const BirthdayForm = ({
   const [newGroupIds, setNewGroupIds] = useState<string[]>([]);
   const [hasUnsyncedChanges, setHasUnsyncedChanges] = useState(false);
   const [showSunsetTooltip, setShowSunsetTooltip] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -817,31 +818,6 @@ export const BirthdayForm = ({
               )}
             </div>
 
-            <div className="flex gap-1.5 sm:gap-2 items-start">
-              <div className="flex-1">
-                <MultiSelectGroups
-                    groups={groupOptions}
-                    selectedIds={watch('groupIds')}
-                    onChange={(ids) => setValue('groupIds', ids, { shouldValidate: true })}
-                    label={t('birthday.group') + ' *'}
-                    error={errors.groupIds ? String(errors.groupIds.message) : undefined} // Type check workaround
-                    placeholder={t('birthday.selectGroup')}
-                />
-                {/* Hidden field for validation if needed, but MultiSelect uses setValue */}
-                <input type="hidden" {...register('groupIds', { required: t('birthday.selectGroup') })} />
-              </div>
-              <div className="mt-6 sm:mt-7">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateGroupModal(true)}
-                  className="px-2 sm:px-3 py-1.5 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-1 text-xs sm:text-sm font-medium h-[38px] sm:h-[42px]"
-                  title={t('groups.createSubgroup', 'Create subgroup')}
-                >
-                  <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
-                </button>
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
@@ -907,10 +883,58 @@ export const BirthdayForm = ({
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                {t('birthday.calendarPreference')}
-              </label>
+            <div className="flex gap-1.5 sm:gap-2 items-start">
+              <div className="flex-1">
+                <MultiSelectGroups
+                    groups={groupOptions}
+                    selectedIds={watch('groupIds')}
+                    onChange={(ids) => setValue('groupIds', ids, { shouldValidate: true })}
+                    label={t('birthday.group') + ' *'}
+                    error={errors.groupIds ? String(errors.groupIds.message) : undefined} // Type check workaround
+                    placeholder={t('birthday.selectGroup')}
+                />
+                {/* Hidden field for validation if needed, but MultiSelect uses setValue */}
+                <input type="hidden" {...register('groupIds', { required: t('birthday.selectGroup') })} />
+              </div>
+              <div className="mt-6 sm:mt-7">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateGroupModal(true)}
+                  className="px-2 sm:px-3 py-1.5 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-1 text-xs sm:text-sm font-medium h-[38px] sm:h-[42px]"
+                  title={t('groups.createSubgroup', 'Create subgroup')}
+                >
+                  <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-center pt-2 pb-1">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 transition-colors font-medium bg-blue-50 px-3 py-1.5 rounded-full"
+              >
+                {showAdvanced ? (
+                  <>
+                    <span>פחות אפשרויות</span>
+                    <ChevronUp className="w-4 h-4" />
+                  </>
+                ) : (
+                  <>
+                    <span>אפשרויות מתקדמות (לוח שנה, הערות)</span>
+                    <ChevronDown className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* האזור המוסתר - נפתח רק כש-showAdvanced הוא true */}
+            {showAdvanced && (
+              <div className="space-y-2 sm:space-y-4 border-t border-gray-100 pt-4 mt-2">
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                    {t('birthday.calendarPreference')}
+                  </label>
               <div className="space-y-1 sm:space-y-2">
                 {firstSelectedGroup && firstSelectedGroup.calendar_preference && !conflictingPreferences && (
                   <div className="text-xs text-gray-600 bg-gray-50 p-1.5 sm:p-2 rounded">
@@ -967,10 +991,12 @@ export const BirthdayForm = ({
                 maxLength={200}
                 className="w-full px-2 sm:px-4 py-1.5 sm:py-2 text-base sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
-              <p className="text-xs text-gray-500 mt-1">
-                {t('birthday.notesSyncHint')}
-              </p>
-            </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {t('birthday.notesSyncHint')}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-2 sm:gap-3 pt-1 sm:pt-4">
               <button
