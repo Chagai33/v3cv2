@@ -96,7 +96,7 @@
     "disconnectCalendarShort": "נתק",
     "deleteCalendar": "מחיקת יומן",
     "deleteCalendarConfirm": "האם אתה בטוח שברצונך למחוק את היומן",
-    "deleteCalendarWarning": "פעולה זו תמחק את היומן מ-Google Calendar. ניתן למחוק רק יומנים שנוצרו על ידי האפליקציה, שאינם נוכחיים, וללא אירועים. פעולה זו אינה ניתנת לביטול.",
+    "deleteCalendarWarning": "פעולה זו תמחק את היומן מ-Google Calendar. ניתן למחוק רק יומנים שנוצרו על ידי האפליקציה ושאינם נוכחיים. פעולה זו אינה ניתנת לביטול.",
     "deleting": "מוחק...",
     "yesDelete": "כן, מחק",
     "customCalendarDescription": "יומן מותאם אישית מאפשר לך לשתף את ימי ההולדת עם משפחה וחברים מבלי לחשוף את היומן האישי שלך.",

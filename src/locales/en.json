@@ -141,7 +141,7 @@
     "disconnectCalendarShort": "Disconnect",
     "deleteCalendar": "Delete Calendar",
     "deleteCalendarConfirm": "Are you sure you want to delete the calendar",
-    "deleteCalendarWarning": "This action will delete the calendar from Google Calendar. You can only delete calendars created by the app, that are not primary, and have no events. This action cannot be undone.",
+    "deleteCalendarWarning": "This action will delete the calendar from Google Calendar. You can only delete calendars created by the app that are not primary. This action cannot be undone.",
     "deleting": "Deleting...",
     "yesDelete": "Yes, Delete",
     "customCalendarDescription": "A custom calendar allows you to share birthdays with family and friends without exposing your personal calendar.",
