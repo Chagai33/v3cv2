@@ -9,7 +9,7 @@ import { useGroups } from '../../hooks/useGroups';
 import { useGroupFilter } from '../../contexts/GroupFilterContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { useGoogleCalendar } from '../../contexts/GoogleCalendarContext';
-import { Edit, Trash2, Calendar, Search, CalendarDays, Filter, Gift, Download, Users, X, UploadCloud, CloudOff, Sparkles, Copy, Check } from 'lucide-react';
+import { Edit, Trash2, Calendar, Search, CalendarDays, Filter, Gift, Download, Users, X, UploadCloud, CloudOff, Sparkles, Copy, Check, FolderPlus } from 'lucide-react';
 import { SyncStatusButton } from './SyncStatusButton';
 import { BirthdayQuickActionsModal } from '../modals/BirthdayQuickActionsModal';
 import { FutureBirthdaysModal } from '../modals/FutureBirthdaysModal';
@@ -18,8 +18,12 @@ import { WishlistModal } from '../modals/WishlistModal';
 import { Tooltip } from '../common/Tooltip';
 import { birthdayCalculationsService } from '../../services/birthdayCalculations.service';
 import { calendarPreferenceService } from '../../services/calendarPreference.service';
-import { exportBirthdaysToCSV } from '../../utils/csvExport';
+import { writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../config/firebase';
+import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { exportBirthdaysToCSV } from '../../utils/csvExport';
+import { AssignGroupModal } from '../modals/AssignGroupModal';
 
 interface BirthdayListProps {
   birthdays: Birthday[];
@@ -37,6 +41,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   onOpenCalendarSettings,
 }) => {
   const { t, i18n } = useTranslation();
+  const { user } = useAuth();
   const deleteBirthday = useDeleteBirthday();
   const refreshHebrewData = useRefreshHebrewData();
   const { data: groups = [] } = useGroups();
@@ -56,6 +61,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   const [syncStatusFilter, setSyncStatusFilter] = useState<'all' | 'synced' | 'error' | 'not-synced'>(() => (localStorage.getItem('birthday-sync-status') as any) || 'all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [showAssignGroupModal, setShowAssignGroupModal] = useState(false);
 
   // עדכון הזמן כל 5 שניות כדי לעדכן את הטקסט "מחשב..." לרשומות חדשות
   useEffect(() => {
@@ -140,6 +146,53 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
     // Update the ref for the next run
     prevTenantPref.current = currentPref;
   }, [currentTenant, sortBy]); // Added sortBy to deps to ensure immediate correction if it becomes invalid
+
+  // New function to handle bulk assign - ADD mode (merge with existing groups)
+  const handleBulkAssignGroup = async (groupIdsToAdd: string[]) => {
+    const birthdaysToUpdate = birthdays.filter((b) => selectedIds.has(b.id));
+    
+    // Using batch write for efficiency and atomicity
+    const batch = writeBatch(db);
+    let operationCount = 0;
+
+    birthdaysToUpdate.forEach((birthday) => {
+      const currentGroupIds = birthday.group_ids || (birthday.group_id ? [birthday.group_id] : []);
+      
+      // MERGE mode: Add new groups to existing ones (no duplicates)
+      const newGroupIds = Array.from(new Set([...currentGroupIds, ...groupIdsToAdd]));
+      
+      // Check if there's actually a change (new groups were added)
+      const hasChanged = newGroupIds.length !== currentGroupIds.length;
+      
+      if (hasChanged) {
+        const ref = doc(db, 'birthdays', birthday.id);
+        batch.update(ref, { 
+          group_ids: newGroupIds,
+          group_id: newGroupIds[0] || null, // Backward compatibility
+          updated_at: serverTimestamp(),
+          updated_by: user?.id || 'system'
+        });
+        operationCount++;
+      }
+    });
+
+    if (operationCount === 0) {
+        showToast(t('groups.noChangesDetected', 'לא נעשו שינויים'), 'info');
+        setShowAssignGroupModal(false);
+        setSelectedIds(new Set());
+        return;
+    }
+
+    try {
+      await batch.commit();
+      showToast(t('groups.assignedSuccess', 'השיוך לקבוצה בוצע בהצלחה'), 'success');
+      setShowAssignGroupModal(false);
+      setSelectedIds(new Set());
+    } catch (error) {
+      logger.error('Error assigning group:', error);
+      showToast(t('common.error'), 'error');
+    }
+  };
 
   const [showFutureModal, setShowFutureModal] = useState(false);
   const [showGregorianModal, setShowGregorianModal] = useState(false);
@@ -619,6 +672,13 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                     <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">{t('birthday.exportSelected')}</span>
                   </button>
+                  <button
+                    onClick={() => setShowAssignGroupModal(true)}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1"
+                  >
+                    <FolderPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">{t('groups.assignToGroup', 'הוספה לקבוצה')}</span>
+                  </button>
                   {showHebrewColumn && (
                   <button
                     onClick={handleCopyToClipboard}
@@ -723,6 +783,13 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                   >
                     <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">{t('birthday.exportSelected')}</span>
+                  </button>
+                  <button
+                    onClick={() => setShowAssignGroupModal(true)}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1"
+                  >
+                    <FolderPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">{t('groups.assignToGroup', 'הוספה לקבוצה')}</span>
                   </button>
                   {showHebrewColumn && (
                   <button
@@ -1253,6 +1320,14 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
           </table>
         </div>
       </div>
+
+      <AssignGroupModal
+        isOpen={showAssignGroupModal}
+        onClose={() => setShowAssignGroupModal(false)}
+        onConfirm={handleBulkAssignGroup}
+        groups={groups}
+        count={selectedIds.size}
+      />
 
       <FutureBirthdaysModal
         isOpen={showFutureModal}
