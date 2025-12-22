@@ -210,31 +210,31 @@ async function isGuestAccessAllowed(tenantId: string, groupIds?: string[]): Prom
         if (!groupIds || groupIds.length === 0) return true;
 
         // Permissive Logic: If ANY group allows access, return true.
-        for (const groupId of groupIds) {
-            // Check Group
+        // OPTIMIZATION: Run all group checks in parallel to save time
+        const groupChecks = groupIds.map(async (groupId) => {
             const groupDoc = await db.collection('groups').doc(groupId).get();
             if (groupDoc.exists) {
                 const groupData = groupDoc.data();
                 // Default to true if undefined
-                if (groupData?.is_guest_portal_enabled === false) continue; // This group blocked, check next
+                if (groupData?.is_guest_portal_enabled === false) return false; // This group blocked
 
                 // Check Parent
-                let parentBlocked = false;
                 if (groupData?.parent_id) {
                     const parentDoc = await db.collection('groups').doc(groupData.parent_id).get();
                     if (parentDoc.exists) {
                             const parentData = parentDoc.data();
-                            if (parentData?.is_guest_portal_enabled === false) parentBlocked = true;
+                            if (parentData?.is_guest_portal_enabled === false) return false;
                     }
                 }
                 
-                if (!parentBlocked) {
-                    return true; // Found an open path!
-                }
+                return true; // Found an open path!
             }
-        }
+            return false;
+        });
 
-        return false; // No open path found
+        // Wait for all checks to complete and see if any returned true
+        const results = await Promise.all(groupChecks);
+        return results.some(isAllowed => isAllowed);
     } catch (error) {
         console.error('Error checking guest access:', error);
         // Fail safe

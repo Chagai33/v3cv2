@@ -27,9 +27,10 @@ import { Child, AgeGroup, BudgetConfig, GeltState } from '../../types/gelt';
 import { Download, Upload, RotateCcw, Users, Settings, Calculator, ChevronDown, ChevronUp, Save, FolderOpen, Info, X } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { DEFAULT_AGE_GROUPS, DEFAULT_BUDGET_CONFIG } from '../../utils/geltConstants';
+import { FloatingBackButton } from '../common/FloatingBackButton';
 
 export const GeltPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data: geltState, isLoading } = useGelt();
   const updateGelt = useUpdateGelt();
   const resetGelt = useResetGelt();
@@ -494,8 +495,20 @@ export const GeltPage: React.FC = () => {
     success(t('gelt.profileLoaded', { name: template.name }));
   };
 
+  const isHebrew = i18n.language === 'he';
+
   return (
     <Layout>
+      <FloatingBackButton 
+        to="/"
+        position={isHebrew ? 'bottom-left' : 'bottom-right'} 
+      />
+      <FloatingBackButton 
+        to="/"
+        showOnDesktop 
+        customPosition={`top-24 ${isHebrew ? 'right-8' : 'left-8'} hidden sm:block`}
+      />
+
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-2">
@@ -545,56 +558,75 @@ export const GeltPage: React.FC = () => {
         </div>
 
         {/* Action buttons */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          <Button
-            variant="primary"
-            onClick={() => setShowImportModal(true)}
-            icon={<Upload className="w-4 h-4" />}
-          >
-            {t('gelt.importFromBirthdays')}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setShowBudgetConfigModal(true)}
-            icon={<Settings className="w-4 h-4" />}
-          >
-            {t('gelt.budgetConfig')}
-            <span className="ml-2 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-medium">
-              {localState.budgetConfig.participants} / {localState.budgetConfig.allowedOverflowPercentage}%
-              {localState.budgetConfig.customBudget && (
-                <span className="ml-1 font-semibold">
-                  • {localState.budgetConfig.customBudget}₪
-                </span>
-              )}
-            </span>
-          </Button>
+        <div className="grid grid-cols-4 sm:flex sm:flex-wrap items-stretch gap-2 mb-6">
+          <div className="col-span-4 sm:w-auto">
+            <Button
+              variant="primary"
+              onClick={() => setShowImportModal(true)}
+              icon={<Upload className="w-4 h-4" />}
+              fullWidth
+            >
+              {t('gelt.importFromBirthdays')}
+            </Button>
+          </div>
+          
+          <div className="col-span-4 sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={() => setShowBudgetConfigModal(true)}
+              icon={<Settings className="w-4 h-4" />}
+              fullWidth
+            >
+              {t('gelt.budgetConfig')}
+              <span className="ml-2 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-medium truncate max-w-[150px] inline-block align-bottom">
+                {localState.budgetConfig.participants} / {localState.budgetConfig.allowedOverflowPercentage}%
+                {localState.budgetConfig.customBudget && (
+                  <span className="ml-1 font-semibold">
+                    • {localState.budgetConfig.customBudget}₪
+                  </span>
+                )}
+              </span>
+            </Button>
+          </div>
+
           <Button
             variant="outline"
             onClick={() => setShowLoadTemplateModal(true)}
             icon={<FolderOpen className="w-4 h-4" />}
+            className="col-span-1 sm:w-auto px-0 sm:px-4"
+            title={t('gelt.loadProfile')}
           >
-            {t('gelt.loadProfile')}
+            <span className="hidden sm:inline">{t('gelt.loadProfile')}</span>
           </Button>
+
           <Button
             variant="outline"
             onClick={() => setShowSaveTemplateModal(true)}
             icon={<Save className="w-4 h-4" />}
+            className="col-span-1 sm:w-auto px-0 sm:px-4"
+            title={t('gelt.saveProfile')}
           >
-            {t('gelt.saveProfile')}
+            <span className="hidden sm:inline">{t('gelt.saveProfile')}</span>
           </Button>
+
           <Button
             variant="outline"
             onClick={handleExport}
             icon={<Download className="w-4 h-4" />}
+            className="col-span-1 sm:w-auto px-0 sm:px-4"
+            title={t('gelt.export')}
           >
-            {t('gelt.export')}
+            <span className="hidden sm:inline">{t('gelt.export')}</span>
           </Button>
+
           <Button
             variant="danger"
             onClick={handleReset}
             icon={<RotateCcw className="w-4 h-4" />}
+            className="col-span-1 sm:w-auto px-0 sm:px-4"
+            title={t('gelt.reset')}
           >
-            {t('gelt.reset')}
+            <span className="hidden sm:inline">{t('gelt.reset')}</span>
           </Button>
         </div>
 
