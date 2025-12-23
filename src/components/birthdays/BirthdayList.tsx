@@ -279,8 +279,8 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
       filtered = filtered.filter((b) => b.gender === genderFilter);
     }
 
-    // סינון לפי סטטוס סנכרון - רק נתונים מהשרת
-    if (syncStatusFilter !== 'all') {
+    // סינון לפי סטטוס סנכרון - רק אם מחוברים ליומן
+    if (isConnected && syncStatusFilter !== 'all') {
       filtered = filtered.filter((b) => {
         if (syncStatusFilter === 'synced') {
           // מסונכרן תקין = isSynced וללא שגיאה
@@ -348,7 +348,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
     });
 
     return sorted;
-  }, [enrichedBirthdays, searchTerm, sortBy, selectedGroupIds, genderFilter, syncStatusFilter]);
+  }, [enrichedBirthdays, searchTerm, sortBy, selectedGroupIds, genderFilter, syncStatusFilter, isConnected]);
 
   const handleDelete = async (id: string) => {
     const birthdayToDelete = birthdays.find(b => b.id === id);
@@ -858,65 +858,67 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
 
       {showGroupFilter && (
         <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4 space-y-3 sm:space-y-4 max-h-[60vh] sm:max-h-none overflow-y-auto">
-          {/* Sync Status Filter */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm sm:text-base font-semibold text-gray-900 flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                {t('filter.syncStatus', 'סטטוס סנכרון')}
-              </h3>
-              {syncStatusFilter !== 'all' && (
+          {/* Sync Status Filter - מוצג רק כשיש חיבור ליומן */}
+          {isConnected && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm sm:text-base font-semibold text-gray-900 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  {t('filter.syncStatus', 'סטטוס סנכרון')}
+                </h3>
+                {syncStatusFilter !== 'all' && (
+                  <button
+                    onClick={() => setSyncStatusFilter('all')}
+                    className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    {t('common.clear', 'Clear')}
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 <button
                   onClick={() => setSyncStatusFilter('all')}
-                  className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
+                    syncStatusFilter === 'all'
+                      ? 'bg-gray-600 border-gray-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+                  }`}
                 >
-                  {t('common.clear', 'Clear')}
+                  {t('filter.all', 'הכל')}
                 </button>
-              )}
+                <button
+                  onClick={() => setSyncStatusFilter(syncStatusFilter === 'synced' ? 'all' : 'synced')}
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
+                    syncStatusFilter === 'synced'
+                      ? 'bg-green-600 border-green-600 text-white'
+                      : 'bg-white border-green-300 text-green-600 hover:border-green-400'
+                  }`}
+                >
+                  ✓ {t('filter.synced', 'מסונכרן')}
+                </button>
+                <button
+                  onClick={() => setSyncStatusFilter(syncStatusFilter === 'error' ? 'all' : 'error')}
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
+                    syncStatusFilter === 'error'
+                      ? 'bg-red-600 border-red-600 text-white'
+                      : 'bg-white border-red-300 text-red-600 hover:border-red-400'
+                  }`}
+                >
+                  ⚠️ {t('filter.syncError', 'שגיאה')}
+                </button>
+                <button
+                  onClick={() => setSyncStatusFilter(syncStatusFilter === 'not-synced' ? 'all' : 'not-synced')}
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
+                    syncStatusFilter === 'not-synced'
+                      ? 'bg-gray-600 border-gray-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+                  }`}
+                >
+                  ○ {t('filter.notSynced', 'לא מסונכרן')}
+                </button>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              <button
-                onClick={() => setSyncStatusFilter('all')}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
-                  syncStatusFilter === 'all'
-                    ? 'bg-gray-600 border-gray-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
-                }`}
-              >
-                {t('filter.all', 'הכל')}
-              </button>
-              <button
-                onClick={() => setSyncStatusFilter(syncStatusFilter === 'synced' ? 'all' : 'synced')}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
-                  syncStatusFilter === 'synced'
-                    ? 'bg-green-600 border-green-600 text-white'
-                    : 'bg-white border-green-300 text-green-600 hover:border-green-400'
-                }`}
-              >
-                ✓ {t('filter.synced', 'מסונכרן')}
-              </button>
-              <button
-                onClick={() => setSyncStatusFilter(syncStatusFilter === 'error' ? 'all' : 'error')}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
-                  syncStatusFilter === 'error'
-                    ? 'bg-red-600 border-red-600 text-white'
-                    : 'bg-white border-red-300 text-red-600 hover:border-red-400'
-                }`}
-              >
-                ⚠️ {t('filter.syncError', 'שגיאה')}
-              </button>
-              <button
-                onClick={() => setSyncStatusFilter(syncStatusFilter === 'not-synced' ? 'all' : 'not-synced')}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
-                  syncStatusFilter === 'not-synced'
-                    ? 'bg-gray-600 border-gray-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
-                }`}
-              >
-                ○ {t('filter.notSynced', 'לא מסונכרן')}
-              </button>
-            </div>
-          </div>
+          )}
 
           {groups.length > 0 && (
             <div>
