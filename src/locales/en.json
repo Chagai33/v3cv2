@@ -525,7 +525,9 @@
     "deleteAccountNotImplemented": "Account deletion functionality is not yet available. Please contact support.",
     "deleteAccountError": "Error deleting account",
     "feedbackSubject": "Feedback on the application",
-    "allRightsReserved": "All rights reserved"
+    "allRightsReserved": "All rights reserved",
+    "developedBy": "Developed by",
+    "developerName": "Chagai Yechiel"
   },
   "gelt": {
     "title": "Hanukkah/Purim Money",

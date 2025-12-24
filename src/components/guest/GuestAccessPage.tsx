@@ -252,7 +252,10 @@ export const GuestAccessPage: React.FC = () => {
         {/* Logo Header */}
         <div className="bg-white shadow-sm border-b border-gray-200 py-4">
           <div className="max-w-4xl mx-auto px-4">
-            <div className="flex flex-col items-center gap-2">
+            <a 
+              href={`${window.location.origin}/`}
+              className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity"
+            >
               <div className="text-2xl sm:text-3xl font-black tracking-tight leading-none inline-flex items-baseline" dir="ltr">
                 <span className="text-[#8e24aa]">Heb</span>
                 <span className="text-[#304FFE]">Birthday</span>
@@ -261,7 +264,7 @@ export const GuestAccessPage: React.FC = () => {
               <p className="text-xs sm:text-sm text-gray-600">
                 {t('app.taglinePart1')} <span className="text-[#8e24aa]">{t('app.taglineHebrew')}</span> {t('app.taglineOr')} <span className="text-[#304FFE]">{t('app.taglineGregorian')}</span>
               </p>
-            </div>
+            </a>
           </div>
         </div>
 
@@ -356,7 +359,10 @@ export const GuestAccessPage: React.FC = () => {
       {/* Logo Header */}
       <div className="bg-white shadow-sm border-b border-gray-200 py-4">
         <div className="max-w-4xl mx-auto px-4">
-          <div className="flex flex-col items-center gap-2">
+          <a 
+            href={`${window.location.origin}/`}
+            className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity"
+          >
             <div className="text-2xl sm:text-3xl font-black tracking-tight leading-none inline-flex items-baseline" dir="ltr">
               <span className="text-[#8e24aa]">Heb</span>
               <span className="text-[#304FFE]">Birthday</span>
@@ -365,7 +371,7 @@ export const GuestAccessPage: React.FC = () => {
             <p className="text-xs sm:text-sm text-gray-600">
               {t('app.taglinePart1')} <span className="text-[#8e24aa]">{t('app.taglineHebrew')}</span> {t('app.taglineOr')} <span className="text-[#304FFE]">{t('app.taglineGregorian')}</span>
             </p>
-          </div>
+          </a>
         </div>
       </div>
 

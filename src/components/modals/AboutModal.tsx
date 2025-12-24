@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { X, Globe, Trash2, MessageSquare, LogOut, Settings, Info, Gift, Calculator } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, Globe, MessageSquare, LogOut, Settings, Info, Gift, Calculator, Bell } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBirthdays } from '../../hooks/useBirthdays';
 import { FloatingBackButton } from '../common/FloatingBackButton';
 import { TenantSettings } from '../settings/TenantSettings';
 import { InfoModal } from './InfoModal';
+import { GuestActivityModal } from './GuestActivityModal';
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -15,9 +17,16 @@ interface AboutModalProps {
 export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
   const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
+  const { data: birthdays = [] } = useBirthdays();
   const navigate = useNavigate();
   const [showSettings, setShowSettings] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showGuestActivity, setShowGuestActivity] = useState(false);
+
+  // Count guest-added birthdays for notification badge
+  const guestBirthdaysCount = useMemo(() => {
+    return birthdays.filter(b => b.created_by_guest === true).length;
+  }, [birthdays]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -77,6 +86,23 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               >
                 <Settings className="w-5 h-5 text-gray-600" />
                 <span className="text-sm font-medium">{t('tenant.settings')}</span>
+              </button>
+            )}
+
+            {user && (
+              <button
+                onClick={() => {
+                  setShowGuestActivity(true);
+                }}
+                className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors w-full text-start relative"
+              >
+                <Bell className="w-5 h-5 text-indigo-600" />
+                <span className="text-sm font-medium">{t('dashboard.guestNotifications', 'התראות אורחים')}</span>
+                {guestBirthdaysCount > 0 && (
+                  <span className="mr-auto bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
+                    {guestBirthdaysCount}
+                  </span>
+                )}
               </button>
             )}
 
@@ -163,6 +189,11 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         </div>
       )}
       <InfoModal isOpen={showInfoModal} onClose={() => setShowInfoModal(false)} />
+      <GuestActivityModal 
+        isOpen={showGuestActivity} 
+        onClose={() => setShowGuestActivity(false)}
+        birthdays={birthdays}
+      />
     </div>
   );
 };

@@ -696,7 +696,9 @@
     "deleteAccountNotImplemented": "פונקציונליות מחיקת חשבון עדיין לא זמינה. אנא צור קשר עם התמיכה.",
     "deleteAccountError": "שגיאה במחיקת החשבון",
     "feedbackSubject": "משוב על האפליקציה",
-    "allRightsReserved": "כל הזכויות שמורות"
+    "allRightsReserved": "כל הזכויות שמורות",
+    "developedBy": "פותח על ידי",
+    "developerName": "חגי יחיאל"
   },
   "gelt": {
     "title": "דמי חנוכה/פורים",

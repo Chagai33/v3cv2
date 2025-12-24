@@ -34,7 +34,6 @@ export const ShareGroupModal: React.FC<ShareGroupModalProps> = ({ group, onClose
 ${guestLink}
 
 ⏰ הקישור תקף ל-72 שעות
-📝 מקסימום 50 הוספות לכל קישור
 
 תודה! 🎂`
     : '';

@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Mail, Lock, LogIn, Globe, Gift } from 'lucide-react';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 import { authService } from '../../services/auth.service';
+import { DeveloperCredit } from '../common/DeveloperCredit';
 
 export const Login: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -222,16 +223,7 @@ export const Login: React.FC = () => {
           </button>
         </p>
 
-        <p className="mt-4 text-center text-xs text-gray-500">
-          <a
-            href="https://www.linkedin.com/in/chagai-yechiel/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-gray-700 transition-colors"
-          >
-            {t('common.developedBy')} {i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}
-          </a>
-        </p>
+        <DeveloperCredit className="mt-4" />
       </div>
 
       <ForgotPasswordModal

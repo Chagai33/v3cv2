@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { DeveloperCredit } from './DeveloperCredit';
 
 export const Footer: React.FC = () => {
   const { t } = useTranslation();
@@ -8,19 +9,7 @@ export const Footer: React.FC = () => {
   return (
     <footer className="bg-gray-50 border-t border-gray-200 py-6 mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          {/* Brand */}
-          <div className="flex flex-col items-center sm:items-start">
-            <div className="text-lg sm:text-xl font-black tracking-tight leading-none inline-flex items-baseline" dir="ltr">
-              <span className="text-[#8e24aa]">Heb</span>
-              <span className="text-[#304FFE]">Birthday</span>
-              <span className="text-gray-400 text-sm ml-[1px]">.app</span>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {t('app.taglinePart1')} <span className="text-[#8e24aa]">{t('app.taglineHebrew')}</span> {t('app.taglineOr')} <span className="text-[#304FFE]">{t('app.taglineGregorian')}</span>
-            </p>
-          </div>
-
+        <div className="flex flex-col items-center justify-center gap-4">
           {/* Links */}
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm">
             <Link
@@ -45,8 +34,11 @@ export const Footer: React.FC = () => {
             </a>
           </div>
 
+          {/* Developer Credit */}
+          <DeveloperCredit />
+
           {/* Copyright */}
-          <div className="text-xs text-gray-500 text-center sm:text-left">
+          <div className="text-xs text-gray-500 text-center">
             © {new Date().getFullYear()} HebBirthday
           </div>
         </div>
