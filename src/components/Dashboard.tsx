@@ -14,7 +14,7 @@ import { useGroupFilter } from '../contexts/GroupFilterContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useRootGroups, useInitializeRootGroups, useGroups } from '../hooks/useGroups';
 import { Birthday, DashboardStats } from '../types';
-import { Plus, Users, Calendar, TrendingUp, Cake, Upload, Info, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
+import { Plus, Users, Calendar, TrendingUp, Cake, Upload, Info, ChevronDown, ChevronUp, BarChart3, FileText } from 'lucide-react';
 import { isWithinInterval, addWeeks, addMonths } from 'date-fns';
 import { openGoogleCalendarForBirthday } from '../utils/googleCalendar';
 import { wishlistService } from '../services/wishlist.service';
@@ -23,6 +23,7 @@ import { parseCSVFile } from '../utils/csvExport';
 import { birthdayService } from '../services/birthday.service';
 import { validateAndEnrichCSVData } from '../utils/csvValidation';
 import { CSVImportPreviewModal } from './modals/CSVImportPreviewModal';
+import { TextImportModal } from './modals/TextImportModal';
 import { ZodiacStatsModal } from './modals/ZodiacStatsModal';
 import { CSVBirthdayRow } from '../types';
 import { logger } from '../utils/logger';
@@ -50,6 +51,8 @@ export const Dashboard = () => {
   const [csvData, setCsvData] = useState<CSVBirthdayRow[]>([]);
   const [showZodiacStats, setShowZodiacStats] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [showTextImport, setShowTextImport] = useState(false);
+  const [originalPastedText, setOriginalPastedText] = useState<string>('');
   
   const [isStatsExpanded, setIsStatsExpanded] = useState(() => {
     const saved = localStorage.getItem('stats-expanded');
@@ -202,6 +205,41 @@ export const Dashboard = () => {
     } finally {
       event.target.value = '';
     }
+  };
+
+  const handleTextImport = (parsedData: any[], originalText: string) => {
+    if (!currentTenant || !user) return;
+
+    try {
+      if (parsedData.length === 0) {
+        showError(t('import.pasteEmpty', 'הטקסט ריק או לא נמצאו תאריכים תקינים'));
+        return;
+      }
+
+      // Save original text for potential back navigation
+      setOriginalPastedText(originalText);
+
+      const validatedData = validateAndEnrichCSVData(parsedData, allBirthdays, {
+        firstNameRequired: t('validation.firstNameRequired', 'שם פרטי הוא שדה חובה'),
+        lastNameMissing: t('validation.lastNameMissing', 'שם משפחה חסר'),
+        birthDateRequired: t('validation.birthDateRequired', 'תאריך לידה הוא שדה חובה'),
+        birthDateInvalid: t('validation.birthDateInvalid', 'תאריך לידה לא תקין'),
+        birthDateFuture: t('validation.futureDate', 'תאריך לידה לא יכול להיות בעתיד'),
+        birthDateTooOld: t('validation.birthDateTooOld', 'תאריך לידה לא תקין (לפני 1900)'),
+      });
+
+      setCsvData(validatedData);
+      setShowCSVPreview(true);
+      success(t('import.textImportSuccess', 'נמצאו {{count}} רשומות תקינות', { count: parsedData.length }));
+    } catch (error) {
+      logger.error('Error processing text import:', error);
+      showError(t('messages.importError', 'שגיאה בעיבוד הטקסט'));
+    }
+  };
+
+  const handleBackToTextImport = () => {
+    setShowCSVPreview(false);
+    setShowTextImport(true);
   };
 
   // פונקציה לפרסור Wishlist
@@ -449,6 +487,14 @@ export const Dashboard = () => {
                 <Plus className="w-4 h-4" />
                 <span>{t('birthday.addBirthday')}</span>
               </button>
+              <button
+                onClick={() => setShowTextImport(true)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 shadow-sm rounded-lg font-medium transition-all text-sm"
+                title={t('birthday.pasteImport', 'הדבק וייבא')}
+              >
+                <FileText className="w-4 h-4" />
+                <span>{t('birthday.pasteImport', 'הדבק וייבא')}</span>
+              </button>
               <label className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 shadow-sm rounded-lg font-medium transition-all cursor-pointer text-sm">
                 <input
                   type="file"
@@ -492,6 +538,14 @@ export const Dashboard = () => {
                 <span>{t('birthday.importCSV', 'Import CSV')}</span>
               </label>
               <button
+                onClick={() => setShowTextImport(true)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 shadow-sm rounded-lg font-medium transition-all text-sm"
+                title={t('birthday.pasteImport', 'Paste & Import')}
+              >
+                <FileText className="w-4 h-4" />
+                <span>{t('birthday.pasteImport', 'Paste & Import')}</span>
+              </button>
+              <button
                 onClick={() => setShowForm(true)}
                 className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md text-sm"
                 title={t('birthday.addBirthday')}
@@ -504,7 +558,6 @@ export const Dashboard = () => {
         </div>
         
         <div className="space-y-3 sm:space-y-4">
-
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -528,11 +581,20 @@ export const Dashboard = () => {
         />
       )}
 
+      <TextImportModal
+        isOpen={showTextImport}
+        onClose={() => setShowTextImport(false)}
+        onParsedData={handleTextImport}
+        initialText={originalPastedText}
+      />
+
       <CSVImportPreviewModal
         isOpen={showCSVPreview}
         onClose={() => setShowCSVPreview(false)}
         data={csvData}
         onConfirm={handleConfirmImport}
+        onBack={originalPastedText ? handleBackToTextImport : undefined}
+        showBackButton={!!originalPastedText}
       />
 
       <ZodiacStatsModal
@@ -544,9 +606,10 @@ export const Dashboard = () => {
       <FloatingDock
         onAdd={() => setShowForm(true)}
         onImport={() => fileInputRef.current?.click()}
+        onTextImport={() => setShowTextImport(true)}
         onCalendar={() => setShowCalendarModal(true)}
         onGroups={() => navigate('/groups')}
-        hidden={showForm || showCSVPreview || showCalendarModal || showZodiacStats}
+        hidden={showForm || showCSVPreview || showCalendarModal || showZodiacStats || showTextImport}
       />
 
       <GoogleCalendarModal 

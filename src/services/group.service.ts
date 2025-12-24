@@ -16,6 +16,7 @@ import { db } from '../config/firebase';
 import { Group, GroupType } from '../types';
 import { retryFirestoreOperation } from './firestore.retry';
 import { logger } from '../utils/logger';
+import { v4 as uuidv4 } from 'uuid';
 
 const ROOT_GROUPS = [
   { type: 'family' as GroupType, nameHe: 'משפחה', nameEn: 'Family', color: '#3b82f6' },
@@ -144,8 +145,46 @@ export const groupService = {
         where('tenant_id', '==', tenantId)
       );
       const birthdaysSnapshot = await getDocs(birthdaysQuery);
-      const deletePromises = birthdaysSnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
-      await Promise.all(deletePromises);
+      
+      // Split into two groups: exclusive and shared
+      const birthdaysToDelete: any[] = [];
+      const birthdaysToUpdate: any[] = [];
+      
+      birthdaysSnapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        const currentGroupIds = data.group_ids || (data.group_id ? [data.group_id] : []);
+        
+        if (currentGroupIds.length === 1 && currentGroupIds[0] === groupId) {
+          // Birthday belongs ONLY to this group - delete it
+          birthdaysToDelete.push(docSnap.ref);
+        } else {
+          // Birthday belongs to multiple groups - just remove this group
+          birthdaysToUpdate.push({ ref: docSnap.ref, currentGroupIds });
+        }
+      });
+      
+      // Delete birthdays that belong only to this group
+      const deletePromises = birthdaysToDelete.map(ref => deleteDoc(ref));
+      
+      // Update birthdays that belong to multiple groups
+      const updatePromises = birthdaysToUpdate.map(({ ref, currentGroupIds }) => {
+        const updatedGroupIds = currentGroupIds.filter((id: string) => id !== groupId);
+        const updateData: any = {
+          group_ids: updatedGroupIds,
+          updated_at: serverTimestamp(),
+        };
+        
+        // Update backward compatibility field
+        if (updatedGroupIds.length > 0) {
+          updateData.group_id = updatedGroupIds[0];
+        } else {
+          updateData.group_id = null;
+        }
+        
+        return updateDoc(ref, updateData);
+      });
+      
+      await Promise.all([...deletePromises, ...updatePromises]);
     } else {
       // Find birthdays that have this group in their group_ids array
       const birthdaysQuery = query(
@@ -250,11 +289,99 @@ export const groupService = {
       type: data.type,
       color: data.color,
       is_guest_portal_enabled: data.is_guest_portal_enabled ?? true,
+      guest_access_token: data.guest_access_token || null,
+      guest_token_expires_at: data.guest_token_expires_at || null,
+      guest_contribution_limit: data.guest_contribution_limit || 50,
+      is_guest_access_enabled: data.is_guest_access_enabled ?? false,
       calendar_preference: data.calendar_preference,
       created_by: data.created_by,
       created_at: this.timestampToString(data.created_at),
       updated_at: this.timestampToString(data.updated_at),
     };
+  },
+
+  /**
+   * Generate or regenerate a unique guest access token for a group with 72-hour expiration
+   * @param groupId - The ID of the group
+   * @returns The new guest access token
+   */
+  async generateGuestAccessToken(groupId: string): Promise<string> {
+    const token = uuidv4();
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 72); // 72 hours from now
+    
+    await updateDoc(doc(db, 'groups', groupId), {
+      guest_access_token: token,
+      guest_token_expires_at: expiresAt.toISOString(),
+      guest_contribution_limit: 50, // Default limit of 50 birthdays per token
+      is_guest_access_enabled: true,
+      updated_at: serverTimestamp(),
+    });
+    logger.log(`Generated guest access token for group ${groupId} (expires: ${expiresAt.toISOString()})`);
+    return token;
+  },
+
+  /**
+   * Reset (clear) the guest access token for a group
+   * @param groupId - The ID of the group
+   */
+  async resetGuestAccessToken(groupId: string): Promise<void> {
+    await updateDoc(doc(db, 'groups', groupId), {
+      guest_access_token: null,
+      guest_token_expires_at: null,
+      guest_contribution_limit: null,
+      is_guest_access_enabled: false,
+      updated_at: serverTimestamp(),
+    });
+    logger.log(`Reset guest access token for group ${groupId}`);
+  },
+
+  /**
+   * Enable or disable guest access for a group
+   * @param groupId - The ID of the group
+   * @param enabled - Whether to enable or disable guest access
+   */
+  async toggleGuestAccess(groupId: string, enabled: boolean): Promise<void> {
+    const updateData: any = {
+      is_guest_access_enabled: enabled,
+      updated_at: serverTimestamp(),
+    };
+
+    // If disabling, also clear the token for security
+    if (!enabled) {
+      updateData.guest_access_token = null;
+    }
+
+    await updateDoc(doc(db, 'groups', groupId), updateData);
+    logger.log(`${enabled ? 'Enabled' : 'Disabled'} guest access for group ${groupId}`);
+  },
+
+  /**
+   * Verify a guest access token and return the group if valid
+   * @param token - The guest access token
+   * @returns The group if the token is valid, null otherwise
+   */
+  async verifyGuestToken(token: string): Promise<Group | null> {
+    try {
+      const q = query(
+        collection(db, 'groups'),
+        where('guest_access_token', '==', token),
+        where('is_guest_access_enabled', '==', true)
+      );
+
+      const snapshot = await getDocs(q);
+      
+      if (snapshot.empty) {
+        logger.warn(`Invalid or disabled guest token: ${token}`);
+        return null;
+      }
+
+      const groupDoc = snapshot.docs[0];
+      return this.docToGroup(groupDoc.id, groupDoc.data());
+    } catch (error) {
+      logger.error('Error verifying guest token:', error);
+      return null;
+    }
   },
 
   timestampToString(timestamp: any): string {

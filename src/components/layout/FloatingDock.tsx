@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Plus, Upload, Users } from 'lucide-react';
+import { Plus, Upload, Users, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface FloatingDockProps {
   onAdd: () => void;
   onImport: () => void;
+  onTextImport: () => void;
   onCalendar: () => void;
   onGroups: () => void;
   hidden?: boolean;
@@ -29,6 +30,7 @@ const ModernCalendarIcon = ({ className }: { className?: string }) => (
 export const FloatingDock: React.FC<FloatingDockProps> = ({
   onAdd,
   onImport,
+  onTextImport,
   onCalendar,
   onGroups,
   hidden = false,
@@ -36,7 +38,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
-  // Order: Add (Bottom), Import, Calendar, Groups (Top)
+  // Order: Add (Bottom), Import, Text Import, Calendar, Groups (Top)
   const menuItems = [
     { 
         id: 'add',
@@ -65,6 +67,15 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
         bgColor: 'bg-white',
         borderColor: 'border-gray-200',
         isCustomIcon: true
+    },
+    { 
+        id: 'textImport',
+        icon: FileText, 
+        label: t('birthday.pasteImport'), 
+        onClick: onTextImport, 
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-50',
+        borderColor: 'border-purple-200'
     },
     { 
         id: 'groups',

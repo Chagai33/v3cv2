@@ -13,6 +13,8 @@ interface CSVImportPreviewModalProps {
   onClose: () => void;
   data: CSVBirthdayRow[];
   onConfirm: (selectedRows: CSVBirthdayRow[], defaultGroupId?: string) => Promise<void>;
+  onBack?: () => void;
+  showBackButton?: boolean;
 }
 
 export const CSVImportPreviewModal = ({
@@ -20,6 +22,8 @@ export const CSVImportPreviewModal = ({
   onClose,
   data,
   onConfirm,
+  onBack,
+  showBackButton = false,
 }: CSVImportPreviewModalProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -34,9 +38,14 @@ export const CSVImportPreviewModal = ({
   const [showGroupCreator, setShowGroupCreator] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedParentGroup, setSelectedParentGroup] = useState<string>('');
+  const [editedData, setEditedData] = useState<CSVBirthdayRow[]>([]);
+  const [editingRow, setEditingRow] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen && data.length > 0) {
+      // Initialize edited data with original data
+      setEditedData([...data]);
+      
       const allValid = new Set(
         data
           .map((_, index) => index)
@@ -111,7 +120,7 @@ export const CSVImportPreviewModal = ({
     setIsImporting(true);
     try {
       const rowsToImport = Array.from(selectedRows).map((index) => {
-        const row = data[index];
+        const row = editedData[index]; // Use edited data instead of original
         const rowGroupId = rowGroupIds.get(index) || row.groupId;
         if (rowGroupId) {
           return { ...row, groupId: rowGroupId };
@@ -127,6 +136,12 @@ export const CSVImportPreviewModal = ({
     } finally {
       setIsImporting(false);
     }
+  };
+
+  const updateRowField = (rowIndex: number, field: keyof CSVBirthdayRow, value: any) => {
+    const newData = [...editedData];
+    newData[rowIndex] = { ...newData[rowIndex], [field]: value };
+    setEditedData(newData);
   };
 
   const handleCreateGroup = async () => {
@@ -340,11 +355,12 @@ export const CSVImportPreviewModal = ({
           </div>
 
           <div className="space-y-3">
-            {data.map((row, index) => {
+            {editedData.map((row, index) => {
               const validation = validationResults[index];
               const isSelected = selectedRows.has(index);
               const hasErrors = validation && !validation.isValid;
               const hasWarnings = validation && validation.warnings.length > 0;
+              const isEditing = editingRow === index;
 
               return (
                 <div
@@ -378,74 +394,153 @@ export const CSVImportPreviewModal = ({
                           <p className="text-xs text-gray-500 font-medium mb-1">
                             {t('csvImport.firstName', 'שם פרטי')}
                           </p>
-                          <p className="text-sm font-semibold text-gray-900 truncate">
-                            {row.firstName || '-'}
-                          </p>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={row.firstName || ''}
+                              onChange={(e) => updateRowField(index, 'firstName', e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:ring-1 focus:ring-blue-500"
+                            />
+                          ) : (
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {row.firstName || '-'}
+                            </p>
+                          )}
                         </div>
 
                         <div>
                           <p className="text-xs text-gray-500 font-medium mb-1">
                             {t('csvImport.lastName', 'שם משפחה')}
                           </p>
-                          <p className="text-sm font-semibold text-gray-900 truncate">
-                            {row.lastName || '-'}
-                          </p>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={row.lastName || ''}
+                              onChange={(e) => updateRowField(index, 'lastName', e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:ring-1 focus:ring-blue-500"
+                            />
+                          ) : (
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {row.lastName || '-'}
+                            </p>
+                          )}
                         </div>
 
                         <div>
                           <p className="text-xs text-gray-500 font-medium mb-1">
                             {t('csvImport.birthDate', 'תאריך לידה')}
                           </p>
-                          <p className="text-sm text-gray-900 truncate">
-                            {row.birthDate || '-'}
-                          </p>
+                          {isEditing ? (
+                            <input
+                              type="date"
+                              value={row.birthDate || ''}
+                              onChange={(e) => updateRowField(index, 'birthDate', e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:ring-1 focus:ring-blue-500"
+                            />
+                          ) : (
+                            <p className="text-sm text-gray-900 truncate">
+                              {row.birthDate || '-'}
+                            </p>
+                          )}
                         </div>
 
                         <div>
                           <p className="text-xs text-gray-500 font-medium mb-1">
                             {t('csvImport.gender', 'מגדר')}
                           </p>
-                          <p className="text-sm text-gray-900">
-                            {row.gender ? t(`gender.${row.gender}`, row.gender) : '-'}
-                          </p>
+                          {isEditing ? (
+                            <select
+                              value={row.gender || ''}
+                              onChange={(e) => updateRowField(index, 'gender', e.target.value || undefined)}
+                              className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
+                            >
+                              <option value="">-</option>
+                              <option value="male">{t('common.male', 'זכר')}</option>
+                              <option value="female">{t('common.female', 'נקבה')}</option>
+                              <option value="other">{t('common.other', 'אחר')}</option>
+                            </select>
+                          ) : (
+                            <p className="text-sm text-gray-900">
+                              {row.gender ? t(`common.${row.gender}`, row.gender) : '-'}
+                            </p>
+                          )}
                         </div>
 
                         <div>
                           <p className="text-xs text-gray-500 font-medium mb-1">
                             {t('csvImport.afterSunset', 'אחרי שקיעה')}
                           </p>
-                          <p className="text-sm text-gray-900">
-                            {row.afterSunset ? t('common.yes', 'כן') : t('common.no', 'לא')}
-                          </p>
+                          {isEditing ? (
+                            <select
+                              value={row.afterSunset ? 'yes' : 'no'}
+                              onChange={(e) => updateRowField(index, 'afterSunset', e.target.value === 'yes')}
+                              className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
+                            >
+                              <option value="no">{t('common.no', 'לא')}</option>
+                              <option value="yes">{t('common.yes', 'כן')}</option>
+                            </select>
+                          ) : (
+                            <p className="text-sm text-gray-900">
+                              {row.afterSunset ? t('common.yes', 'כן') : t('common.no', 'לא')}
+                            </p>
+                          )}
                         </div>
                       </div>
 
-                      <div className="mb-2">
-                        <label className="block text-xs text-gray-500 font-medium mb-1">
-                          <Users className="w-3 h-3 inline me-1" />
-                          {t('csvImport.rowGroup', 'קבוצה')}
-                        </label>
-                        <select
-                          value={rowGroupIds.get(index) || row.groupId || ''}
-                          onChange={(e) => updateRowGroup(index, e.target.value)}
-                          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      {isEditing && (
+                        <div className="mb-3">
+                          <p className="text-xs text-gray-500 font-medium mb-1">
+                            {t('birthday.notes', 'הערות')}
+                          </p>
+                          <textarea
+                            value={row.notes || ''}
+                            onChange={(e) => updateRowField(index, 'notes', e.target.value || undefined)}
+                            className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 resize-none"
+                            rows={2}
+                            placeholder={t('birthday.notes', 'הערות')}
+                          />
+                        </div>
+                      )}
+
+                      <div className="mb-2 flex items-center gap-2">
+                        <div className="flex-1">
+                          <label className="block text-xs text-gray-500 font-medium mb-1">
+                            <Users className="w-3 h-3 inline me-1" />
+                            {t('csvImport.rowGroup', 'קבוצה')}
+                          </label>
+                          <select
+                            value={rowGroupIds.get(index) || row.groupId || ''}
+                            onChange={(e) => updateRowGroup(index, e.target.value)}
+                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                          >
+                            <option value="">
+                              {t('csvImport.noGroup', 'ללא קבוצה (ישתמש בברירת מחדל)')}
+                            </option>
+                            {rootGroups.map((root) => {
+                              const children = childGroups.filter(c => c.parent_id === root.id);
+                              return (
+                                <optgroup key={root.id} label={translatedRootNamesMap.get(root.id) || root.name}>
+                                  {children.map((group) => (
+                                    <option key={group.id} value={group.id}>
+                                      {group.name}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              );
+                            })}
+                          </select>
+                        </div>
+                        
+                        <button
+                          onClick={() => setEditingRow(isEditing ? null : index)}
+                          className={`px-3 py-2 text-xs font-medium rounded-lg transition-colors mt-5 ${
+                            isEditing
+                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}
                         >
-                          <option value="">
-                            {t('csvImport.noGroup', 'ללא קבוצה (ישתמש בברירת מחדל)')}
-                          </option>
-                          {rootGroups.map((root) => {
-                            const children = childGroups.filter(c => c.parent_id === root.id);
-                            return (
-                              <optgroup key={root.id} label={translatedRootNamesMap.get(root.id) || root.name}>
-                                {children.map((group) => (
-                                  <option key={group.id} value={group.id}>
-                                    {group.name}
-                                  </option>
-                                ))}
-                              </optgroup>
-                            );
-                          })}
-                        </select>
+                          {isEditing ? t('common.save', 'שמור') : t('common.edit', 'ערוך')}
+                        </button>
                       </div>
 
                       {validation && (validation.errors.length > 0 || validation.warnings.length > 0 || validation.isDuplicate) && (
@@ -481,13 +576,24 @@ export const CSVImportPreviewModal = ({
         </div>
 
         <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between flex-shrink-0">
-          <button
-            onClick={onClose}
-            disabled={isImporting}
-            className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-colors font-medium disabled:opacity-50"
-          >
-            {t('common.cancel', 'ביטול')}
-          </button>
+          <div className="flex items-center gap-3">
+            {showBackButton && onBack && (
+              <button
+                onClick={onBack}
+                disabled={isImporting}
+                className="px-6 py-2.5 border border-purple-300 text-purple-700 rounded-xl hover:bg-purple-50 transition-colors font-medium disabled:opacity-50"
+              >
+                {t('import.backToImport', 'חזור לייבוא')}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              disabled={isImporting}
+              className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-colors font-medium disabled:opacity-50"
+            >
+              {t('common.cancel', 'ביטול')}
+            </button>
+          </div>
 
           <button
             onClick={handleConfirm}
@@ -513,3 +619,4 @@ export const CSVImportPreviewModal = ({
     </div>
   );
 };
+

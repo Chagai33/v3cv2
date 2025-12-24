@@ -7,10 +7,11 @@ import { useBirthdays } from '../../hooks/useBirthdays';
 import { groupService } from '../../services/group.service';
 import { Layout } from '../layout/Layout';
 import { Group, GroupType } from '../../types';
-import { Plus, Edit, Trash2, X, ArrowRight, ArrowLeft, Globe } from 'lucide-react';
+import { Plus, Edit, Trash2, X, ArrowRight, ArrowLeft, Globe, Share2 } from 'lucide-react';
 import { Toast } from '../common/Toast';
 import { useToast } from '../../hooks/useToast';
 import { DeleteGroupModal } from '../modals/DeleteGroupModal';
+import { ShareGroupModal } from '../modals/ShareGroupModal';
 import { useTranslatedRootGroupName } from '../../utils/groupNameTranslator';
 import { FloatingBackButton } from '../common/FloatingBackButton';
 
@@ -81,6 +82,7 @@ export const GroupsPanel = () => {
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [deletingGroup, setDeletingGroup] = useState<{ id: string; name: string; tenant_id: string } | null>(null);
+  const [sharingGroup, setSharingGroup] = useState<Group | null>(null);
   const [deleteRecordCount, setDeleteRecordCount] = useState(0);
   const [formData, setFormData] = useState<{
     name: string;
@@ -329,6 +331,7 @@ export const GroupsPanel = () => {
                   onAddGroup={() => handleOpenForm(activeRootId)}
                   onEditGroup={(group) => handleOpenForm(activeRootId, group)}
                   onDeleteGroup={handleDeleteClick}
+                  onShareGroup={(group) => setSharingGroup(group)}
                 />
                 
                 {/* כפתור הוספה במובייל - FloatingDock style */}
@@ -528,6 +531,13 @@ export const GroupsPanel = () => {
           recordCount={deleteRecordCount}
         />
 
+        {sharingGroup && (
+          <ShareGroupModal
+            group={sharingGroup}
+            onClose={() => setSharingGroup(null)}
+          />
+        )}
+
         {toasts.map((toast) => (
           <Toast
             key={toast.id}
@@ -550,6 +560,7 @@ interface CategorySectionProps {
   onAddGroup: () => void;
   onEditGroup: (group: Group) => void;
   onDeleteGroup: (group: Group) => void;
+  onShareGroup: (group: Group) => void;
 }
 
 const CategorySection = ({
@@ -561,6 +572,7 @@ const CategorySection = ({
   onAddGroup,
   onEditGroup,
   onDeleteGroup,
+  onShareGroup,
 }: CategorySectionProps) => {
   const { t } = useTranslation();
   const translatedRootName = useTranslatedRootGroupName(rootGroup);
@@ -664,6 +676,13 @@ const CategorySection = ({
                     {isCountsLoading ? t('common.loading') : `(${groupCount})`}
                   </span>
                   <div className="flex items-center gap-1 sm:gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => onShareGroup(group)}
+                      className="p-1.5 sm:p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                      title={t('groups.shareGroup', 'שתף קבוצה')}
+                    >
+                      <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </button>
                     <button
                       onClick={() => onEditGroup(group)}
                       className="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

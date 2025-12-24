@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Mail, Lock, User, UserPlus, Globe, Gift } from 'lucide-react';
+import { DeveloperCredit } from '../common/DeveloperCredit';
 
 export const Register: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -334,16 +335,7 @@ export const Register: React.FC = () => {
           </button>
         </p>
 
-        <p className="mt-4 text-center text-xs text-gray-500">
-          <a
-            href="https://www.linkedin.com/in/chagai-yechiel/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-gray-700 transition-colors"
-          >
-            {t('common.developedBy')} {i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}
-          </a>
-        </p>
+        <DeveloperCredit className="mt-4" />
       </div>
     </div>
   );

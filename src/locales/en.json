@@ -317,6 +317,7 @@
     "hebrewOnly": "Hebrew Only",
     "upcomingGregorianBirthdays": "Upcoming Gregorian Birthdays",
     "importCSV": "Import CSV",
+    "pasteImport": "Paste & Import",
     "both": "Both",
     "overridePreference": "Override Group Preference",
     "groupPreference": "Group preference",
@@ -428,9 +429,9 @@
       "message": "Are you sure you want to delete this group?",
       "warning": "This group contains {{count}} birthday records",
       "keepRecords": "Delete group only",
-      "keepRecordsDesc": "Records will remain in the system without group assignment",
-      "deleteAll": "Delete group and all records",
-      "deleteAllDesc": "All birthdays in this group will be permanently deleted"
+      "keepRecordsDesc": "Records will remain in the system. Records assigned only to this group will have no group assignment",
+      "deleteAll": "Also delete exclusive records",
+      "deleteAllDesc": "Only records that belong exclusively to this group will be deleted. Records that also belong to other groups will remain in the system"
     }
   },
   "validation": {
@@ -443,6 +444,30 @@
     "calendarError": "Cannot open Google Calendar. Please try again.",
     "invalidPhoneNumber": "Invalid phone number",
     "futureDate": "Birth date cannot be in the future"
+  },
+  "import": {
+    "pasteTitle": "Paste Birthday List",
+    "pasteSubtitle": "Copy a list from WhatsApp, notes, or anywhere else",
+    "pasteHowTo": "How does it work?",
+    "pasteInstructionDate": "Each line should contain a name and date (e.g., John Smith 15/03/1990)",
+    "pasteInstructionFormat": "Supports formats: DD/MM/YYYY, DD.MM.YY, YYYY-MM-DD, and more",
+    "pasteInstructionNames": "Supports compound names and two-part surnames (Ben David, Abu Hatzeira, etc.)",
+    "pasteInstructionGender": "Specify \"male\"/\"female\" (or \"זכר\"/\"נקבה\") for gender detection",
+    "pasteInstructionSunset": "Write \"yes\" or \"כן\" for after sunset birth (default: no)",
+    "pasteInstructionNotes": "Notes in parentheses will be automatically added to notes field",
+    "pasteInstructionSmart": "System automatically removes titles (Rabbi, Dr.) and keywords",
+    "pastePlaceholder": "Example:\nJohn Smith 15/03/1990 male\nSarah Cohen 22.05.85 female yes\nDavid Israeli 1985-12-10 (good friend)",
+    "pasteLineCount": "{{count}} lines",
+    "pasteCharacters": "characters",
+    "pasteAnalyze": "Analyze List",
+    "pasteAnalyzing": "Analyzing...",
+    "pasteClear": "Clear",
+    "pasteShowExample": "Show Examples",
+    "exampleBasic": "Basic examples:",
+    "exampleComplex": "Complex names:",
+    "pasteEmpty": "Text is empty or no valid dates found",
+    "textImportSuccess": "Found {{count}} valid records",
+    "backToTextImport": "Back to text import"
   },
   "messages": {
     "birthdayAdded": "Birthday added successfully",
@@ -525,7 +550,9 @@
     "deleteAccountNotImplemented": "Account deletion functionality is not yet available. Please contact support.",
     "deleteAccountError": "Error deleting account",
     "feedbackSubject": "Feedback on the application",
-    "allRightsReserved": "All rights reserved"
+    "allRightsReserved": "All rights reserved",
+    "developedBy": "Developed by",
+    "developerName": "Chagai Yechiel"
   },
   "gelt": {
     "title": "Hanukkah/Purim Money",

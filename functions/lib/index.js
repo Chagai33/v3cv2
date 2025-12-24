@@ -38,7 +38,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.guestPortalOps = exports.onUserCreate = exports.updateNextBirthdayScheduled = exports.retryFailedSyncs = exports.deleteAccount = exports.getAccountDeletionSummary = exports.deleteAllSyncedEventsFromGoogleCalendar = exports.triggerDeleteAllEvents = exports.processDeletionJob = exports.processCalendarSyncJob = exports.updateGoogleCalendarSelection = exports.listGoogleCalendars = exports.deleteGoogleCalendar = exports.createGoogleCalendar = exports.getGoogleAccountInfo = exports.getGoogleCalendarStatus = exports.disconnectGoogleCalendar = exports.exchangeGoogleAuthCode = exports.previewDeletion = exports.resetBirthdaySyncData = exports.refreshBirthdayHebrewData = exports.cleanupOrphanEvents = exports.removeBirthdayFromGoogleCalendar = exports.syncMultipleBirthdaysToGoogleCalendar = exports.syncBirthdayToGoogleCalendar = exports.onBirthdayWrite = void 0;
+exports.guestAccessOps = exports.guestPortalOps = exports.onUserCreate = exports.updateNextBirthdayScheduled = exports.retryFailedSyncs = exports.deleteAccount = exports.getAccountDeletionSummary = exports.deleteAllSyncedEventsFromGoogleCalendar = exports.triggerDeleteAllEvents = exports.processDeletionJob = exports.processCalendarSyncJob = exports.updateGoogleCalendarSelection = exports.listGoogleCalendars = exports.deleteGoogleCalendar = exports.createGoogleCalendar = exports.getGoogleAccountInfo = exports.getGoogleCalendarStatus = exports.disconnectGoogleCalendar = exports.exchangeGoogleAuthCode = exports.previewDeletion = exports.resetBirthdaySyncData = exports.refreshBirthdayHebrewData = exports.cleanupOrphanEvents = exports.removeBirthdayFromGoogleCalendar = exports.syncMultipleBirthdaysToGoogleCalendar = exports.syncBirthdayToGoogleCalendar = exports.onBirthdayWrite = void 0;
 const admin = __importStar(require("firebase-admin"));
 // Initialize Firebase Admin (once)
 admin.initializeApp();
@@ -86,4 +86,7 @@ Object.defineProperty(exports, "onUserCreate", { enumerable: true, get: function
 __exportStar(require("./migration"), exports);
 var guestPortal_1 = require("./guestPortal");
 Object.defineProperty(exports, "guestPortalOps", { enumerable: true, get: function () { return guestPortal_1.guestPortalOps; } });
+// Guest Access (Magic Link)
+var guestAccess_1 = require("./guestAccess");
+Object.defineProperty(exports, "guestAccessOps", { enumerable: true, get: function () { return guestAccess_1.guestAccessOps; } });
 //# sourceMappingURL=index.js.map

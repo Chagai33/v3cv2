@@ -52,6 +52,10 @@ export interface Group {
   type?: GroupType;
   color: string;
   is_guest_portal_enabled?: boolean;
+  guest_access_token?: string | null;
+  guest_token_expires_at?: string | null; // ISO string for token expiration (72 hours from generation)
+  guest_contribution_limit?: number; // Max number of birthdays allowed per token (default: 50)
+  is_guest_access_enabled?: boolean;
   calendar_preference?: CalendarPreference;
   created_at: string;
   updated_at: string;
@@ -102,6 +106,8 @@ export interface Birthday {
     retryCount: number;
     dataHash: string;
   };
+  created_by_guest?: boolean;
+  guest_token_used?: string | null;
   created_at: string;
   created_by: string;
   updated_at: string;
