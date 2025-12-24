@@ -10,7 +10,9 @@ import {
   Loader,
   Calendar,
   UserPlus,
-  AlertTriangle
+  AlertTriangle,
+  Globe,
+  X
 } from 'lucide-react';
 import { birthdayService } from '../../services/birthday.service';
 import { groupService } from '../../services/group.service';
@@ -28,8 +30,17 @@ interface GuestAccessPageState {
 
 export const GuestAccessPage: React.FC = () => {
   const { groupId, token } = useParams<{ groupId: string; token: string }>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'en' ? 'he' : 'en';
+    i18n.changeLanguage(newLang);
+    document.documentElement.dir = newLang === 'he' ? 'rtl' : 'ltr';
+    document.documentElement.lang = newLang;
+  };
+
+  const currentLangLabel = i18n.language === 'en' ? 'עברית' : 'English';
 
   const [state, setState] = useState<GuestAccessPageState>({
     loading: true,
@@ -49,6 +60,12 @@ export const GuestAccessPage: React.FC = () => {
     gender: 'male',
     afterSunset: false,
   });
+  
+  // Date picker state
+  const [birthDay, setBirthDay] = useState<number>(1);
+  const [birthMonth, setBirthMonth] = useState<number>(1);
+  const [birthYear, setBirthYear] = useState<number>(new Date().getFullYear() - 30);
+  
   const [honeyPot, setHoneyPot] = useState(''); // Honey pot for bot detection
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -141,6 +158,12 @@ export const GuestAccessPage: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setDuplicateWarning(null); // Clear warning on edit
   };
+  
+  // Update date from day/month/year selectors
+  const updateDateFromSelectors = (day: number, month: number, year: number) => {
+    const date = new Date(year, month - 1, day);
+    handleFormChange('birthDateGregorian', date);
+  };
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -202,6 +225,9 @@ export const GuestAccessPage: React.FC = () => {
         gender: 'male',
         afterSunset: false,
       });
+      setBirthDay(1);
+      setBirthMonth(1);
+      setBirthYear(new Date().getFullYear() - 30);
       setHoneyPot(''); // Reset honey pot
 
       // Refresh data
@@ -251,7 +277,7 @@ export const GuestAccessPage: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex flex-col">
         {/* Logo Header */}
         <div className="bg-white shadow-sm border-b border-gray-200 py-4">
-          <div className="max-w-4xl mx-auto px-4">
+          <div className="max-w-4xl mx-auto px-4 flex items-center justify-between">
             <a 
               href={`${window.location.origin}/`}
               className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity"
@@ -265,6 +291,14 @@ export const GuestAccessPage: React.FC = () => {
                 {t('app.taglinePart1')} <span className="text-[#8e24aa]">{t('app.taglineHebrew')}</span> {t('app.taglineOr')} <span className="text-[#304FFE]">{t('app.taglineGregorian')}</span>
               </p>
             </a>
+            <button
+              onClick={toggleLanguage}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:border-purple-400 hover:text-purple-600 rounded-lg transition-all duration-200 shadow-sm hover:shadow"
+              title={currentLangLabel}
+            >
+              <Globe className="w-4 h-4" />
+              <span className="hidden sm:inline">{currentLangLabel}</span>
+            </button>
           </div>
         </div>
 
@@ -358,7 +392,7 @@ export const GuestAccessPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex flex-col">
       {/* Logo Header */}
       <div className="bg-white shadow-sm border-b border-gray-200 py-4">
-        <div className="max-w-4xl mx-auto px-4">
+        <div className="max-w-4xl mx-auto px-4 flex items-center justify-between">
           <a 
             href={`${window.location.origin}/`}
             className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity"
@@ -372,6 +406,14 @@ export const GuestAccessPage: React.FC = () => {
               {t('app.taglinePart1')} <span className="text-[#8e24aa]">{t('app.taglineHebrew')}</span> {t('app.taglineOr')} <span className="text-[#304FFE]">{t('app.taglineGregorian')}</span>
             </p>
           </a>
+          <button
+            onClick={toggleLanguage}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:border-purple-400 hover:text-purple-600 rounded-lg transition-all duration-200 shadow-sm hover:shadow"
+            title={currentLangLabel}
+          >
+            <Globe className="w-4 h-4" />
+            <span className="hidden sm:inline">{currentLangLabel}</span>
+          </button>
         </div>
       </div>
 
@@ -379,21 +421,21 @@ export const GuestAccessPage: React.FC = () => {
       <div className="flex-1 p-4">
         <div className="max-w-4xl mx-auto py-8">
           {/* Header */}
-          <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-            <div className="flex items-center gap-4 mb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 text-center">
+            <div className="flex flex-col items-center gap-2">
               <div
-                className="w-12 h-12 rounded-full flex items-center justify-center"
+                className="w-10 h-10 rounded-full flex items-center justify-center"
                 style={{ backgroundColor: state.group?.color || '#8b5cf6' }}
               >
-                <Users className="w-6 h-6 text-white" />
+                <Users className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-base sm:text-lg font-bold text-gray-900 mb-0.5">
                   {t('guestAccess.welcomeToGroup', 'ברוכים הבאים לקבוצת {{name}}', {
                     name: state.group?.name || '',
                   })}
                 </h1>
-                <p className="text-gray-600 text-sm">
+                <p className="text-gray-600 text-xs">
                   {t('guestAccess.portalInfo', 'הוסף ימי הולדת חדשים ותצפה ברשימה הקיימת')}
                 </p>
               </div>
@@ -401,97 +443,136 @@ export const GuestAccessPage: React.FC = () => {
 
             {/* Success Message */}
             {submitSuccess && (
-              <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-                <CheckCircle className="w-5 h-5" />
+              <div className="flex items-center justify-center gap-2 bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-lg text-xs sm:text-sm mt-3">
+                <CheckCircle className="w-4 h-4" />
                 <span>{t('guestAccess.addSuccess', 'יום ההולדת נוסף בהצלחה!')}</span>
               </div>
             )}
           </div>
 
           {/* Add Birthday Button/Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
           {!showAddForm ? (
             <button
               onClick={() => setShowAddForm(true)}
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 bg-white text-purple-600 border-2 border-purple-600 rounded-lg hover:bg-purple-50 transition-all font-semibold text-sm sm:text-base"
             >
-              <UserPlus className="w-5 h-5" />
+              <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />
               {t('guestAccess.addBirthday', 'הוסף יום הולדת חדש')}
             </button>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-                <h3 className="text-xl font-bold text-gray-900">
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
+                <h3 className="text-base sm:text-lg font-bold text-gray-900">
                   {t('guestAccess.addBirthday', 'הוסף יום הולדת חדש')}
                 </h3>
               </div>
 
               {/* First Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   {t('birthday.firstName', 'שם פרטי')} *
                 </label>
                 <input
                   type="text"
                   value={formData.firstName || ''}
                   onChange={e => handleFormChange('firstName', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   required
                 />
               </div>
 
               {/* Last Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   {t('birthday.lastName', 'שם משפחה')} *
                 </label>
                 <input
                   type="text"
                   value={formData.lastName || ''}
                   onChange={e => handleFormChange('lastName', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   required
                 />
               </div>
 
               {/* Birth Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   {t('birthday.birthDate', 'תאריך לידה')} *
                 </label>
-                <input
-                  type="date"
-                  value={
-                    formData.birthDateGregorian instanceof Date && !isNaN(formData.birthDateGregorian.getTime())
-                      ? formData.birthDateGregorian.toISOString().split('T')[0]
-                      : ''
-                  }
-                  onChange={e => {
-                    const value = e.target.value;
-                    if (value) {
-                      const newDate = new Date(value);
-                      if (!isNaN(newDate.getTime())) {
-                        handleFormChange('birthDateGregorian', newDate);
-                      }
-                    } else {
-                      // Reset to empty/today when cleared
-                      handleFormChange('birthDateGregorian', new Date());
-                    }
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  required
-                />
+                <div className="grid grid-cols-3 gap-2">
+                  {/* Day */}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">{t('common.day', 'יום')}</label>
+                    <select
+                      value={birthDay}
+                      onChange={e => {
+                        const day = parseInt(e.target.value);
+                        setBirthDay(day);
+                        updateDateFromSelectors(day, birthMonth, birthYear);
+                      }}
+                      className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      required
+                    >
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                        <option key={day} value={day}>{day}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Month */}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">{t('common.month', 'חודש')}</label>
+                    <select
+                      value={birthMonth}
+                      onChange={e => {
+                        const month = parseInt(e.target.value);
+                        setBirthMonth(month);
+                        updateDateFromSelectors(birthDay, month, birthYear);
+                      }}
+                      className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      required
+                    >
+                      {[
+                        'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
+                        'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
+                      ].map((monthName, index) => (
+                        <option key={index + 1} value={index + 1}>{monthName} ({index + 1})</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Year */}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">{t('common.year', 'שנה')}</label>
+                    <select
+                      value={birthYear}
+                      onChange={e => {
+                        const year = parseInt(e.target.value);
+                        setBirthYear(year);
+                        updateDateFromSelectors(birthDay, birthMonth, year);
+                      }}
+                      className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      required
+                    >
+                      {Array.from({ length: 120 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
 
               {/* Gender */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   {t('birthday.gender', 'מגדר')}
                 </label>
                 <select
                   value={formData.gender || 'male'}
                   onChange={e => handleFormChange('gender', e.target.value as 'male' | 'female')}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
                   <option value="male">{t('birthday.male', 'זכר')}</option>
                   <option value="female">{t('birthday.female', 'נקבה')}</option>
@@ -507,15 +588,15 @@ export const GuestAccessPage: React.FC = () => {
                   onChange={e => handleFormChange('afterSunset', e.target.checked)}
                   className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                 />
-                <label htmlFor="afterSunset" className="text-sm text-gray-700">
+                <label htmlFor="afterSunset" className="text-xs sm:text-sm text-gray-700">
                   {t('birthday.afterSunset', 'נולד אחרי השקיעה')}
                 </label>
               </div>
 
               {/* Duplicate Warning */}
               {duplicateWarning && (
-                <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg text-sm">
-                  <AlertTriangle className="w-5 h-5" />
+                <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 px-3 py-2 rounded-lg text-xs sm:text-sm">
+                  <AlertTriangle className="w-4 h-4" />
                   <span>{duplicateWarning}</span>
                 </div>
               )}
@@ -533,11 +614,11 @@ export const GuestAccessPage: React.FC = () => {
               />
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <div className="flex gap-2 pt-3 border-t border-gray-200">
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CheckCircle className="w-4 h-4" />
                   {isSubmitting ? t('common.saving', 'שומר...') : t('common.save', 'שמור')}
@@ -554,9 +635,12 @@ export const GuestAccessPage: React.FC = () => {
                       gender: 'male',
                       afterSunset: false,
                     });
+                    setBirthDay(1);
+                    setBirthMonth(1);
+                    setBirthYear(new Date().getFullYear() - 30);
                     setHoneyPot('');
                   }}
-                  className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold shadow-sm"
+                  className="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
                 >
                   {t('common.cancel', 'ביטול')}
                 </button>
@@ -566,22 +650,31 @@ export const GuestAccessPage: React.FC = () => {
         </div>
 
         {/* Existing Birthdays */}
-        <div className="bg-white rounded-2xl shadow-xl p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-3 flex items-center justify-center gap-2">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
             {t('guestAccess.existingBirthdays', 'ימי הולדת קיימים בקבוצה')} ({state.birthdays.length})
           </h2>
 
           {/* Search Bar */}
           <div className="relative mb-4">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
             <input
               type="text"
               placeholder={t('guestAccess.searchPlaceholder', 'חפש שם...')}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full pr-10 pl-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Birthday List */}
