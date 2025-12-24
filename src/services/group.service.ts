@@ -145,8 +145,46 @@ export const groupService = {
         where('tenant_id', '==', tenantId)
       );
       const birthdaysSnapshot = await getDocs(birthdaysQuery);
-      const deletePromises = birthdaysSnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
-      await Promise.all(deletePromises);
+      
+      // Split into two groups: exclusive and shared
+      const birthdaysToDelete: any[] = [];
+      const birthdaysToUpdate: any[] = [];
+      
+      birthdaysSnapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        const currentGroupIds = data.group_ids || (data.group_id ? [data.group_id] : []);
+        
+        if (currentGroupIds.length === 1 && currentGroupIds[0] === groupId) {
+          // Birthday belongs ONLY to this group - delete it
+          birthdaysToDelete.push(docSnap.ref);
+        } else {
+          // Birthday belongs to multiple groups - just remove this group
+          birthdaysToUpdate.push({ ref: docSnap.ref, currentGroupIds });
+        }
+      });
+      
+      // Delete birthdays that belong only to this group
+      const deletePromises = birthdaysToDelete.map(ref => deleteDoc(ref));
+      
+      // Update birthdays that belong to multiple groups
+      const updatePromises = birthdaysToUpdate.map(({ ref, currentGroupIds }) => {
+        const updatedGroupIds = currentGroupIds.filter((id: string) => id !== groupId);
+        const updateData: any = {
+          group_ids: updatedGroupIds,
+          updated_at: serverTimestamp(),
+        };
+        
+        // Update backward compatibility field
+        if (updatedGroupIds.length > 0) {
+          updateData.group_id = updatedGroupIds[0];
+        } else {
+          updateData.group_id = null;
+        }
+        
+        return updateDoc(ref, updateData);
+      });
+      
+      await Promise.all([...deletePromises, ...updatePromises]);
     } else {
       // Find birthdays that have this group in their group_ids array
       const birthdaysQuery = query(
