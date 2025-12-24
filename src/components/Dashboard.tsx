@@ -504,7 +504,6 @@ export const Dashboard = () => {
         </div>
         
         <div className="space-y-3 sm:space-y-4">
-
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

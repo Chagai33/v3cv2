@@ -9,7 +9,7 @@ import { useGroups } from '../../hooks/useGroups';
 import { useGroupFilter } from '../../contexts/GroupFilterContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { useGoogleCalendar } from '../../contexts/GoogleCalendarContext';
-import { Edit, Trash2, Calendar, Search, CalendarDays, Filter, Gift, Download, Users, X, UploadCloud, CloudOff, Sparkles, Copy, Check, FolderPlus } from 'lucide-react';
+import { Edit, Trash2, Calendar, Search, CalendarDays, Filter, Gift, Download, Users, X, UploadCloud, CloudOff, Sparkles, Copy, Check, FolderPlus, UserCircle } from 'lucide-react';
 import { SyncStatusButton } from './SyncStatusButton';
 import { BirthdayQuickActionsModal } from '../modals/BirthdayQuickActionsModal';
 import { FutureBirthdaysModal } from '../modals/FutureBirthdaysModal';
@@ -1123,6 +1123,14 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                               <Copy className="w-3 h-3 sm:w-4 sm:h-4 text-orange-500" />
                               <div className="absolute bottom-full start-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-50">
                                 {t('birthday.possibleDuplicate', 'כפילות אפשרית')}
+                              </div>
+                            </div>
+                          )}
+                          {birthday.created_by_guest && (
+                            <div className="relative group/tooltip">
+                              <UserCircle className="w-3 h-3 sm:w-4 sm:h-4 text-purple-500" />
+                              <div className="absolute bottom-full start-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-50">
+                                {t('birthday.addedByGuest', 'נוסף על ידי אורח')}
                               </div>
                             </div>
                           )}

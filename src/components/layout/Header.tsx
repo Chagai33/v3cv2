@@ -5,9 +5,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useGroupFilter } from '../../contexts/GroupFilterContext';
 import { useGroups } from '../../hooks/useGroups';
 import { useBirthdays } from '../../hooks/useBirthdays';
-import { LogOut, FolderTree, Filter, Settings, ChevronDown, ChevronUp, Menu, Calculator } from 'lucide-react';
+import { LogOut, FolderTree, Filter, Settings, ChevronDown, ChevronUp, Menu, Calculator, Bell } from 'lucide-react';
 import { useTranslatedRootGroupName } from '../../utils/groupNameTranslator';
 import { TenantSettings } from '../settings/TenantSettings';
+import { GuestActivityModal } from '../modals/GuestActivityModal';
 import { useLayoutContext } from '../../contexts/LayoutContext';
 import { CurrentDateDisplay } from '../common/CurrentDateDisplay';
 
@@ -20,6 +21,7 @@ export const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showGroupFilter, setShowGroupFilter] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showGuestActivity, setShowGuestActivity] = useState(false);
   const { selectedGroupIds, toggleGroupFilter, clearGroupFilters } = useGroupFilter();
   const { data: allGroups = [] } = useGroups();
   const { data: birthdays = [] } = useBirthdays();
@@ -58,6 +60,11 @@ export const Header: React.FC = () => {
     });
     return map;
   }, [birthdays, isPublicPage]);
+
+  // Count guest-added birthdays for notification badge
+  const guestBirthdaysCount = useMemo(() => {
+    return birthdays.filter(b => b.created_by_guest === true).length;
+  }, [birthdays]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -269,6 +276,21 @@ export const Header: React.FC = () => {
                         <div className="h-px bg-gray-100 my-1" />
                         <button
                           onClick={() => {
+                            setShowGuestActivity(true);
+                            setMobileMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm text-gray-700 hover:bg-gray-50 relative"
+                        >
+                          <Bell className="w-4 h-4" />
+                          <span>{t('dashboard.guestNotifications', 'התראות אורחים')}</span>
+                          {guestBirthdaysCount > 0 && (
+                            <span className="mr-auto bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
+                              {guestBirthdaysCount}
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
                             setShowSettings(true);
                             setMobileMenuOpen(false);
                           }}
@@ -393,6 +415,17 @@ export const Header: React.FC = () => {
                 </button>
                 <div className="h-6 w-px bg-gray-300" />
                 <button
+                  onClick={() => setShowGuestActivity(true)}
+                  className="hidden md:flex relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  title={t('dashboard.guestNotifications', 'התראות אורחים')}
+                >
+                  <Bell className="w-5 h-5" />
+                  {guestBirthdaysCount > 0 && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                  )}
+                </button>
+                <div className="hidden md:block h-6 w-px bg-gray-300" />
+                <button
                   onClick={handleSignOut}
                   className="flex items-center gap-2 px-3 py-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm"
                 >
@@ -406,6 +439,13 @@ export const Header: React.FC = () => {
       </div>
     </div>
     {showSettings && <TenantSettings onClose={() => setShowSettings(false)} />}
+    {showGuestActivity && (
+      <GuestActivityModal
+        isOpen={showGuestActivity}
+        onClose={() => setShowGuestActivity(false)}
+        birthdays={birthdays}
+      />
+    )}
     </header>
   );
 };

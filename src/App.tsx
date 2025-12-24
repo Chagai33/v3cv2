@@ -18,6 +18,7 @@ import { GeltPage } from './components/gelt/GeltPage';
 import { TermsOfUse } from './components/pages/TermsOfUse';
 import { PrivacyPolicy } from './components/pages/PrivacyPolicy';
 import { GuestPortal } from './components/guest/GuestPortal';
+import { GuestAccessPage } from './components/guest/GuestAccessPage';
 import './config/i18n';
 
 const queryClient = new QueryClient({
@@ -89,6 +90,7 @@ function App() {
                     <Route path="/terms" element={<TermsOfUse />} />
                     <Route path="/privacy" element={<PrivacyPolicy />} />
                     <Route path="/portal" element={<GuestPortal />} />
+                    <Route path="/guest/:groupId/:token" element={<GuestAccessPage />} />
                     <Route
                       path="/"
                       element={

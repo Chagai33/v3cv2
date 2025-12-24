@@ -32,6 +32,30 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.token.role == role;
     }
 
+    // --- Guest Access Helper Functions ---
+    // Note: Guest READ access is now handled via Cloud Function (guestAccessOps)
+    // These helpers are only for CREATE operations
+    
+    function isValidGuestToken(token, groupId) {
+      let group = get(/databases/$(database)/documents/groups/$(groupId));
+      return group.data.guest_access_token == token && 
+             group.data.is_guest_access_enabled == true;
+    }
+
+    function hasValidGuestTokenForBirthday(birthdayData) {
+      // CRITICAL SECURITY CHECKS for guest-created birthdays:
+      // 1. Verify group_ids array exists and has at least one group
+      // 2. Verify guest_token_used is present
+      // 3. Verify token matches the group's guest_access_token
+      // 4. **TENANT INJECTION PREVENTION**: Verify tenant_id matches the group's tenant_id
+      //    This prevents guests from injecting a different tenant_id to bypass security
+      return birthdayData.group_ids != null && 
+             birthdayData.group_ids.size() > 0 &&
+             birthdayData.guest_token_used != null &&
+             isValidGuestToken(birthdayData.guest_token_used, birthdayData.group_ids[0]) &&
+             birthdayData.tenant_id == get(/databases/$(database)/documents/groups/$(birthdayData.group_ids[0])).data.tenant_id;
+    }
+
     // --- Existing Collections ---
 
     match /profiles/{userId} {
@@ -62,9 +86,12 @@ service cloud.firestore {
     }
 
     match /groups/{groupId} {
+      // Only authenticated users can read groups
+      // Guests access group data via Cloud Function (guestAccessOps)
       allow read: if isAuthenticated() && 
-                     resource != null &&
-                     isTenantMember(resource.data.tenant_id);
+                      resource != null &&
+                      isTenantMember(resource.data.tenant_id);
+                     
       allow create: if isAuthenticated() &&
                        (hasCustomClaims() ? request.resource.data.tenant_id == getUserTenantId() : true);
                        
@@ -80,13 +107,24 @@ service cloud.firestore {
     }
 
     match /birthdays/{birthdayId} {
+      // Authenticated users can read all birthdays in their tenant
+      // Guests access birthdays via Cloud Function (guestAccessOps)
       allow read: if isAuthenticated() && 
-                     resource != null &&
-                     isTenantMember(resource.data.tenant_id);
-      allow create: if isAuthenticated() &&
-                       (hasCustomClaims() ? request.resource.data.tenant_id == getUserTenantId() : true);
+                      resource != null &&
+                      isTenantMember(resource.data.tenant_id);
+      
+      // Authenticated users can create birthdays in their tenant
+      // Unauthenticated guests can create birthdays with valid token AND matching tenant_id
+      allow create: if (isAuthenticated() &&
+                        (hasCustomClaims() ? request.resource.data.tenant_id == getUserTenantId() : true)) ||
+                       (!isAuthenticated() && 
+                        request.resource.data.created_by_guest == true &&
+                        request.resource.data.guest_token_used != null &&
+                        request.resource.data.group_ids != null &&
+                        request.resource.data.group_ids.size() > 0 &&
+                        hasValidGuestTokenForBirthday(request.resource.data));
                        
-      // Split Update and Delete
+      // Split Update and Delete - only for authenticated users
       allow update: if isAuthenticated() &&
                        resource != null &&
                        isTenantMember(resource.data.tenant_id) &&

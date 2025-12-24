@@ -57,3 +57,6 @@ export { onUserCreateFn as onUserCreate } from './interfaces/triggers/user-trigg
 export * from './migration';
 export { guestPortalOps } from './guestPortal';
 
+// Guest Access (Magic Link)
+export { guestAccessOps } from './guestAccess';
+

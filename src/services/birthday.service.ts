@@ -19,10 +19,19 @@ import { Birthday, BirthdayFormData } from '../types';
 import { retryFirestoreOperation } from './firestore.retry';
 
 export const birthdayService = {
+  /**
+   * Create a new birthday entry
+   * @param tenantId - The tenant ID
+   * @param data - The birthday form data
+   * @param userId - The user ID creating the entry
+   * @param guestToken - Optional guest access token for guest-created entries
+   * @returns The ID of the created birthday
+   */
   async createBirthday(
     tenantId: string,
     data: BirthdayFormData,
-    userId: string
+    userId: string,
+    guestToken?: string
   ): Promise<string> {
     return retryFirestoreOperation(async () => {
       const birthDate = data.birthDateGregorian;
@@ -47,7 +56,7 @@ export const birthdayService = {
         day = birthDate.getDate();
       }
 
-      const birthdayRef = await addDoc(collection(db, 'birthdays'), {
+      const birthdayData: any = {
         tenant_id: tenantId,
         group_ids: data.groupIds || (data.groupId ? [data.groupId] : []),
         group_id: data.groupId || (data.groupIds && data.groupIds.length > 0 ? data.groupIds[0] : null),
@@ -62,14 +71,22 @@ export const birthdayService = {
         calendar_preference_override: data.calendarPreferenceOverride || null,
         notes: data.notes || '',
         archived: false,
-        created_by: userId,
-        updated_by: userId,
+        created_by: userId || 'guest',
+        updated_by: userId || 'guest',
         created_at: serverTimestamp(),
         updated_at: serverTimestamp(),
         birth_date_hebrew_string: null,
         next_upcoming_hebrew_birthday: null,
         future_hebrew_birthdays: [],
-      });
+      };
+
+      // Add guest metadata if this is a guest-created entry
+      if (guestToken) {
+        birthdayData.created_by_guest = true;
+        birthdayData.guest_token_used = guestToken;
+      }
+
+      const birthdayRef = await addDoc(collection(db, 'birthdays'), birthdayData);
 
       return birthdayRef.id;
     });
@@ -321,11 +338,32 @@ export const birthdayService = {
       googleCalendarEventsMap: data.googleCalendarEventsMap || {},
       isSynced: data.isSynced ?? false,
       syncMetadata: data.syncMetadata || undefined,
+      created_by_guest: data.created_by_guest ?? false,
+      guest_token_used: data.guest_token_used || null,
       created_at: this.timestampToString(data.created_at),
       created_by: data.created_by,
       updated_at: this.timestampToString(data.updated_at),
       updated_by: data.updated_by,
     };
+  },
+
+  /**
+   * Get recent birthdays created by guests for a specific tenant
+   * @param tenantId - The tenant ID
+   * @param limit - Maximum number of entries to return
+   * @returns Array of guest-created birthdays
+   */
+  async getRecentGuestBirthdays(tenantId: string, limit: number = 5): Promise<Birthday[]> {
+    const q = query(
+      collection(db, 'birthdays'),
+      where('tenant_id', '==', tenantId),
+      where('created_by_guest', '==', true),
+      orderBy('created_at', 'desc')
+    );
+
+    const snapshot = await getDocs(q);
+    const birthdays = snapshot.docs.map((doc) => this.docToBirthday(doc.id, doc.data()));
+    return birthdays.slice(0, limit);
   },
 
   timestampToString(timestamp: any): string {
@@ -334,5 +372,82 @@ export const birthdayService = {
       return timestamp.toDate().toISOString();
     }
     return new Date().toISOString();
+  },
+
+  /**
+   * Get all birthdays in a group using guest access token (via Cloud Function)
+   * This is used by guests to view birthdays without authentication
+   * @param groupId - The group ID
+   * @param guestToken - The guest access token
+   * @returns Promise with group info and birthdays
+   */
+  async getGroupBirthdaysForGuest(
+    groupId: string,
+    guestToken: string
+  ): Promise<{ group: any; birthdays: Birthday[]; count: number }> {
+    try {
+      const { httpsCallable } = await import('firebase/functions');
+      const { functions } = await import('../config/firebase');
+      
+      const guestAccessOps = httpsCallable(functions, 'guestAccessOps');
+      
+      const result = await guestAccessOps({
+        mode: 'get_group_birthdays',
+        groupId,
+        token: guestToken,
+      });
+
+      const data = result.data as any;
+
+      if (!data.success) {
+        throw new Error('Failed to fetch birthdays');
+      }
+
+      return {
+        group: data.group,
+        birthdays: data.birthdays || [],
+        count: data.count || 0,
+      };
+    } catch (error: any) {
+      console.error('Error fetching guest birthdays:', error);
+      throw new Error(error.message || 'Failed to fetch birthdays for guest');
+    }
+  },
+
+  /**
+   * Verify a guest token is valid for a group (via Cloud Function)
+   * @param groupId - The group ID
+   * @param guestToken - The guest access token
+   * @returns Promise with group info if valid
+   */
+  async verifyGuestToken(
+    groupId: string,
+    guestToken: string
+  ): Promise<{ group: any }> {
+    try {
+      const { httpsCallable } = await import('firebase/functions');
+      const { functions } = await import('../config/firebase');
+      
+      const guestAccessOps = httpsCallable(functions, 'guestAccessOps');
+      
+      const result = await guestAccessOps({
+        mode: 'verify_guest_token',
+        groupId,
+        token: guestToken,
+      });
+
+      const data = result.data as any;
+
+      if (!data.success) {
+        throw new Error('Invalid token');
+      }
+
+      return {
+        group: data.group,
+      };
+    } catch (error: any) {
+      console.error('Error verifying guest token:', error);
+      throw new Error(error.message || 'Invalid or expired token');
+    }
   },
 };
