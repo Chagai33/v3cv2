@@ -98,6 +98,9 @@
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",
+    "copyToWhatsapp": "Copy to WhatsApp",
+    "copyToWhatsappList": "Copy birthday list to WhatsApp",
+    "copied": "Copied!",
     "yes": "Yes",
     "no": "No",
     "male": "Male",
@@ -346,6 +349,13 @@
     "importCSV": "Import CSV",
     "pasteImport": "Paste & Import",
     "both": "Both",
+    "hebrewBirthday": "Hebrew Birthday",
+    "gregorianBirthday": "Gregorian Birthday",
+    "zodiac": "Zodiac",
+    "hebrewDates": "Hebrew Dates",
+    "gregorianDates": "Gregorian Dates",
+    "bothTypes": "Both Types",
+    "includeWeekday": "Include Day of Week",
     "overridePreference": "Override Group Preference",
     "groupPreference": "Group preference",
     "useGroupDefault": "Use group default",
@@ -749,5 +759,24 @@
       "title": "9. Contact",
       "content": "For any questions regarding these Terms of Use, you can contact us via email at:"
     }
+  },
+  "zodiac": {
+    "aries": "Aries",
+    "taurus": "Taurus",
+    "gemini": "Gemini",
+    "cancer": "Cancer",
+    "leo": "Leo",
+    "virgo": "Virgo",
+    "libra": "Libra",
+    "scorpio": "Scorpio",
+    "sagittarius": "Sagittarius",
+    "capricorn": "Capricorn",
+    "aquarius": "Aquarius",
+    "pisces": "Pisces",
+    "statsTitle": "Zodiac Statistics",
+    "mismatchTitle": "Zodiac Mismatch",
+    "mismatchDesc": "There are {{count}} people whose Hebrew zodiac sign differs from their Gregorian sign.",
+    "gregorianDistribution": "Gregorian Distribution",
+    "hebrewDistribution": "Hebrew Distribution"
   }
 }
