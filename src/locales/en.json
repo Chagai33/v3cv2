@@ -98,6 +98,9 @@
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",
+    "copyToWhatsapp": "Copy to WhatsApp",
+    "copyToWhatsappList": "Copy birthday list to WhatsApp",
+    "copied": "Copied!",
     "yes": "Yes",
     "no": "No",
     "male": "Male",
@@ -346,6 +349,13 @@
     "importCSV": "Import CSV",
     "pasteImport": "Paste & Import",
     "both": "Both",
+    "hebrewBirthday": "Hebrew Birthday",
+    "gregorianBirthday": "Gregorian Birthday",
+    "zodiac": "Zodiac",
+    "hebrewDates": "Hebrew Dates",
+    "gregorianDates": "Gregorian Dates",
+    "bothTypes": "Both Types",
+    "includeWeekday": "Include Day of Week",
     "overridePreference": "Override Group Preference",
     "groupPreference": "Group preference",
     "useGroupDefault": "Use group default",
@@ -748,6 +758,232 @@
     "section9": {
       "title": "9. Contact",
       "content": "For any questions regarding these Terms of Use, you can contact us via email at:"
+    }
+  },
+  "zodiac": {
+    "aries": "Aries",
+    "taurus": "Taurus",
+    "gemini": "Gemini",
+    "cancer": "Cancer",
+    "leo": "Leo",
+    "virgo": "Virgo",
+    "libra": "Libra",
+    "scorpio": "Scorpio",
+    "sagittarius": "Sagittarius",
+    "capricorn": "Capricorn",
+    "aquarius": "Aquarius",
+    "pisces": "Pisces",
+    "statsTitle": "Zodiac Statistics",
+    "mismatchTitle": "Zodiac Mismatch",
+    "mismatchDesc": "There are {{count}} people whose Hebrew zodiac sign differs from their Gregorian sign.",
+    "gregorianDistribution": "Gregorian Distribution",
+    "hebrewDistribution": "Hebrew Distribution"
+  },
+  "guide": {
+    "menuTitle": "Full Guide",
+    "version": "v3.0",
+    "search": "Search guide...",
+    "noResults": "No results found",
+    "nav": {
+      "intro": "Getting Started",
+      "import": "Data Import",
+      "manage": "Birthday Management",
+      "sync": "Calendar Sync",
+      "groups": "Groups & Organization",
+      "wishlist": "Wishlist",
+      "gelt": "Hanukkah/Purim Money",
+      "whatsapp": "WhatsApp Button",
+      "features": "Additional Features",
+      "settings": "Settings & Privacy"
+    },
+    "title": "📘 Complete Guide",
+    "subtitle": "Never miss a date - Hebrew or Gregorian 🎂",
+    "intro": {
+      "title": "What is the System?",
+      "desc1": "A unique birthday management system that solves one clear problem: the confusion between Hebrew and Gregorian dates.",
+      "desc2": "The Hebrew calendar shifts relative to the Gregorian calendar. Someone born on 18 Adar will celebrate in March this year and February next year. Regular phone calendars can't calculate this correctly.",
+      "what": "What does the system do?",
+      "feature1": "Calculates the precise Hebrew date for every birthday",
+      "feature2": "Plans 10 years ahead",
+      "feature3": "Syncs to Google Calendar in a dedicated separate calendar",
+      "feature4": "Manages wishlist for gifts",
+      "feature5": "Calculates Hanukkah/Purim money by age groups",
+      "feature6": "Shares with family through smart links"
+    },
+    "section1": {
+      "title": "Data Collection - 3 Easy Ways",
+      "link": {
+        "title": "1. Smart Share Link",
+        "recommended": "The recommended way to collect from family!",
+        "desc": "Instead of chasing everyone separately, send one link to the family WhatsApp group. Everyone enters their own details.",
+        "howItWorks": "How it works?",
+        "step1": "Create the link: In dashboard, next to each group there's a share button 📤",
+        "step2": "Send: Share the link to family WhatsApp group",
+        "step3": "Add: Family members click, enter name and date, and click \"Submit\"",
+        "step4": "Confirm: Get notified on each new addition"
+      },
+      "paste": {
+        "title": "2. Paste & Import",
+        "intro": "Have a list written on notes or WhatsApp? The system recognizes the data automatically!",
+        "formats": "Supported Formats:",
+        "detects": "What the system detects:",
+        "detect1": "Complex names: Ben David, Abu Hatzeira, Ibn Ezra",
+        "detect2": "Gender: male/female or זכר/נקבה",
+        "detect3": "After sunset: \"yes\", \"כן\", \"night\"",
+        "detect4": "Notes: any text in parentheses",
+        "detect5": "Remove titles: Rabbi, Dr., Mr., Mrs."
+      },
+      "csv": {
+        "title": "3. Import from Excel/CSV",
+        "desc": "Have a ready spreadsheet? Import it with one click.",
+        "columns": "Supported Columns:",
+        "col1": "First Name (required)",
+        "col2": "Last Name (required)",
+        "col3": "Birth Date (required)",
+        "col4": "Gender (optional)",
+        "col5": "After Sunset (optional)",
+        "col6": "Notes (optional)"
+      },
+      "linkLimits": "Limitations:",
+      "limit1": "Valid for 72 hours only",
+      "limit2": "Maximum 50 entries per link",
+      "limit3": "Can reset and generate a new link",
+      "limit4": "Built-in bot protection"
+    },
+    "section2": {
+      "title": "Birthday Management",
+      "intro": "Click the + button to open the add form. The system automatically calculates the Hebrew date and age.",
+      "sunset": {
+        "title": "\"After Sunset\" - Why It Matters?",
+        "desc": "The Hebrew day starts at sunset! Someone born on March 15 at 9pm — in the Hebrew calendar that's already the 16th. If the Hebrew date isn't accurate, edit the entry and change the setting."
+      },
+      "statusLegend": "Status Legend:",
+      "status": {
+        "synced": "Synced to calendar",
+        "pending": "Changes to sync",
+        "error": "Sync error",
+        "notSynced": "Not synced"
+      },
+      "tip": "Tip: Select multiple records to sync, export, or assign to groups all at once!"
+    },
+    "section3": {
+      "title": "Google Calendar Sync",
+      "intro": "The system creates events in Google Calendar for the next 10 years automatically.",
+      "dedicated": {
+        "title": "Dedicated & Separate Calendar",
+        "desc": "Important: The system doesn't mix with your personal meetings! It creates a separate dedicated calendar (e.g. \"Hebrew Birthdays\").",
+        "why": "Why?",
+        "reason1": "Keep organized",
+        "reason2": "Data security",
+        "reason3": "Show/hide all birthdays with one click"
+      },
+      "eventFormat": "Calendar Event Format:",
+      "eventDesc": "Description:",
+      "eventBirth": "Birth date: 18 Adar 5746",
+      "eventAge": "Age: 40",
+      "eventWishlist": "Wishlist:",
+      "eventItem1": "New dress",
+      "eventItem2": "Cooking book",
+      "tools": "Advanced Management Tools:",
+      "tool1": "Sync History",
+      "tool2": "Clean Orphan Events",
+      "tool3": "Delete All Events",
+      "tool4": "Disconnect Calendar"
+    },
+    "section4": {
+      "title": "Groups & Organization",
+      "intro": "The system supports 4 main categories + hierarchical subgroups.",
+      "structure": "Example Structure:",
+      "family": "Family",
+      "sub1": "Smith (subgroup)",
+      "sub2": "Johnson (subgroup)",
+      "sub3": "Williams (subgroup)",
+      "friends": "Friends",
+      "friendsSub": "Work friends",
+      "work": "Work",
+      "groupSettings": "Settings for each group:",
+      "setting1": "Color - for easy identification in the list",
+      "setting2": "Calendar preference - Hebrew/Gregorian/Both",
+      "setting3": "Guest access - whether to allow adding via link",
+      "setting4": "Wishlist portal - whether to allow editing wishlists",
+      "tip": "Tip: A record can be in multiple groups at once!"
+    },
+    "section5": {
+      "title": "Wishlist & Gift Portal",
+      "wishlist": {
+        "title": "Wishlist",
+        "desc": "Attach gift ideas to each record with priorities. Wishes also appear in the Google Calendar event description!",
+        "structure": "Item Structure:",
+        "field1": "Item Name (e.g., \"Lego Game\")",
+        "field2": "Description (additional details - optional)",
+        "field3": "Priority: High / Medium / Low"
+      },
+      "portal": {
+        "title": "Guest Gift Portal",
+        "intro": "Want family members to update their wishlists themselves?",
+        "howItWorks": "How it works?",
+        "step1": "Login: Guest enters name + birth date",
+        "step2": "Verify: System confirms details match",
+        "step3": "Edit: Guest can add/edit/delete items"
+      },
+      "control": "Full Control: You can enable/disable the portal globally or per group."
+    },
+    "section6": {
+      "title": "Hanukkah/Purim Money Calculator",
+      "intro": "Unique feature! Smart calculator for Hanukkah or Purim money budget for kids.",
+      "flow": "How It Works?",
+      "step1": "Import children from birthday list (with filters!)",
+      "step2": "Set age groups and amount per group",
+      "step3": "Set budget (participants or fixed amount)",
+      "step4": "Automatic calculation and results display",
+      "step5": "Save profile for next year",
+      "profiles": {
+        "title": "Budget Profiles",
+        "desc": "Save settings for next year! Up to 10 profiles, with one as default that loads automatically.",
+        "note": "Important: The children list is not saved in the profile - only settings are saved"
+      }
+    },
+    "section7": {
+      "title": "Smart WhatsApp Button",
+      "intro": "The green button generates an organized list of all celebrants — perfect for pasting in your family WhatsApp group description.",
+      "options": "Copy Options:",
+      "option1": "Hebrew dates",
+      "option2": "Gregorian dates",
+      "option3": "Both together",
+      "option4": "Include day of week",
+      "example": "Output Example:"
+    },
+    "section8": {
+      "title": "Additional Features",
+      "zodiac": {
+        "title": "Zodiac Statistics",
+        "desc": "The system calculates Gregorian and Hebrew zodiac for each record, with alerts when signs differ."
+      },
+      "languages": {
+        "title": "Language Support",
+        "desc": "Full Hebrew and English including RTL/LTR direction. Great for families abroad!"
+      },
+      "guestAlerts": {
+        "title": "Guest Alerts",
+        "desc": "View birthdays added by guests through the smart link, with option to undo additions."
+      }
+    },
+    "section9": {
+      "title": "Settings & Privacy",
+      "settings": "General Settings",
+      "setting1": "Default calendar preference",
+      "setting2": "Guest portal (enable/disable)",
+      "setting3": "Interface language",
+      "security": "Security",
+      "sec1": "Google / Email authentication",
+      "sec2": "Isolated data (Multi-tenant)",
+      "sec3": "Terms of Use & Privacy",
+      "danger": "Danger Zone",
+      "dangerDesc": "Delete Account — permanently deletes all data. This action cannot be undone."
+    },
+    "footer": {
+      "text": "Built with ❤️ in Israel 🇮🇱",
+      "rights": "All rights reserved"
     }
   }
 }

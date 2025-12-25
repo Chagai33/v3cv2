@@ -553,6 +553,32 @@ Firebase Console → Authentication → Activity
    - No language auto-detection
    - Date formats are manual
 
+## User Documentation
+
+### In-App Guide (`/guide`)
+- **Interactive User Guide** - Full documentation accessible at `/guide`
+- **Sidebar Navigation** - Easy access to all sections
+- **Search Functionality** - Find topics quickly with debounced search
+- **Mobile Responsive** - Collapsible sidebar for mobile devices
+- **i18n Support** - Full Hebrew and English translations
+
+See [USER_GUIDE.md](./USER_GUIDE.md) for the markdown version.
+
+## Feature Highlights
+
+### Data Import Methods (3 Ways)
+1. **Smart Share Link** - Family members add themselves via time-limited link (72h, 50 entries max)
+2. **Paste & Import** - AI-powered text parser recognizes names, dates (7 formats), gender, compound names
+3. **CSV Import** - Excel/CSV with preview and validation
+
+### Advanced Features
+- **Gelt Calculator** - Hanukkah/Purim money budget calculator with profiles
+- **Wishlist Management** - Gift ideas with priorities, synced to calendar events
+- **Guest Portal** - `/portal` for guests to manage wishlists without login
+- **WhatsApp Copy** - Formatted birthday lists for group descriptions
+- **Zodiac Statistics** - Gregorian & Hebrew zodiac with mismatch detection
+- **Guest Notifications** - Track guest additions with undo capability
+
 ## Future Improvements
 
 See [FEATURES_TODO.md](./FEATURES_TODO.md) for detailed roadmap.
@@ -560,11 +586,10 @@ See [FEATURES_TODO.md](./FEATURES_TODO.md) for detailed roadmap.
 **High Priority:**
 - Phone auth UI
 - Tenant invitations
-- User profile page
+- Enhanced search in guide
 - Birthday reminders
 
 **Medium Priority:**
-- Import/Export
 - Advanced analytics
 - Email notifications
 - Dark mode
@@ -572,11 +597,10 @@ See [FEATURES_TODO.md](./FEATURES_TODO.md) for detailed roadmap.
 **Low Priority:**
 - Mobile app
 - Social features
-- Advanced search
 - Custom themes
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 2025-01-26
-**System Version:** 2.0.0
+**Document Version:** 1.1
+**Last Updated:** 2025-12-25
+**System Version:** 3.0.0

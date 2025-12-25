@@ -17,6 +17,7 @@ import { GroupsPanel } from './components/groups/GroupsPanel';
 import { GeltPage } from './components/gelt/GeltPage';
 import { TermsOfUse } from './components/pages/TermsOfUse';
 import { PrivacyPolicy } from './components/pages/PrivacyPolicy';
+import { UserGuide } from './components/pages/UserGuide';
 import { GuestPortal } from './components/guest/GuestPortal';
 import { GuestAccessPage } from './components/guest/GuestAccessPage';
 import './config/i18n';
@@ -89,6 +90,7 @@ function App() {
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/terms" element={<TermsOfUse />} />
                     <Route path="/privacy" element={<PrivacyPolicy />} />
+                    <Route path="/guide" element={<UserGuide />} />
                     <Route path="/portal" element={<GuestPortal />} />
                     <Route path="/guest/:groupId/:token" element={<GuestAccessPage />} />
                     <Route

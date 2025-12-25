@@ -262,11 +262,18 @@ export const GuestAccessPage: React.FC = () => {
   // Loading state
   if (state.loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <Loader className="w-12 h-12 text-purple-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">{t('common.loading', 'טוען...')}</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-gradient-to-br from-purple-50 to-blue-50">
+        <div className="flex flex-col items-center animate-pulse">
+          <div className="text-5xl font-black tracking-tight leading-none relative inline-flex items-baseline" dir="ltr">
+            <span className="text-[#8e24aa]">Heb</span>
+            <span className="text-[#304FFE]">Birthday</span>
+            <span className="text-gray-400 text-xl ml-[2px]">.app</span>
+          </div>
+          <span className="text-base text-gray-500 font-medium mt-3">
+            {t('app.taglinePart1')} <span className="text-[#8e24aa]">{t('app.taglineHebrew')}</span> {t('app.taglineOr')} <span className="text-[#304FFE]">{t('app.taglineGregorian')}</span>
+          </span>
         </div>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600/50"></div>
       </div>
     );
   }

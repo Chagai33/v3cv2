@@ -9,7 +9,8 @@ import { useGroups } from '../../hooks/useGroups';
 import { useGroupFilter } from '../../contexts/GroupFilterContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { useGoogleCalendar } from '../../contexts/GoogleCalendarContext';
-import { Edit, Trash2, Calendar, Search, CalendarDays, Filter, Gift, Download, Users, X, UploadCloud, CloudOff, Sparkles, Copy, Check, FolderPlus, UserCircle } from 'lucide-react';
+import { Edit, Trash2, Calendar, Search, CalendarDays, Filter, Gift, Download, Users, X, UploadCloud, CloudOff, Sparkles, Copy, Check, FolderPlus, UserCircle, ChevronDown } from 'lucide-react';
+import { WhatsAppCopyButton } from './WhatsAppCopyButton';
 import { SyncStatusButton } from './SyncStatusButton';
 import { BirthdayQuickActionsModal } from '../modals/BirthdayQuickActionsModal';
 import { FutureBirthdaysModal } from '../modals/FutureBirthdaysModal';
@@ -59,6 +60,11 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   const [sortBy, setSortBy] = useState<'upcoming' | 'upcoming-latest' | 'upcoming-hebrew' | 'upcoming-hebrew-latest' | 'name-az' | 'name-za' | 'age-youngest' | 'age-oldest'>(() => (localStorage.getItem('birthday-sort') as any) || 'upcoming');
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>(() => (localStorage.getItem('birthday-gender') as any) || 'all');
   const [syncStatusFilter, setSyncStatusFilter] = useState<'all' | 'synced' | 'error' | 'not-synced'>(() => (localStorage.getItem('birthday-sync-status') as any) || 'all');
+  const [whatsappFormat, setWhatsappFormat] = useState<'hebrew' | 'gregorian' | 'both'>(() => {
+    const saved = localStorage.getItem('birthday-whatsapp-format');
+    return (saved === 'hebrew' || saved === 'gregorian' || saved === 'both') ? saved : 'hebrew';
+  });
+  const [includeWeekday, setIncludeWeekday] = useState<boolean>(() => localStorage.getItem('birthday-whatsapp-weekday') === 'true');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [showAssignGroupModal, setShowAssignGroupModal] = useState(false);
@@ -216,6 +222,14 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   useEffect(() => {
     localStorage.setItem('birthday-sync-status', syncStatusFilter);
   }, [syncStatusFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('birthday-whatsapp-format', whatsappFormat);
+  }, [whatsappFormat]);
+
+  useEffect(() => {
+    localStorage.setItem('birthday-whatsapp-weekday', String(includeWeekday));
+  }, [includeWeekday]);
 
   const locale = i18n.language === 'he' ? he : enUS;
 
@@ -521,7 +535,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
     }
   };
 
-  const handleCopyToClipboard = async () => {
+  const handleCopyToClipboard = async (formatOverride?: 'hebrew' | 'gregorian' | 'both') => {
     const selectedBirthdays = filteredAndSortedBirthdays.filter(b => selectedIds.has(b.id));
 
     if (selectedBirthdays.length === 0) {
@@ -529,28 +543,122 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
       return;
     }
 
+    let currentFormat = formatOverride || whatsappFormat;
+    if (currentFormat !== 'gregorian' && currentFormat !== 'both') {
+      currentFormat = 'hebrew';
+    }
+
+    const locale = i18n.language === 'he' ? he : enUS;
+
+    // מיפוי חודשים עבריים לאנגלית
+    const hebrewMonthsToEnglish: Record<string, string> = {
+      'ניסן': 'Nisan',
+      'אייר': 'Iyyar',
+      'סיון': 'Sivan',
+      'סיוון': 'Sivan',
+      'תמוז': 'Tamuz',
+      'אב': 'Av',
+      'אלול': 'Elul',
+      'תשרי': 'Tishrei',
+      'חשון': 'Cheshvan',
+      'חשוון': 'Cheshvan',
+      'כסלו': 'Kislev',
+      'טבת': 'Tevet',
+      'טֵבֵת': 'Tevet',
+      'שבט': 'Shvat',
+      'אדר': 'Adar',
+      'אדר א': 'Adar I',
+      'אדר א׳': 'Adar I',
+      'אדר ב': 'Adar II',
+      'אדר ב׳': 'Adar II',
+    };
+
+    // פונקציה לפורמט תאריך לידה עברי
+    const formatHebrewBirthDate = (birthday: any): string => {
+      if (i18n.language === 'he') {
+        return birthday.birth_date_hebrew_string || '';
+      }
+      
+      // באנגלית - נשתמש בשדות הנפרדים אם קיימים
+      if (birthday.hebrew_day && birthday.hebrew_month && birthday.hebrew_year) {
+        const monthEn = hebrewMonthsToEnglish[birthday.hebrew_month] || birthday.hebrew_month;
+        return `${birthday.hebrew_day} ${monthEn} ${birthday.hebrew_year}`;
+      }
+      
+      // אם אין שדות נפרדים, נחזיר את הסטרינג המקורי
+      return birthday.birth_date_hebrew_string || '';
+    };
+
     const textParts = selectedBirthdays.map(birthday => {
       const calculations = birthday.calculations;
-      const nextHebrewDate = calculations.nextHebrewBirthday;
-      
-      const formattedDate = nextHebrewDate 
-          ? format(nextHebrewDate, 'd MMMM yyyy', { locale: he }) 
-          : '';
-
       const zodiacSign = calculations.hebrewSign ? t(`zodiac.${calculations.hebrewSign}`) : '';
-
-      return `*${birthday.first_name} ${birthday.last_name}*
-*תאריך לידה:* ${birthday.birth_date_hebrew_string || ''}
-*מזל:* ${zodiacSign}
-*יום הולדת עברי:* ${formattedDate}
-*גיל:* ${calculations.ageAtNextHebrewBirthday}`;
+      
+      let result = `*${birthday.first_name} ${birthday.last_name}*`;
+      
+      // עברי או שניהם - הצג תאריך לידה עברי
+      if (currentFormat === 'hebrew' || currentFormat === 'both') {
+        result += `\n*${t('birthday.birthDate', 'תאריך לידה')}:* ${formatHebrewBirthDate(birthday)}`;
+      }
+      
+      // עברי
+      if (currentFormat === 'hebrew') {
+        const nextHebrewDate = calculations.nextHebrewBirthday;
+        if (nextHebrewDate) {
+          const weekday = includeWeekday 
+            ? format(nextHebrewDate, 'EEEE', { locale }) + ', '
+            : '';
+          const formattedDate = format(nextHebrewDate, 'd MMMM yyyy', { locale });
+          result += `\n*${t('birthday.hebrewBirthday', 'יום הולדת עברי')}:* ${weekday}${formattedDate}`;
+        }
+        result += `\n*${t('birthday.age', 'גיל')}:* ${calculations.ageAtNextHebrewBirthday}`;
+        result += `\n*${t('birthday.zodiac', 'מזל')}:* ${zodiacSign}`;
+      }
+      
+      // לועזי
+      else if (currentFormat === 'gregorian') {
+        const nextGregDate = calculations.nextGregorianBirthday;
+        if (nextGregDate) {
+          const weekday = includeWeekday 
+            ? format(nextGregDate, 'EEEE', { locale }) + ', '
+            : '';
+          const formattedDate = format(nextGregDate, 'd MMMM yyyy', { locale });
+          result += `\n*${t('birthday.gregorianBirthday', 'יום הולדת לועזי')}:* ${weekday}${formattedDate}`;
+        }
+        result += `\n*${t('birthday.age', 'גיל')}:* ${calculations.ageAtNextGregorianBirthday}`;
+        result += `\n*${t('birthday.zodiac', 'מזל')}:* ${zodiacSign}`;
+      }
+      
+      // שניהם
+      else if (currentFormat === 'both') {
+        const nextHebrewDate = calculations.nextHebrewBirthday;
+        if (nextHebrewDate) {
+          const weekday = includeWeekday 
+            ? format(nextHebrewDate, 'EEEE', { locale }) + ', '
+            : '';
+          const formattedDate = format(nextHebrewDate, 'd MMMM yyyy', { locale });
+          result += `\n*${t('birthday.hebrewBirthday', 'יום הולדת עברי')}:* ${weekday}${formattedDate}`;
+        }
+        
+        const nextGregDate = calculations.nextGregorianBirthday;
+        if (nextGregDate) {
+          const weekday = includeWeekday 
+            ? format(nextGregDate, 'EEEE', { locale }) + ', '
+            : '';
+          const formattedDate = format(nextGregDate, 'd MMMM yyyy', { locale });
+          result += `\n*${t('birthday.gregorianBirthday', 'יום הולדת לועזי')}:* ${weekday}${formattedDate}`;
+        }
+        result += `\n*${t('birthday.age', 'גיל')}:* ${calculations.ageAtNextHebrewBirthday}`;
+        result += `\n*${t('birthday.zodiac', 'מזל')}:* ${zodiacSign}`;
+      }
+      
+      return result;
     });
 
     const fullText = textParts.join('\n--\n');
 
     try {
       await navigator.clipboard.writeText(fullText);
-      showToast('התאריכים העבריים והמזלות הועתקו ללוח', 'success');
+      showToast('הרשימה הועתקה בהצלחה', 'success');
       setIsCopied(true);
       setTimeout(() => {
         setIsCopied(false);
@@ -560,6 +668,11 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
       logger.error('Failed to copy to clipboard', err);
       showToast('שגיאה בהעתקה ללוח', 'error');
     }
+  };
+
+  const quickCopy = (formatType: 'hebrew' | 'gregorian' | 'both') => {
+    setWhatsappFormat(formatType);
+    handleCopyToClipboard(formatType);
   };
 
   const getSortSelectColor = () => {
@@ -680,28 +793,13 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                     <span className="hidden sm:inline">{t('groups.assignToGroup', 'הוספה לקבוצה')}</span>
                   </button>
                   {showHebrewColumn && (
-                  <button
-                    onClick={handleCopyToClipboard}
-                    className={`px-2 sm:px-3 py-1 sm:py-1.5 border shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1 ${
-                      isCopied 
-                        ? 'bg-green-100 text-green-700 border-green-300' 
-                        : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'
-                    }`}
-                    title="העתק רשימת ימי הולדת (עברי)"
-                  >
-                    {isCopied ? (
-                      <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    ) : (
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                      </svg>
-                    )}
-                    <span className="hidden sm:inline">{isCopied ? 'הועתק!' : 'העתק לוואטסאפ'}</span>
-                  </button>
+                    <WhatsAppCopyButton
+                      onCopy={handleCopyToClipboard}
+                      onQuickCopy={quickCopy}
+                      isCopied={isCopied}
+                      includeWeekday={includeWeekday}
+                      onIncludeWeekdayChange={setIncludeWeekday}
+                    />
                   )}
                   <button
                     onClick={() => handleBulkDelete()}
@@ -792,28 +890,13 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                     <span className="hidden sm:inline">{t('groups.assignToGroup', 'הוספה לקבוצה')}</span>
                   </button>
                   {showHebrewColumn && (
-                  <button
-                    onClick={handleCopyToClipboard}
-                    className={`px-2 sm:px-3 py-1 sm:py-1.5 border shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1 ${
-                      isCopied 
-                        ? 'bg-green-100 text-green-700 border-green-300' 
-                        : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'
-                    }`}
-                    title="העתק רשימת ימי הולדת (עברי)"
-                  >
-                    {isCopied ? (
-                      <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    ) : (
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                      </svg>
-                    )}
-                    <span className="hidden sm:inline">{isCopied ? 'הועתק!' : 'העתק לוואטסאפ'}</span>
-                  </button>
+                    <WhatsAppCopyButton
+                      onCopy={handleCopyToClipboard}
+                      onQuickCopy={quickCopy}
+                      isCopied={isCopied}
+                      includeWeekday={includeWeekday}
+                      onIncludeWeekdayChange={setIncludeWeekday}
+                    />
                   )}
                   {isConnected && (
                     <button

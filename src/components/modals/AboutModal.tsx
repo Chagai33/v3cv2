@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Globe, MessageSquare, LogOut, Settings, Info, Gift, Calculator, Bell } from 'lucide-react';
+import { X, Globe, MessageSquare, LogOut, Settings, Info, Gift, Calculator, Bell, BookOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -115,6 +115,15 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             </button>
 
             <Link
+              to="/guide"
+              onClick={onClose}
+              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+            >
+              <BookOpen className="w-5 h-5 text-[#8e24aa]" />
+              <span className="text-sm font-medium">{t('guide.menuTitle', 'המדריך המלא')}</span>
+            </Link>
+
+            <Link
               to="/portal"
               target="_blank"
               rel="noopener noreferrer"
@@ -134,24 +143,6 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                 <span className="text-sm font-medium">{t('gelt.title')}</span>
               </Link>
             )}
-
-            <Link
-              to="/terms"
-              onClick={onClose}
-              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-            >
-              <Globe className="w-5 h-5 text-gray-500" />
-              <span className="text-sm font-medium">{t('footer.termsOfUse', 'Terms of Use')}</span>
-            </Link>
-            
-            <Link
-              to="/privacy"
-              onClick={onClose}
-              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-            >
-              <Globe className="w-5 h-5 text-gray-500" />
-              <span className="text-sm font-medium">{t('footer.privacyPolicy', 'Privacy Policy')}</span>
-            </Link>
 
             <a
               href="https://docs.google.com/forms/d/e/1FAIpQLSf4M-3ytbYRAOIh9B7Bavgaw2WyGgDFP3PT7zgTmTMnUFXMrg/viewform"
@@ -174,8 +165,27 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             )}
           </div>
 
-          <div className="pt-4 border-t border-gray-100 text-center text-xs text-gray-400">
-            © {new Date().getFullYear()} All rights reserved
+          <div className="pt-4 border-t border-gray-100">
+            <div className="flex justify-center gap-3 text-xs text-gray-500 mb-3">
+              <Link
+                to="/terms"
+                onClick={onClose}
+                className="hover:text-gray-700 transition-colors"
+              >
+                {t('footer.termsOfUse', 'תנאי שימוש')}
+              </Link>
+              <span>•</span>
+              <Link
+                to="/privacy"
+                onClick={onClose}
+                className="hover:text-gray-700 transition-colors"
+              >
+                {t('footer.privacyPolicy', 'מדיניות פרטיות')}
+              </Link>
+            </div>
+            <div className="text-center text-xs text-gray-400">
+              © {new Date().getFullYear()} All rights reserved
+            </div>
           </div>
         </div>
       </div>
