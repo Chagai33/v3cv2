@@ -198,3 +198,6 @@ Dashboard → Text Paste → Analyze → Preview → Import ✅
 
 **שני הבאגים תוקנו!** 🎉
 
+
+
+
