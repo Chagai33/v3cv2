@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { InfoPageLayout } from '../layout/InfoPageLayout';
 import { 
-  Search,
   Menu,
   X,
   ChevronRight,
@@ -18,7 +17,6 @@ import {
   Star,
   Shield,
   AlertTriangle,
-  ChevronUp,
   Clock,
   Globe,
   Link2,
@@ -51,13 +49,9 @@ export const UserGuide: React.FC = () => {
   const isHebrew = i18n.language === 'he';
   const [activeSection, setActiveSection] = useState('intro');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300);
-
       const sectionElements = sections.map(s => document.getElementById(s.id));
       for (let i = sectionElements.length - 1; i >= 0; i--) {
         const element = sectionElements[i];
@@ -80,34 +74,6 @@ export const UserGuide: React.FC = () => {
     }
   };
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // Filter sections based on search
-  const filteredSections = sections.filter(section => {
-    if (!searchQuery) return true;
-    const titleText = t(section.titleKey).toLowerCase();
-    return titleText.includes(searchQuery.toLowerCase());
-  });
-
-  // Auto-scroll to first result when searching (with debounce)
-  useEffect(() => {
-    if (!searchQuery) return;
-
-    const timer = setTimeout(() => {
-      if (filteredSections.length > 0) {
-        const firstSection = filteredSections[0];
-        const element = document.getElementById(firstSection.id);
-        if (element) {
-          window.scrollTo({ top: element.offsetTop - 100, behavior: 'smooth' });
-        }
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery]);
 
   return (
     <InfoPageLayout>
@@ -122,71 +88,36 @@ export const UserGuide: React.FC = () => {
           `}
         >
           <nav className="space-y-1">
-            {filteredSections.length > 0 ? (
-              filteredSections.map((section) => {
-                const isActive = activeSection === section.id;
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => scrollToSection(section.id)}
-                    className={`
-                      w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
-                      ${isActive ? `${section.color} text-white shadow-md` : 'text-gray-700 hover:bg-gray-50'}
-                    `}
-                  >
-                    {section.icon}
-                    <span className="flex-1 text-start">{t(section.titleKey)}</span>
-                    {isActive && <ChevronRight className={`w-4 h-4 ${isHebrew ? 'rotate-180' : ''}`} />}
-                  </button>
-                );
-              })
-            ) : (
-              <div className="text-center py-8 text-gray-500 text-sm">
-                <Search className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                {t('guide.noResults', 'לא נמצאו תוצאות')}
-              </div>
-            )}
+            {sections.map((section) => {
+              const isActive = activeSection === section.id;
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => scrollToSection(section.id)}
+                  className={`
+                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                    ${isActive ? `${section.color} text-white shadow-md` : 'text-gray-700 hover:bg-gray-50'}
+                  `}
+                >
+                  {section.icon}
+                  <span className="flex-1 text-start">{t(section.titleKey)}</span>
+                  {isActive && <ChevronRight className={`w-4 h-4 ${isHebrew ? 'rotate-180' : ''}`} />}
+                </button>
+              );
+            })}
           </nav>
         </aside>
 
         {/* Main Content */}
         <main className="flex-1 min-w-0">
-          {/* Search Bar */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4 flex items-center gap-3">
+          {/* Mobile Menu Button - Sticky */}
+          <div className="lg:hidden sticky top-16 z-20 mb-4">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+              className="p-3 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
             >
               {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            
-            <div className="relative flex-1">
-              <Search className={`absolute ${isHebrew ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400`} />
-              <input
-                type="text"
-                placeholder={t('guide.search', 'חיפוש במדריך...')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && filteredSections.length > 0) {
-                    const firstSection = filteredSections[0];
-                    const element = document.getElementById(firstSection.id);
-                    if (element) {
-                      window.scrollTo({ top: element.offsetTop - 100, behavior: 'smooth' });
-                    }
-                  }
-                }}
-                className={`w-full ${isHebrew ? 'pr-11 pl-4' : 'pl-11 pr-4'} py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className={`absolute ${isHebrew ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2`}
-                >
-                  <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                </button>
-              )}
-            </div>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8">
@@ -710,17 +641,6 @@ export const UserGuide: React.FC = () => {
             </div>
           </div>
         </main>
-
-        {/* Scroll to Top Button */}
-        {showScrollTop && (
-          <button
-            onClick={scrollToTop}
-            className="fixed bottom-6 left-6 z-30 p-3 bg-gradient-to-r from-[#8e24aa] to-[#304FFE] text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110"
-            aria-label="Scroll to top"
-          >
-            <ChevronUp className="w-5 h-5" />
-          </button>
-        )}
 
         {/* Mobile Sidebar Overlay */}
         {isSidebarOpen && (
