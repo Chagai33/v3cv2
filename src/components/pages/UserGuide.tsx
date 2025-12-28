@@ -111,7 +111,7 @@ export const UserGuide: React.FC = () => {
         {/* Main Content */}
         <main className="flex-1 min-w-0">
           {/* Mobile Menu Button - Sticky */}
-          <div className="lg:hidden sticky top-16 z-20 mb-4">
+          <div className="lg:hidden sticky top-16 z-20 mb-2 sm:mb-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-3 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
@@ -120,39 +120,70 @@ export const UserGuide: React.FC = () => {
             </button>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8">
+          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-8">
             <div className="prose prose-sm max-w-none" dir={isHebrew ? 'rtl' : 'ltr'}>
               
               {/* INTRO */}
-              <section id="intro" className="mb-12 scroll-mt-20">
-                <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-100 rounded-xl p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-3">
-                    {t('guide.intro.title', 'מהי המערכת?')}
+              <section id="intro" className="mb-8 sm:mb-12 scroll-mt-20">
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-100 rounded-xl p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+                    {t('guide.intro.title', 'על המערכת')}
                   </h2>
-                  <p className="text-gray-700 leading-relaxed mb-4">
-                    {t('guide.intro.desc1', 'מערכת ניהול ימי הולדת ייחודית שפותרת בעיה אחת ברורה: הבלבול בין התאריך העברי ללועזי.')}
-                  </p>
-                  <p className="text-gray-700 leading-relaxed mb-4">
-                    {t('guide.intro.desc2', 'הלוח העברי "זז" ביחס ללוח הלועזי. מי שנולד ב-י"ח באדר יחגוג השנה במרץ ובשנה הבאה בפברואר. יומנים רגילים בטלפון לא יודעים לחשב את זה נכון קדימה.')}
+                  <p className="text-gray-700 leading-relaxed mb-6">
+                    {t('guide.intro.desc', 'HebBirthday נועדה לגשר על הפער בין הלוח העברי לטכנולוגיה של ימינו. במקום לחשב ידנית מתי יוצא יום ההולדת העברי בכל שנה, המערכת עושה זאת אוטומטית.')}
                   </p>
                   
-                  <div className="mt-4 space-y-2">
-                    <h3 className="font-bold text-gray-900">{t('guide.intro.what', 'מה המערכת עושה?')}</h3>
-                    <ul className="space-y-1 text-sm text-gray-700">
-                      <li>✅ {t('guide.intro.feature1', 'מחשבת את התאריך העברי המדויק לכל יום הולדת')}</li>
-                      <li>✅ {t('guide.intro.feature2', 'מתכננת ל-10 שנים קדימה')}</li>
-                      <li>✅ {t('guide.intro.feature3', 'מסנכרנת ליומן Google ביומן ייעודי ונפרד')}</li>
-                      <li>✅ {t('guide.intro.feature4', 'מנהלת רשימות משאלות למתנות')}</li>
-                      <li>✅ {t('guide.intro.feature5', 'מחשבת דמי חנוכה ופורים לפי קבוצות גיל')}</li>
-                      <li>✅ {t('guide.intro.feature6', 'משתפת עם המשפחה דרך לינקים חכמים')}</li>
-                    </ul>
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-gray-900">{t('guide.intro.mainFeatures', 'פיצ\'רים מרכזיים:')}</h3>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-3">
+                        <Calendar className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-gray-900 font-medium">{t('guide.intro.feature1Title', 'סנכרון חכם:')}</p>
+                          <p className="text-sm text-gray-600">{t('guide.intro.feature1Desc', 'חישוב תאריכים עבריים ל-10 שנים קדימה וסנכרון ליומן Google נפרד.')}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <MessageCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-gray-900 font-medium">{t('guide.intro.feature2Title', 'סיכום שבועי:')}</p>
+                          <p className="text-sm text-gray-600">{t('guide.intro.feature2Desc', 'יצוא רשימת חוגגים מהירה להדבקה בוואטסאפ.')}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <Gift className="w-5 h-5 text-pink-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-gray-900 font-medium">{t('guide.intro.feature3Title', 'ניהול מתנות:')}</p>
+                          <p className="text-sm text-gray-600">{t('guide.intro.feature3Desc', 'רשימות משאלות אישיות לכל חוגג.')}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <Calculator className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-gray-900 font-medium">{t('guide.intro.feature4Title', 'מחשבונים:')}</p>
+                          <p className="text-sm text-gray-600">{t('guide.intro.feature4Desc', 'חישוב אוטומטי של דמי חנוכה ופורים לפי גילאים.')}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <Link2 className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-gray-900 font-medium">{t('guide.intro.feature5Title', 'איסוף מידע:')}</p>
+                          <p className="text-sm text-gray-600">{t('guide.intro.feature5Desc', 'לינק שיתוף שמאפשר לבני משפחה להוסיף את עצמם למערכת.')}</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </section>
 
               {/* IMPORT */}
               <section id="import" className="mb-12 scroll-mt-20">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3 pb-3 border-b-2 border-blue-200">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-3 pb-3 border-b-2 border-blue-200">
                   <Download className="w-6 h-6 text-blue-600" />
                   {t('guide.section1.title', 'איסוף המידע - 3 דרכים קלות')}
                 </h2>
@@ -160,7 +191,7 @@ export const UserGuide: React.FC = () => {
                 {/* Smart Link */}
                 <div className="mb-6">
                   <div className="p-5 rounded-xl bg-blue-50 border border-blue-200">
-                    <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
                       <Link2 className="w-5 h-5 text-blue-600" />
                       {t('guide.section1.link.title', '1. הלינק החכם (Smart Share Link)')}
                     </h3>
@@ -200,7 +231,7 @@ export const UserGuide: React.FC = () => {
                 {/* Paste & Import */}
                 <div className="mb-6">
                   <div className="p-5 rounded-xl bg-purple-50 border border-purple-200">
-                    <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-purple-600" />
                       {t('guide.section1.paste.title', '2. הדבק וייבא (Paste & Import)')}
                     </h3>
@@ -223,7 +254,7 @@ export const UserGuide: React.FC = () => {
                 {/* CSV Import */}
                 <div className="mb-6">
                   <div className="p-5 rounded-xl bg-green-50 border border-green-200">
-                    <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
                       <FileText className="w-5 h-5 text-green-600" />
                       {t('guide.section1.csv.title', '3. ייבוא מקובץ Excel/CSV')}
                     </h3>
@@ -247,7 +278,7 @@ export const UserGuide: React.FC = () => {
 
               {/* MANAGE */}
               <section id="manage" className="mb-12 scroll-mt-20">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3 pb-3 border-b-2 border-indigo-200">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-3 pb-3 border-b-2 border-indigo-200">
                   <Calendar className="w-6 h-6 text-indigo-600" />
                   {t('guide.section2.title', 'ניהול ימי הולדת')}
                 </h2>
@@ -301,7 +332,7 @@ export const UserGuide: React.FC = () => {
 
               {/* GROUPS */}
               <section id="groups" className="mb-12 scroll-mt-20">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3 pb-3 border-b-2 border-cyan-200">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-3 pb-3 border-b-2 border-cyan-200">
                   <Users className="w-6 h-6 text-cyan-600" />
                   {t('guide.section4.title', 'קבוצות וארגון')}
                 </h2>
@@ -342,7 +373,7 @@ export const UserGuide: React.FC = () => {
 
               {/* SYNC */}
               <section id="sync" className="mb-12 scroll-mt-20">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3 pb-3 border-b-2 border-green-200">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-3 pb-3 border-b-2 border-green-200">
                   <Calendar className="w-6 h-6 text-green-600" />
                   {t('guide.section3.title', 'סנכרון ליומן Google')}
                 </h2>
@@ -400,14 +431,14 @@ export const UserGuide: React.FC = () => {
 
               {/* WISHLIST */}
               <section id="wishlist" className="mb-12 scroll-mt-20">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3 pb-3 border-b-2 border-pink-200">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-3 pb-3 border-b-2 border-pink-200">
                   <Gift className="w-6 h-6 text-pink-600" />
                   {t('guide.section5.title', 'רשימת משאלות ופורטל מתנות')}
                 </h2>
 
                 <div className="mb-6">
                   <div className="p-5 rounded-xl bg-pink-50 border border-pink-200">
-                    <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
                       <Gift className="w-5 h-5 text-pink-600" />
                       {t('guide.section5.wishlist.title', 'רשימת משאלות')}
                     </h3>
@@ -427,7 +458,7 @@ export const UserGuide: React.FC = () => {
 
                 <div className="mb-6">
                   <div className="p-5 rounded-xl bg-purple-50 border border-purple-200">
-                    <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
                       <Globe className="w-5 h-5 text-purple-600" />
                       {t('guide.section5.portal.title', 'פורטל מתנות לאורחים')}
                     </h3>
@@ -459,7 +490,7 @@ export const UserGuide: React.FC = () => {
 
               {/* SYNC - continued with detailed content */}
               <section id="whatsapp" className="mb-12 scroll-mt-20">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3 pb-3 border-b-2 border-emerald-200">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-3 pb-3 border-b-2 border-emerald-200">
                   <MessageCircle className="w-6 h-6 text-emerald-600" />
                   {t('guide.section7.title', 'כפתור הוואטסאפ החכם')}
                 </h2>
@@ -499,7 +530,7 @@ export const UserGuide: React.FC = () => {
 
               {/* GELT */}
               <section id="gelt" className="mb-12 scroll-mt-20">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3 pb-3 border-b-2 border-orange-200">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-3 pb-3 border-b-2 border-orange-200">
                   <Calculator className="w-6 h-6 text-orange-600" />
                   {t('guide.section6.title', 'מחשבון דמי חנוכה/פורים')}
                 </h2>
@@ -552,7 +583,7 @@ export const UserGuide: React.FC = () => {
 
               {/* FEATURES */}
               <section id="features" className="mb-12 scroll-mt-20">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3 pb-3 border-b-2 border-teal-200">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-3 pb-3 border-b-2 border-teal-200">
                   <Sparkles className="w-6 h-6 text-teal-600" />
                   {t('guide.section8.title', 'פיצ\'רים נוספים')}
                 </h2>
@@ -592,7 +623,7 @@ export const UserGuide: React.FC = () => {
 
               {/* SETTINGS */}
               <section id="settings" className="mb-12 scroll-mt-20">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3 pb-3 border-b-2 border-gray-200">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-3 pb-3 border-b-2 border-gray-200">
                   <Settings className="w-6 h-6 text-gray-600" />
                   {t('guide.section9.title', 'הגדרות ופרטיות')}
                 </h2>

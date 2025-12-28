@@ -587,7 +587,7 @@
     "confirmDelete": "Yes, delete account"
   },
   "help": {
-    "title": "How does it work?",
+    "title": "The Quick Guide",
     "intro": "This app is designed to help you track birthdays - Hebrew and Gregorian - easily and effortlessly. Here's what you can do:",
     "step1_title": "Adding Birthdays",
     "step1_desc": "Click the plus (+) button, enter a name and Gregorian birth date, and we automatically calculate the Hebrew date and age. You can also import a full list at once from an Excel/CSV file.",
@@ -806,7 +806,7 @@
     "search": "Search guide...",
     "noResults": "No results found",
     "nav": {
-      "intro": "Getting Started",
+      "intro": "About",
       "import": "Data Import",
       "manage": "Birthday Management",
       "sync": "Calendar Sync",
@@ -820,16 +820,19 @@
     "title": "📘 Complete Guide",
     "subtitle": "Never miss a date - Hebrew or Gregorian 🎂",
     "intro": {
-      "title": "What is the System?",
-      "desc1": "A unique birthday management system that solves one clear problem: the confusion between Hebrew and Gregorian dates.",
-      "desc2": "The Hebrew calendar shifts relative to the Gregorian calendar. Someone born on 18 Adar will celebrate in March this year and February next year. Regular phone calendars can't calculate this correctly.",
-      "what": "What does the system do?",
-      "feature1": "Calculates the precise Hebrew date for every birthday",
-      "feature2": "Plans 10 years ahead",
-      "feature3": "Syncs to Google Calendar in a dedicated separate calendar",
-      "feature4": "Manages wishlist for gifts",
-      "feature5": "Calculates Hanukkah/Purim money by age groups",
-      "feature6": "Allows family members to add birthdays themselves via dedicated share link"
+      "title": "About the System",
+      "desc": "HebBirthday bridges the gap between the Hebrew calendar and modern technology. Instead of manually calculating when the Hebrew birthday falls each year, the system does it automatically.",
+      "mainFeatures": "Main Features:",
+      "feature1Title": "Smart Sync:",
+      "feature1Desc": "Calculate Hebrew dates for 10 years ahead and sync to a separate Google Calendar.",
+      "feature2Title": "Copy to WhatsApp:",
+      "feature2Desc": "Export celebrants list to family group description.",
+      "feature3Title": "Gift Management:",
+      "feature3Desc": "Personal wishlists for each celebrant.",
+      "feature4Title": "Calculators:",
+      "feature4Desc": "Automatic calculation of Hanukkah/Purim money by age groups.",
+      "feature5Title": "Data Collection:",
+      "feature5Desc": "Share link that allows family members to add themselves to the system."
     },
     "section1": {
       "title": "Data Collection - 3 Easy Ways",
