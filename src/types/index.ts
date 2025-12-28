@@ -217,6 +217,9 @@ export interface CSVBirthdayRow {
   validationErrors?: string[];
   warnings?: string[];
   isDuplicate?: boolean;
+  // For text import - preserve original line info
+  originalLine?: string;
+  lineNumber?: number;
 }
 
 export interface ValidationResult {

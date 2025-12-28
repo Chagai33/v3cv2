@@ -82,7 +82,9 @@
     "guestAdded": "Added by guest",
     "botDetected": "Suspicious activity detected. Please try again.",
     "limitReached": "You've reached the addition limit for this link. Please contact the group admin.",
-    "tokenExpired": "This link has expired (72 hours). Please contact the group admin for a new link."
+    "tokenExpired": "This link has expired (72 hours). Please contact the group admin for a new link.",
+    "verifyHebrewDate": "Please verify that the Hebrew date is correct. If not, change 'Born after sunset' below.",
+    "verifyGregorianDate": "Verify that the corresponding Gregorian date is correct"
   },
   "common": {
     "save": "Save",
@@ -504,7 +506,13 @@
     "exampleComplex": "Complex names:",
     "pasteEmpty": "Text is empty or no valid dates found",
     "textImportSuccess": "Found {{count}} valid records",
-    "backToTextImport": "Back to text import"
+    "backToTextImport": "Back to text import",
+    "backToImportShort": "Back",
+    "validationErrors": "Found {{count}} errors:",
+    "maxLines": "maximum {{max}}",
+    "showAllErrors": "Show all {{count}} errors",
+    "tooManyChars": "Exceeded character limit ({{max}})",
+    "tooManyLines": "Exceeded line limit ({{max}})"
   },
   "messages": {
     "birthdayAdded": "Birthday added successfully",
@@ -527,6 +535,7 @@
     "totalRows": "Total Rows",
     "validRows": "Valid Rows",
     "invalidRows": "Invalid Rows",
+    "errorRows": "Errors",
     "duplicates": "Possible Duplicates",
     "selectAll": "Select All",
     "selected": "Selected",
@@ -551,7 +560,21 @@
     "addSubgroup": "Add Subgroup",
     "loadingGroups": "Loading groups...",
     "rowGroup": "Group",
-    "noGroup": "No Group (will use default)"
+    "noGroup": "No Group (will use default)",
+    "originalLine": "Original line",
+    "warningRows": "Rows with warnings",
+    "searchPlaceholder": "Search by name...",
+    "searchResults": "{{count}} results found",
+    "validation": {
+      "missingFirstName": "Missing first name",
+      "invalidFirstName": "Invalid first name",
+      "missingLastName": "Missing last name",
+      "invalidLastName": "Invalid last name",
+      "missingBirthDate": "Missing date",
+      "missingGender": "Missing gender"
+    },
+    "showIssuesOnly": "Needs attention ({{count}})",
+    "showAll": "Show all"
   },
   "settings": {
     "note1": "This setting applies to all groups in this tenant by default",
@@ -566,7 +589,7 @@
     "confirmDelete": "Yes, delete account"
   },
   "help": {
-    "title": "How does it work?",
+    "title": "The Quick Guide",
     "intro": "This app is designed to help you track birthdays - Hebrew and Gregorian - easily and effortlessly. Here's what you can do:",
     "step1_title": "Adding Birthdays",
     "step1_desc": "Click the plus (+) button, enter a name and Gregorian birth date, and we automatically calculate the Hebrew date and age. You can also import a full list at once from an Excel/CSV file.",
@@ -785,7 +808,7 @@
     "search": "Search guide...",
     "noResults": "No results found",
     "nav": {
-      "intro": "Getting Started",
+      "intro": "About",
       "import": "Data Import",
       "manage": "Birthday Management",
       "sync": "Calendar Sync",
@@ -799,16 +822,19 @@
     "title": "📘 Complete Guide",
     "subtitle": "Never miss a date - Hebrew or Gregorian 🎂",
     "intro": {
-      "title": "What is the System?",
-      "desc1": "A unique birthday management system that solves one clear problem: the confusion between Hebrew and Gregorian dates.",
-      "desc2": "The Hebrew calendar shifts relative to the Gregorian calendar. Someone born on 18 Adar will celebrate in March this year and February next year. Regular phone calendars can't calculate this correctly.",
-      "what": "What does the system do?",
-      "feature1": "Calculates the precise Hebrew date for every birthday",
-      "feature2": "Plans 10 years ahead",
-      "feature3": "Syncs to Google Calendar in a dedicated separate calendar",
-      "feature4": "Manages wishlist for gifts",
-      "feature5": "Calculates Hanukkah/Purim money by age groups",
-      "feature6": "Shares with family through smart links"
+      "title": "About the System",
+      "desc": "HebBirthday bridges the gap between the Hebrew calendar and modern technology. Instead of manually calculating when the Hebrew birthday falls each year, the system does it automatically.",
+      "mainFeatures": "Main Features:",
+      "feature1Title": "Smart Sync:",
+      "feature1Desc": "Calculate Hebrew dates for 10 years ahead and sync to a separate Google Calendar.",
+      "feature2Title": "Copy to WhatsApp:",
+      "feature2Desc": "Export celebrants list to family group description.",
+      "feature3Title": "Gift Management:",
+      "feature3Desc": "Personal wishlists for each celebrant.",
+      "feature4Title": "Calculators:",
+      "feature4Desc": "Automatic calculation of Hanukkah/Purim money by age groups.",
+      "feature5Title": "Data Collection:",
+      "feature5Desc": "Share link that allows family members to add themselves to the system."
     },
     "section1": {
       "title": "Data Collection - 3 Easy Ways",
@@ -825,9 +851,7 @@
       "paste": {
         "title": "2. Paste & Import",
         "intro": "Have a list written on notes or WhatsApp? The system recognizes the data automatically!",
-        "formats": "Supported Formats:",
         "detects": "What the system detects:",
-        "detect1": "Complex names: Ben David, Abu Hatzeira, Ibn Ezra",
         "detect2": "Gender: male/female or זכר/נקבה",
         "detect3": "After sunset: \"yes\", \"כן\", \"night\"",
         "detect4": "Notes: any text in parentheses",
@@ -837,18 +861,17 @@
         "title": "3. Import from Excel/CSV",
         "desc": "Have a ready spreadsheet? Import it with one click.",
         "columns": "Supported Columns:",
-        "col1": "First Name (required)",
-        "col2": "Last Name (required)",
-        "col3": "Birth Date (required)",
-        "col4": "Gender (optional)",
-        "col5": "After Sunset (optional)",
-        "col6": "Notes (optional)"
+        "col1": "First Name",
+        "col2": "Last Name",
+        "col3": "Birth Date",
+        "col4": "Gender",
+        "col5": "After Sunset",
+        "col6": "Notes"
       },
       "linkLimits": "Limitations:",
       "limit1": "Valid for 72 hours only",
       "limit2": "Maximum 50 entries per link",
-      "limit3": "Can reset and generate a new link",
-      "limit4": "Built-in bot protection"
+      "limit3": "Can reset and generate a new link"
     },
     "section2": {
       "title": "Birthday Management",
@@ -885,9 +908,9 @@
       "eventItem1": "New dress",
       "eventItem2": "Cooking book",
       "tools": "Advanced Management Tools:",
-      "tool1": "Sync History",
-      "tool2": "Clean Orphan Events",
-      "tool3": "Delete All Events",
+      "tool1": "Create New Calendar",
+      "tool2": "Sync History",
+      "tool3": "Delete Calendar",
       "tool4": "Disconnect Calendar"
     },
     "section4": {

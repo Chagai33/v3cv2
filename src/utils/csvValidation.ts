@@ -97,36 +97,51 @@ export function validateAndEnrichCSVData(
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    if (!row.firstName || row.firstName.trim().length === 0) {
-      errors.push(translations.firstNameRequired);
+    // Carry over warnings from text parser
+    if (row.warning && row.warningMessage) {
+      warnings.push(row.warningMessage);
     }
 
-    if (!row.lastName || row.lastName.trim().length === 0) {
-      warnings.push(translations.lastNameMissing);
-    }
+    // Skip validation for rows that already have warnings from text parser
+    if (!row.warning) {
+      if (!row.firstName || row.firstName.trim().length === 0) {
+        errors.push(translations.firstNameRequired);
+      }
 
-    if (!row.birthDate || row.birthDate.trim().length === 0) {
-      errors.push(translations.birthDateRequired);
-    } else if (!isValidDate(row.birthDate)) {
-      errors.push(translations.birthDateInvalid);
+      if (!row.lastName || row.lastName.trim().length === 0) {
+        warnings.push(translations.lastNameMissing);
+      }
+
+      if (!row.birthDate || row.birthDate.trim().length === 0) {
+        errors.push(translations.birthDateRequired);
+      } else if (!isValidDate(row.birthDate)) {
+        errors.push(translations.birthDateInvalid);
+      } else {
+        const birthDate = parseDateString(row.birthDate);
+        if (birthDate) {
+          if (birthDate > now) {
+            errors.push(translations.birthDateFuture);
+          }
+
+          const birthYear = birthDate.getFullYear();
+          if (birthYear < minYear) {
+            errors.push(translations.birthDateTooOld);
+          }
+          if (birthYear > maxYear) {
+            errors.push(translations.birthDateFuture);
+          }
+        }
+      }
     } else {
-      const birthDate = parseDateString(row.birthDate);
-      if (birthDate) {
-        if (birthDate > now) {
-          errors.push(translations.birthDateFuture);
-        }
-
-        const birthYear = birthDate.getFullYear();
-        if (birthYear < minYear) {
-          errors.push(translations.birthDateTooOld);
-        }
-        if (birthYear > maxYear) {
-          errors.push(translations.birthDateFuture);
-        }
+      // If there's a warning from text parser, treat it as an error (row is invalid)
+      if (row.warning === 'no_date') {
+        errors.push(translations.birthDateRequired);
+      } else if (row.warning === 'invalid_name') {
+        errors.push(translations.firstNameRequired);
       }
     }
 
-    const duplicate = isDuplicate(row, existingBirthdays);
+    const duplicate = row.warning ? false : isDuplicate(row, existingBirthdays);
 
     return {
       firstName: row.firstName,
@@ -144,6 +159,9 @@ export function validateAndEnrichCSVData(
       validationErrors: errors,
       warnings,
       isDuplicate: duplicate,
-    };
+      // Preserve original line info for display
+      originalLine: row.originalLine,
+      lineNumber: row.lineNumber,
+    } as CSVBirthdayRow;
   });
 }

@@ -300,6 +300,11 @@ export interface CSVBirthdayData {
   notes?: string;
   calendarPreference?: 'gregorian' | 'hebrew' | 'both';
   wishlist?: string;
+  // For text import validation
+  warning?: 'no_date' | 'invalid_name' | 'invalid_date';
+  warningMessage?: string;
+  originalLine?: string;
+  lineNumber?: number;
 }
 
 function normalizeHeader(header: string): string {

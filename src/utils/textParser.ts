@@ -23,18 +23,41 @@ interface DateMatch {
 
 // Common Hebrew titles to strip from names
 const HEBREW_TITLES = [
+  // Religious titles
   'הרב',
   'רב',
-  'מר',
-  'מרת',
-  'גב\'',
-  'גברת',
+  'רבי',
+  'הרבנית',
+  'רבנית',
+  'הגאון',
+  'גאון',
+  'האדמו"ר',
+  'אדמו"ר',
+  'הצדיק',
+  'צדיק',
+  'מורנו',
+  'מרן',
+  'הרה"ג',
+  'הרה"ח',
+  // Academic titles
+  'דוקטור',
   'ד"ר',
   'דר\'',
   'פרופ\'',
   'פרופסור',
+  'מג\'יסטר',
+  // Professional titles
+  'עו"ד',
+  'רו"ח',
+  'אח\'',
+  'אחות',
   'מורה',
-  'רבי',
+  // Courtesy titles
+  'מר',
+  'מרת',
+  'גב\'',
+  'גברת',
+  'כבוד',
 ];
 
 // Keywords indicating "after sunset"
@@ -126,6 +149,40 @@ const DATE_PATTERNS: Array<{ regex: RegExp; format: string }> = [
     format: 'D/M/YY',
   },
 ];
+
+// Limits for text import
+export const TEXT_IMPORT_LIMITS = {
+  MAX_CHARACTERS: 15000,
+  MAX_LINES: 500,
+  MIN_NAME_LENGTH: 2,
+};
+
+/**
+ * Check if a name is valid (not just repeated characters)
+ * Returns false for names like "יייייי", "אאאאא", etc.
+ */
+function isValidName(name: string): boolean {
+  if (!name || name.length < TEXT_IMPORT_LIMITS.MIN_NAME_LENGTH) return false;
+  
+  // Remove spaces for validation
+  const cleanName = name.replace(/\s/g, '');
+  
+  // Check if has at least 2 unique characters (for names longer than 2 chars)
+  if (cleanName.length > 2) {
+    const uniqueChars = new Set(cleanName.split(''));
+    if (uniqueChars.size < 2) {
+      return false; // Only one character repeated
+    }
+  }
+  
+  // Check for sequence of same character (3+ times in a row)
+  const repeatedPattern = /(.)\1{2,}/;
+  if (repeatedPattern.test(cleanName)) {
+    return false; // Has 3+ same characters in a row
+  }
+  
+  return true;
+}
 
 /**
  * Convert 2-digit year to 4-digit year
@@ -336,18 +393,28 @@ function parseNames(text: string): { firstName: string; lastName: string } {
 
 /**
  * Parse a single line of text into birthday data
+ * Now returns records with warnings instead of null for problematic lines
  */
-function parseLine(line: string): CSVBirthdayData | null {
+function parseLine(line: string, lineNumber: number): CSVBirthdayData | null {
   const trimmedLine = line.trim();
   if (!trimmedLine) {
-    return null;
+    return null; // Skip empty lines entirely
   }
 
   // Extract date
   const dateMatch = extractDate(trimmedLine);
   if (!dateMatch) {
-    // No valid date found, skip this line
-    return null;
+    // No valid date found - return with warning
+    return {
+      firstName: trimmedLine.substring(0, 30),
+      lastName: '',
+      birthDate: '',
+      afterSunset: false,
+      warning: 'no_date',
+      warningMessage: 'לא נמצא תאריך תקין',
+      originalLine: trimmedLine,
+      lineNumber,
+    };
   }
 
   // Remove the date from the text
@@ -390,8 +457,49 @@ function parseLine(line: string): CSVBirthdayData | null {
   const { firstName, lastName } = parseNames(cleanText);
 
   if (!firstName) {
-    // No name found, skip this line
-    return null;
+    // No name found - return with warning
+    return {
+      firstName: cleanText || trimmedLine.substring(0, 20),
+      lastName: '',
+      birthDate: dateMatch.date,
+      afterSunset,
+      gender,
+      warning: 'invalid_name',
+      warningMessage: 'לא נמצא שם תקין',
+      originalLine: trimmedLine,
+      lineNumber,
+    };
+  }
+
+  // Validate names (not just repeated characters)
+  if (!isValidName(firstName)) {
+    return {
+      firstName,
+      lastName,
+      birthDate: dateMatch.date,
+      afterSunset,
+      gender,
+      notes: notes || undefined,
+      warning: 'invalid_name',
+      warningMessage: 'שם פרטי לא תקין (רצף אותיות זהות)',
+      originalLine: trimmedLine,
+      lineNumber,
+    };
+  }
+  
+  if (lastName && !isValidName(lastName)) {
+    return {
+      firstName,
+      lastName,
+      birthDate: dateMatch.date,
+      afterSunset,
+      gender,
+      notes: notes || undefined,
+      warning: 'invalid_name',
+      warningMessage: 'שם משפחה לא תקין (רצף אותיות זהות)',
+      originalLine: trimmedLine,
+      lineNumber,
+    };
   }
 
   return {
@@ -401,13 +509,15 @@ function parseLine(line: string): CSVBirthdayData | null {
     afterSunset,
     gender,
     notes: notes || undefined,
+    originalLine: trimmedLine,
+    lineNumber,
   };
 }
 
 /**
  * Main function: Parse free-text birthday list
  * @param text - Raw text input (from WhatsApp, notes, etc.)
- * @returns Array of parsed birthday data
+ * @returns Array of parsed birthday data (including ones with warnings)
  */
 export function parseFreeText(text: string): CSVBirthdayData[] {
   if (!text || text.trim().length === 0) {
@@ -417,14 +527,117 @@ export function parseFreeText(text: string): CSVBirthdayData[] {
   const lines = text.split('\n');
   const results: CSVBirthdayData[] = [];
 
-  for (const line of lines) {
-    const parsed = parseLine(line);
+  lines.forEach((line, index) => {
+    const parsed = parseLine(line, index + 1);
     if (parsed) {
       results.push(parsed);
     }
-  }
+  });
 
   return results;
+}
+
+/**
+ * Get only valid records (without warnings)
+ */
+export function getValidRecords(records: CSVBirthdayData[]): CSVBirthdayData[] {
+  return records.filter(r => !r.warning);
+}
+
+/**
+ * Get only records with warnings
+ */
+export function getWarningRecords(records: CSVBirthdayData[]): CSVBirthdayData[] {
+  return records.filter(r => r.warning);
+}
+
+/**
+ * Validation error for a line
+ */
+export interface LineValidationError {
+  lineNumber: number;
+  line: string;
+  error: 'no_date' | 'invalid_name' | 'line_too_long';
+  message: string;
+}
+
+/**
+ * Validate text before parsing
+ * Returns array of errors found
+ */
+export function validateText(text: string): LineValidationError[] {
+  const errors: LineValidationError[] = [];
+  const lines = text.split('\n');
+  
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed) return; // Skip empty lines
+    
+    const lineNumber = index + 1;
+    
+    // Check if line is too long
+    if (trimmed.length > 200) {
+      errors.push({
+        lineNumber,
+        line: trimmed.substring(0, 50) + '...',
+        error: 'line_too_long',
+        message: `שורה ${lineNumber}: שורה ארוכה מדי (${trimmed.length} תווים)`,
+      });
+      return;
+    }
+    
+    // Check if has valid date
+    const dateMatch = extractDate(trimmed);
+    if (!dateMatch) {
+      errors.push({
+        lineNumber,
+        line: trimmed.length > 50 ? trimmed.substring(0, 50) + '...' : trimmed,
+        error: 'no_date',
+        message: `שורה ${lineNumber}: לא נמצא תאריך תקין`,
+      });
+      return;
+    }
+    
+    // Extract and validate names
+    let remainingText = trimmed.substring(0, dateMatch.position) + 
+                        trimmed.substring(dateMatch.position + dateMatch.fullMatch.length);
+    remainingText = remainingText.trim();
+    
+    // Remove keywords and parse names
+    const multiWordKeywords = AFTER_SUNSET_KEYWORDS.filter(k => k.includes(' '));
+    for (const keyword of multiWordKeywords) {
+      const regex = new RegExp(keyword, 'gi');
+      remainingText = remainingText.replace(regex, ' ');
+    }
+    
+    let words = remainingText.split(/\s+/).filter(w => w.trim());
+    const singleWordAfterSunset = AFTER_SUNSET_KEYWORDS.filter(k => !k.includes(' ')).map(k => k.toLowerCase());
+    words = words.filter(word => !singleWordAfterSunset.includes(word.toLowerCase()));
+    const allGenderKeywords = [...GENDER_KEYWORDS.male, ...GENDER_KEYWORDS.female].map(k => k.toLowerCase());
+    words = words.filter(word => !allGenderKeywords.includes(word.toLowerCase()));
+    
+    remainingText = words.join(' ').trim();
+    const { cleanText } = extractNotes(remainingText);
+    const { firstName, lastName } = parseNames(cleanText);
+    
+    if (!firstName || !isValidName(firstName)) {
+      errors.push({
+        lineNumber,
+        line: trimmed.length > 50 ? trimmed.substring(0, 50) + '...' : trimmed,
+        error: 'invalid_name',
+        message: `שורה ${lineNumber}: שם לא תקין`,
+      });
+    } else if (lastName && !isValidName(lastName)) {
+      errors.push({
+        lineNumber,
+        line: trimmed.length > 50 ? trimmed.substring(0, 50) + '...' : trimmed,
+        error: 'invalid_name',
+        message: `שורה ${lineNumber}: שם משפחה לא תקין`,
+      });
+    }
+  });
+  
+  return errors;
 }
 
 /**

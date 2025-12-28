@@ -338,3 +338,6 @@ const handleTextImport = (parsedData: CSVBirthdayData[]) => {
 
 **המשתמשים יכולים עכשיו לייבא רשימות מכל מקום בקלות!** 🚀
 
+
+
+

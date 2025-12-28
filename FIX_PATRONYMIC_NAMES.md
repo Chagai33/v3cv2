@@ -161,3 +161,6 @@ words = words.filter((word, index) => {
 
 **תודה למשתמש על הדיווח - זה תיקון קריטי!** 🙏
 
+
+
+

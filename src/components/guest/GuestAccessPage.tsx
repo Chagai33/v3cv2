@@ -18,7 +18,77 @@ import { birthdayService } from '../../services/birthday.service';
 import { groupService } from '../../services/group.service';
 import { Birthday, BirthdayFormData } from '../../types';
 import { Footer } from '../common/Footer';
-import { HDate } from '@hebcal/core';
+import { HDate, gematriya, Locale } from '@hebcal/core';
+
+// Hebrew date constants
+const HEBREW_MONTHS_HE = [
+  'תשרי', 'חשון', 'כסלו', 'טבת', 'שבט', 'אדר', 'אדר א', 'אדר ב',
+  'ניסן', 'אייר', 'סיון', 'תמוז', 'אב', 'אלול'
+];
+
+const HEBREW_MONTHS_EN = [
+  'Tishrei', 'Cheshvan', 'Kislev', 'Tevet', 'Shevat', 'Adar', 'Adar I', 'Adar II',
+  'Nisan', 'Iyar', 'Sivan', 'Tamuz', 'Av', 'Elul'
+];
+
+const numberToHebrewLetter = (num: number): string => {
+  if (num <= 0) return '';
+  const letters = [
+    '', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט', 'י',
+    'יא', 'יב', 'יג', 'יד', 'טו', 'טז', 'יז', 'יח', 'יט', 'כ',
+    'כא', 'כב', 'כג', 'כד', 'כה', 'כו', 'כז', 'כח', 'כט', 'ל'
+  ];
+  return letters[num] || String(num);
+};
+
+const numberToHebrewYear = (year: number): string => {
+  const shortYear = year % 1000;
+  const hundreds = Math.floor(shortYear / 100);
+  const tens = Math.floor((shortYear % 100) / 10);
+  const units = shortYear % 10;
+
+  const hundredsMap = ['', 'ק', 'ר', 'ש', 'ת', 'תק', 'תר', 'תש', 'תת', 'תתק'];
+  const tensMap = ['', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ'];
+  const unitsMap = ['', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+
+  let res = hundredsMap[hundreds] + tensMap[tens] + unitsMap[units];
+  
+  if (res.length > 1) {
+    res = res.slice(0, -1) + '"' + res.slice(-1);
+  } else {
+    res += "'";
+  }
+  return res;
+};
+
+const currentHebrewYear = new HDate().getFullYear();
+const HEBREW_YEAR_RANGE = Array.from({ length: 121 }, (_, i) => currentHebrewYear - i);
+
+// Hebrew months mapping to English
+const hebrewMonthsToEnglish: Record<string, string> = {
+  'ניסן': 'Nisan',
+  'אייר': 'Iyyar',
+  'סיון': 'Sivan',
+  'סיוון': 'Sivan',
+  'תמוז': 'Tamuz',
+  'אב': 'Av',
+  'אלול': 'Elul',
+  'תשרי': 'Tishrei',
+  'חשון': 'Cheshvan',
+  'חשוון': 'Cheshvan',
+  'כסלו': 'Kislev',
+  'כִּסְלֵו': 'Kislev',
+  'טבת': 'Tevet',
+  'טֵבֵת': 'Tevet',
+  'שבט': 'Shvat',
+  'שְׁבָט': 'Shvat',
+  'אדר': 'Adar',
+  'אדר א': 'Adar I',
+  'אדר א׳': 'Adar I',
+  'אדר ב': 'Adar II',
+  'אדר ב׳': 'Adar II',
+};
+
 
 interface GuestAccessPageState {
   loading: boolean;
@@ -66,10 +136,20 @@ export const GuestAccessPage: React.FC = () => {
   const [birthMonth, setBirthMonth] = useState<number>(1);
   const [birthYear, setBirthYear] = useState<number>(new Date().getFullYear() - 30);
   
+  // Hebrew date input state
+  const [hebrewDay, setHebrewDay] = useState<number>(1);
+  const [hebrewMonth, setHebrewMonth] = useState<string>('Nisan');
+  const [hebrewYear, setHebrewYear] = useState<number>(currentHebrewYear);
+  
   const [honeyPot, setHoneyPot] = useState(''); // Honey pot for bot detection
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  
+  // Hebrew date display
+  const [hebrewDateDisplay, setHebrewDateDisplay] = useState<string>('');
+  const [dateWasChanged, setDateWasChanged] = useState<boolean>(false);
+  const [hebrewDateWasChanged, setHebrewDateWasChanged] = useState<boolean>(false);
 
   // Fetch group and birthdays on mount
   useEffect(() => {
@@ -127,6 +207,54 @@ export const GuestAccessPage: React.FC = () => {
 
     fetchData();
   }, [groupId, token, t]);
+  
+  // Calculate Hebrew date when form opens
+  useEffect(() => {
+    if (showAddForm && formData.birthDateGregorian) {
+      const date = formData.birthDateGregorian instanceof Date 
+        ? formData.birthDateGregorian 
+        : new Date(formData.birthDateGregorian);
+      const hebrewDate = calculateHebrewDate(date, formData.afterSunset || false);
+      setHebrewDateDisplay(hebrewDate);
+    }
+  }, [showAddForm]);
+  
+  // Sync Hebrew -> Gregorian when using Hebrew input
+  useEffect(() => {
+    if (dateInputType === 'hebrew') {
+      // Reset afterSunset when switching to Hebrew mode (not relevant)
+      if (formData.afterSunset) {
+        handleFormChange('afterSunset', false);
+      }
+      
+      try {
+        const hd = new HDate(hebrewDay, hebrewMonth, hebrewYear);
+        const greg = hd.greg();
+        const date = new Date(greg.getFullYear(), greg.getMonth(), greg.getDate());
+        
+        // Update form data
+        handleFormChange('birthDateGregorian', date);
+        
+        // Update the selectors for Gregorian date
+        setBirthDay(date.getDate());
+        setBirthMonth(date.getMonth() + 1);
+        setBirthYear(date.getFullYear());
+        
+        // Update Hebrew date display
+        const hebrewDateStr = calculateHebrewDate(date, false); // afterSunset is always false for Hebrew input
+        setHebrewDateDisplay(hebrewDateStr);
+      } catch (e) {
+        console.error('Invalid Hebrew Date', e);
+      }
+    }
+  }, [hebrewDay, hebrewMonth, hebrewYear, dateInputType]);
+  
+  // Track when Hebrew date fields are manually changed
+  useEffect(() => {
+    if (dateInputType === 'hebrew') {
+      setHebrewDateWasChanged(true);
+    }
+  }, [hebrewDay, hebrewMonth, hebrewYear]);
 
   // Filter birthdays by search term
   const filteredBirthdays = useMemo(() => {
@@ -139,6 +267,9 @@ export const GuestAccessPage: React.FC = () => {
         b.last_name.toLowerCase().includes(term)
     );
   }, [state.birthdays, searchTerm]);
+  
+  // Get Hebrew months based on language
+  const getHebrewMonths = () => i18n.language === 'he' ? HEBREW_MONTHS_HE : HEBREW_MONTHS_EN;
 
   // Check for duplicates before submission
   const checkForDuplicates = () => {
@@ -152,10 +283,59 @@ export const GuestAccessPage: React.FC = () => {
 
     return duplicate;
   };
+  
+  // Calculate and format Hebrew date
+  const calculateHebrewDate = (date: Date, afterSunset: boolean) => {
+    try {
+      // If after sunset, add one day to the date for Hebrew calculation
+      const adjustedDate = new Date(date);
+      if (afterSunset) {
+        adjustedDate.setDate(adjustedDate.getDate() + 1);
+      }
+      
+      const hd = new HDate(adjustedDate);
+      
+      if (i18n.language === 'he') {
+        // Hebrew format: ו׳ טֵבֵת תשפ״ה
+        const day = gematriya(hd.getDate());
+        const month = Locale.gettext(hd.getMonthName(), 'he');
+        const year = gematriya(hd.getFullYear());
+        return `${day} ${month} ${year}`;
+      } else {
+        // English format: 6 Tevet 5785
+        const day = hd.getDate();
+        const monthHebrew = Locale.gettext(hd.getMonthName(), 'he');
+        const monthEnglish = hebrewMonthsToEnglish[monthHebrew] || monthHebrew.replace(/[׳״]/g, ''); // Remove Hebrew punctuation as fallback
+        const year = hd.getFullYear();
+        return `${day} ${monthEnglish} ${year}`;
+      }
+    } catch (error) {
+      console.error('Error calculating Hebrew date:', error);
+      return '';
+    }
+  };
 
   // Handle form field changes
   const handleFormChange = (field: keyof BirthdayFormData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Recalculate Hebrew date when afterSunset changes
+      if (field === 'afterSunset' && newData.birthDateGregorian) {
+        const date = newData.birthDateGregorian instanceof Date 
+          ? newData.birthDateGregorian 
+          : new Date(newData.birthDateGregorian);
+        const hebrewDate = calculateHebrewDate(date, value);
+        setHebrewDateDisplay(hebrewDate);
+        
+        // Mark that date display was changed
+        if (dateWasChanged) {
+          setDateWasChanged(true);
+        }
+      }
+      
+      return newData;
+    });
     setDuplicateWarning(null); // Clear warning on edit
   };
   
@@ -163,6 +343,13 @@ export const GuestAccessPage: React.FC = () => {
   const updateDateFromSelectors = (day: number, month: number, year: number) => {
     const date = new Date(year, month - 1, day);
     handleFormChange('birthDateGregorian', date);
+    
+    // Mark that user has changed the date
+    setDateWasChanged(true);
+    
+    // Update Hebrew date display
+    const hebrewDate = calculateHebrewDate(date, formData.afterSunset || false);
+    setHebrewDateDisplay(hebrewDate);
   };
 
   // Handle form submission
@@ -229,6 +416,9 @@ export const GuestAccessPage: React.FC = () => {
       setBirthMonth(1);
       setBirthYear(new Date().getFullYear() - 30);
       setHoneyPot(''); // Reset honey pot
+      setDateWasChanged(false); // Reset date changed flag
+      setHebrewDateWasChanged(false); // Reset Hebrew date changed flag
+      setHebrewDateDisplay(''); // Clear Hebrew date display
 
       // Refresh data
       const result = await birthdayService.getGroupBirthdaysForGuest(groupId!, token!);
@@ -283,7 +473,7 @@ export const GuestAccessPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex flex-col">
         {/* Logo Header */}
-        <div className="bg-white shadow-sm border-b border-gray-200 py-4">
+        <div className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200 py-4">
           <div className="max-w-4xl mx-auto px-4 flex items-center justify-between">
             <a 
               href={`${window.location.origin}/`}
@@ -398,7 +588,7 @@ export const GuestAccessPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex flex-col">
       {/* Logo Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 py-4">
+      <div className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200 py-4">
         <div className="max-w-4xl mx-auto px-4 flex items-center justify-between">
           <a 
             href={`${window.location.origin}/`}
@@ -475,32 +665,35 @@ export const GuestAccessPage: React.FC = () => {
                 </h3>
               </div>
 
-              {/* First Name */}
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  {t('birthday.firstName', 'שם פרטי')} *
-                </label>
-                <input
-                  type="text"
-                  value={formData.firstName || ''}
-                  onChange={e => handleFormChange('firstName', e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  required
-                />
-              </div>
+              {/* Name Fields - First and Last Name in one row */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* First Name */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                    {t('birthday.firstName', 'שם פרטי')} *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.firstName || ''}
+                    onChange={e => handleFormChange('firstName', e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                  />
+                </div>
 
-              {/* Last Name */}
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  {t('birthday.lastName', 'שם משפחה')} *
-                </label>
-                <input
-                  type="text"
-                  value={formData.lastName || ''}
-                  onChange={e => handleFormChange('lastName', e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  required
-                />
+                {/* Last Name */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                    {t('birthday.lastName', 'שם משפחה')} *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.lastName || ''}
+                    onChange={e => handleFormChange('lastName', e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                  />
+                </div>
               </div>
 
               {/* Birth Date */}
@@ -508,68 +701,186 @@ export const GuestAccessPage: React.FC = () => {
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   {t('birthday.birthDate', 'תאריך לידה')} *
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {/* Day */}
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">{t('common.day', 'יום')}</label>
-                    <select
-                      value={birthDay}
-                      onChange={e => {
-                        const day = parseInt(e.target.value);
-                        setBirthDay(day);
-                        updateDateFromSelectors(day, birthMonth, birthYear);
-                      }}
-                      className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      required
-                    >
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                        <option key={day} value={day}>{day}</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  {/* Month */}
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">{t('common.month', 'חודש')}</label>
-                    <select
-                      value={birthMonth}
-                      onChange={e => {
-                        const month = parseInt(e.target.value);
-                        setBirthMonth(month);
-                        updateDateFromSelectors(birthDay, month, birthYear);
-                      }}
-                      className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      required
-                    >
-                      {[
-                        'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
-                        'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
-                      ].map((monthName, index) => (
-                        <option key={index + 1} value={index + 1}>{monthName} ({index + 1})</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  {/* Year */}
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">{t('common.year', 'שנה')}</label>
-                    <select
-                      value={birthYear}
-                      onChange={e => {
-                        const year = parseInt(e.target.value);
-                        setBirthYear(year);
-                        updateDateFromSelectors(birthDay, birthMonth, year);
-                      }}
-                      className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      required
-                    >
-                      {Array.from({ length: 120 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                        <option key={year} value={year}>{year}</option>
-                      ))}
-                    </select>
-                  </div>
+                
+                {/* Toggle between Gregorian and Hebrew */}
+                <div className="flex gap-2 p-1 bg-gray-100 rounded-lg mb-2">
+                  <button
+                    type="button"
+                    className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${
+                      dateInputType === 'gregorian' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setDateInputType('gregorian')}
+                  >
+                    {t('birthday.gregorianDate', 'תאריך לועזי')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${
+                      dateInputType === 'hebrew' ? 'bg-white shadow text-purple-600' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setDateInputType('hebrew')}
+                  >
+                    {t('birthday.hebrewDate', 'תאריך עברי')}
+                  </button>
                 </div>
+                
+                {dateInputType === 'gregorian' ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Day */}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">{t('common.day', 'יום')}</label>
+                      <select
+                        value={birthDay}
+                        onChange={e => {
+                          const day = parseInt(e.target.value);
+                          setBirthDay(day);
+                          updateDateFromSelectors(day, birthMonth, birthYear);
+                        }}
+                        className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      >
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                          <option key={day} value={day}>{day}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Month */}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">{t('common.month', 'חודש')}</label>
+                      <select
+                        value={birthMonth}
+                        onChange={e => {
+                          const month = parseInt(e.target.value);
+                          setBirthMonth(month);
+                          updateDateFromSelectors(birthDay, month, birthYear);
+                        }}
+                        className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      >
+                        {[
+                          'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
+                          'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
+                        ].map((monthName, index) => (
+                          <option key={index + 1} value={index + 1}>{monthName} ({index + 1})</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Year */}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">{t('common.year', 'שנה')}</label>
+                      <select
+                        value={birthYear}
+                        onChange={e => {
+                          const year = parseInt(e.target.value);
+                          setBirthYear(year);
+                          updateDateFromSelectors(birthDay, birthMonth, year);
+                        }}
+                        className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      >
+                        {Array.from({ length: 120 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Hebrew Day */}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">{t('common.day', 'יום')}</label>
+                      <select
+                        value={hebrewDay}
+                        onChange={e => setHebrewDay(Number(e.target.value))}
+                        className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-center"
+                        dir={i18n.language === 'he' ? "rtl" : "ltr"}
+                      >
+                        {Array.from({ length: 30 }, (_, i) => i + 1).map(d => (
+                          <option key={d} value={d}>
+                            {i18n.language === 'he' ? numberToHebrewLetter(d) : d}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Hebrew Month */}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">{t('common.month', 'חודש')}</label>
+                      <select
+                        value={hebrewMonth}
+                        onChange={e => setHebrewMonth(e.target.value)}
+                        className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-center"
+                        dir={i18n.language === 'he' ? "rtl" : "ltr"}
+                      >
+                        {getHebrewMonths().map((m, idx) => (
+                          <option key={m} value={HEBREW_MONTHS_EN[idx]}>
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Hebrew Year */}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">{t('common.year', 'שנה')}</label>
+                      <select
+                        value={hebrewYear}
+                        onChange={e => setHebrewYear(Number(e.target.value))}
+                        className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-center"
+                        dir="ltr"
+                      >
+                        {HEBREW_YEAR_RANGE.map(y => (
+                          <option key={y} value={y}>
+                            {y} {i18n.language === 'he' ? `(${numberToHebrewYear(y)})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
               </div>
+              
+              {/* Hebrew Date Display - Only show when in Gregorian mode and date was changed */}
+              {hebrewDateDisplay && dateInputType === 'gregorian' && dateWasChanged && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-purple-600" />
+                    <span className="text-xs sm:text-sm font-medium text-purple-900">
+                      {t('birthday.hebrewDate', 'תאריך עברי')}: 
+                    </span>
+                  </div>
+                  <p className="text-sm sm:text-base font-bold text-purple-700 mt-1" dir="rtl">
+                    {hebrewDateDisplay}
+                  </p>
+                  <p className="text-xs text-purple-600 mt-1">
+                    {t('guestAccess.verifyHebrewDate', 'אנא ודא שהתאריך העברי נכון. אם לא, שנה את "אחרי השקיעה" למטה.')}
+                  </p>
+                </div>
+              )}
+              
+              {/* Gregorian Date Display - Only show when in Hebrew mode and date was changed */}
+              {dateInputType === 'hebrew' && formData.birthDateGregorian && hebrewDateWasChanged && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs sm:text-sm font-medium text-blue-900">
+                      {t('birthday.gregorianDate', 'תאריך לועזי')}: 
+                    </span>
+                  </div>
+                  <p className="text-sm sm:text-base font-bold text-blue-700 mt-1">
+                    {new Date(formData.birthDateGregorian).toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    {t('guestAccess.verifyGregorianDate', 'ודא שהתאריך הלועזי המתאים נכון')}
+                  </p>
+                </div>
+              )}
 
               {/* Gender */}
               <div>
@@ -586,19 +897,21 @@ export const GuestAccessPage: React.FC = () => {
                 </select>
               </div>
 
-              {/* After Sunset */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="afterSunset"
-                  checked={formData.afterSunset || false}
-                  onChange={e => handleFormChange('afterSunset', e.target.checked)}
-                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                />
-                <label htmlFor="afterSunset" className="text-xs sm:text-sm text-gray-700">
-                  {t('birthday.afterSunset', 'נולד אחרי השקיעה')}
-                </label>
-              </div>
+              {/* After Sunset - Only relevant for Gregorian dates */}
+              {dateInputType === 'gregorian' && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="afterSunset"
+                    checked={formData.afterSunset || false}
+                    onChange={e => handleFormChange('afterSunset', e.target.checked)}
+                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  />
+                  <label htmlFor="afterSunset" className="text-xs sm:text-sm text-gray-700">
+                    {t('birthday.afterSunset', 'נולד אחרי השקיעה')}
+                  </label>
+                </div>
+              )}
 
               {/* Duplicate Warning */}
               {duplicateWarning && (
@@ -646,6 +959,9 @@ export const GuestAccessPage: React.FC = () => {
                     setBirthMonth(1);
                     setBirthYear(new Date().getFullYear() - 30);
                     setHoneyPot('');
+                    setDateWasChanged(false); // Reset date changed flag
+                    setHebrewDateWasChanged(false); // Reset Hebrew date changed flag
+                    setHebrewDateDisplay(''); // Clear Hebrew date display
                   }}
                   className="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
                 >
@@ -713,11 +1029,14 @@ export const GuestAccessPage: React.FC = () => {
                         {birthday.first_name} {birthday.last_name}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {new Date(birthday.birth_date_gregorian).toLocaleDateString('he-IL', {
+                        {new Date(birthday.birth_date_gregorian).toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US', {
                           day: 'numeric',
                           month: 'long',
                           year: 'numeric',
                         })}
+                      </p>
+                      <p className="text-xs text-purple-600" dir="rtl">
+                        {calculateHebrewDate(new Date(birthday.birth_date_gregorian), birthday.after_sunset || false)}
                       </p>
                     </div>
                   </div>
