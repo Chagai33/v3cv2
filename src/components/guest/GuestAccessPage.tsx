@@ -456,7 +456,7 @@ export const GuestAccessPage: React.FC = () => {
   // Loading state
   if (state.loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-gradient-to-br from-purple-50 to-blue-50">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-gradient-to-br from-purple-50 to-blue-50 overflow-x-hidden max-w-full">
         <div className="flex flex-col items-center animate-pulse">
           <div className="text-5xl font-black tracking-tight leading-none relative inline-flex items-baseline" dir="ltr">
             <span className="text-[#8e24aa]">Heb</span>
@@ -475,10 +475,10 @@ export const GuestAccessPage: React.FC = () => {
   // Error states
   if (state.error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex flex-col overflow-x-hidden">
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex flex-col overflow-x-hidden max-w-full">
         {/* Logo Header */}
-        <div className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200 py-4">
-          <div className="max-w-4xl mx-auto px-3 sm:px-4 flex items-center justify-between">
+        <div className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200 py-4 overflow-x-hidden">
+          <div className="max-w-4xl mx-auto px-3 sm:px-4 flex items-center justify-between overflow-x-hidden">
             <a 
               href={`${window.location.origin}/`}
               className="flex flex-col items-center gap-1 sm:gap-2 hover:opacity-80 transition-opacity flex-shrink min-w-0"
@@ -590,10 +590,10 @@ export const GuestAccessPage: React.FC = () => {
 
   // Success state - Main guest portal
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex flex-col overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex flex-col overflow-x-hidden max-w-full">
       {/* Logo Header */}
-      <div className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200 py-4">
-        <div className="max-w-4xl mx-auto px-3 sm:px-4 flex items-center justify-between">
+      <div className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200 py-4 overflow-x-hidden">
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 flex items-center justify-between overflow-x-hidden">
           <a 
             href={`${window.location.origin}/`}
             className="flex flex-col items-center gap-1 sm:gap-2 hover:opacity-80 transition-opacity flex-shrink min-w-0"
@@ -619,8 +619,8 @@ export const GuestAccessPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-3 sm:p-4 overflow-x-hidden">
-        <div className="max-w-4xl mx-auto py-4 sm:py-8">
+      <div className="flex-1 p-3 sm:p-4 overflow-x-hidden max-w-full">
+        <div className="max-w-4xl mx-auto py-4 sm:py-8 overflow-x-hidden">
           {/* Header */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 text-center">
             <div className="flex flex-col items-center gap-2">
@@ -652,7 +652,7 @@ export const GuestAccessPage: React.FC = () => {
           </div>
 
           {/* Add Birthday Button/Form */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4 overflow-x-hidden max-w-full">
           {!showAddForm ? (
             <button
               onClick={() => setShowAddForm(true)}
@@ -977,7 +977,7 @@ export const GuestAccessPage: React.FC = () => {
         </div>
 
         {/* Existing Birthdays */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 overflow-x-hidden max-w-full">
           <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-3 flex items-center justify-center gap-2">
             <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
             {t('guestAccess.existingBirthdays', 'ימי הולדת קיימים בקבוצה')} ({state.birthdays.length})

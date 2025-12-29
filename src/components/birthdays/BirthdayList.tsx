@@ -9,23 +9,15 @@ import { useGroups } from '../../hooks/useGroups';
 import { useGroupFilter } from '../../contexts/GroupFilterContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { useGoogleCalendar } from '../../contexts/GoogleCalendarContext';
-import { Edit, Trash2, Calendar, Search, CalendarDays, Filter, Gift, Download, Users, X, UploadCloud, CloudOff, Sparkles, Copy, Check, FolderPlus, UserCircle, ChevronDown } from 'lucide-react';
-import { WhatsAppCopyButton } from './WhatsAppCopyButton';
-import { SyncStatusButton } from './SyncStatusButton';
-import { BirthdayQuickActionsModal } from '../modals/BirthdayQuickActionsModal';
+import { Edit, Trash2, Calendar, Search, CalendarDays, RefreshCw, Filter, Gift, Download, Users, X, UploadCloud, CloudOff, Sparkles, Copy, AlertCircle, Check } from 'lucide-react';
 import { FutureBirthdaysModal } from '../modals/FutureBirthdaysModal';
 import { UpcomingGregorianBirthdaysModal } from '../modals/UpcomingGregorianBirthdaysModal';
 import { WishlistModal } from '../modals/WishlistModal';
 import { Tooltip } from '../common/Tooltip';
 import { birthdayCalculationsService } from '../../services/birthdayCalculations.service';
 import { calendarPreferenceService } from '../../services/calendarPreference.service';
-import { writeBatch, doc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../config/firebase';
-import { useAuth } from '../../contexts/AuthContext';
-import { useToast } from '../../contexts/ToastContext';
 import { exportBirthdaysToCSV } from '../../utils/csvExport';
-import { AssignGroupModal } from '../modals/AssignGroupModal';
-import { analyticsService } from '../../services/analytics.service';
+import { useToast } from '../../contexts/ToastContext';
 
 interface BirthdayListProps {
   birthdays: Birthday[];
@@ -43,32 +35,19 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   onOpenCalendarSettings,
 }) => {
   const { t, i18n } = useTranslation();
-  const { user } = useAuth();
   const deleteBirthday = useDeleteBirthday();
   const refreshHebrewData = useRefreshHebrewData();
   const { data: groups = [] } = useGroups();
   const { currentTenant } = useTenant();
   const { selectedGroupIds, toggleGroupFilter, clearGroupFilters } = useGroupFilter();
-  const { isConnected, syncSingleBirthday, syncMultipleBirthdays, removeBirthdayFromCalendar, isSyncing, calendarId, isPrimaryCalendar } = useGoogleCalendar();
+  const { isConnected, syncSingleBirthday, syncMultipleBirthdays, removeBirthdayFromCalendar, isSyncing, calendarId } = useGoogleCalendar();
   const { showToast } = useToast();
-  const [showBlockModal, setShowBlockModal] = useState(false);
-  const [quickActionsBirthday, setQuickActionsBirthday] = useState<Birthday | null>(null);
-  
-  // Local state for tracking which IDs are currently syncing
-  const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
 
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('birthday-search') || '');
   const [sortBy, setSortBy] = useState<'upcoming' | 'upcoming-latest' | 'upcoming-hebrew' | 'upcoming-hebrew-latest' | 'name-az' | 'name-za' | 'age-youngest' | 'age-oldest'>(() => (localStorage.getItem('birthday-sort') as any) || 'upcoming');
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>(() => (localStorage.getItem('birthday-gender') as any) || 'all');
-  const [syncStatusFilter, setSyncStatusFilter] = useState<'all' | 'synced' | 'error' | 'not-synced'>(() => (localStorage.getItem('birthday-sync-status') as any) || 'all');
-  const [whatsappFormat, setWhatsappFormat] = useState<'hebrew' | 'gregorian' | 'both'>(() => {
-    const saved = localStorage.getItem('birthday-whatsapp-format');
-    return (saved === 'hebrew' || saved === 'gregorian' || saved === 'both') ? saved : 'hebrew';
-  });
-  const [includeWeekday, setIncludeWeekday] = useState<boolean>(() => localStorage.getItem('birthday-whatsapp-weekday') === 'true');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [currentTime, setCurrentTime] = useState(Date.now());
-  const [showAssignGroupModal, setShowAssignGroupModal] = useState(false);
 
   // עדכון הזמן כל 5 שניות כדי לעדכן את הטקסט "מחשב..." לרשומות חדשות
   useEffect(() => {
@@ -154,53 +133,6 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
     prevTenantPref.current = currentPref;
   }, [currentTenant, sortBy]); // Added sortBy to deps to ensure immediate correction if it becomes invalid
 
-  // New function to handle bulk assign - ADD mode (merge with existing groups)
-  const handleBulkAssignGroup = async (groupIdsToAdd: string[]) => {
-    const birthdaysToUpdate = birthdays.filter((b) => selectedIds.has(b.id));
-    
-    // Using batch write for efficiency and atomicity
-    const batch = writeBatch(db);
-    let operationCount = 0;
-
-    birthdaysToUpdate.forEach((birthday) => {
-      const currentGroupIds = birthday.group_ids || (birthday.group_id ? [birthday.group_id] : []);
-      
-      // MERGE mode: Add new groups to existing ones (no duplicates)
-      const newGroupIds = Array.from(new Set([...currentGroupIds, ...groupIdsToAdd]));
-      
-      // Check if there's actually a change (new groups were added)
-      const hasChanged = newGroupIds.length !== currentGroupIds.length;
-      
-      if (hasChanged) {
-        const ref = doc(db, 'birthdays', birthday.id);
-        batch.update(ref, { 
-          group_ids: newGroupIds,
-          group_id: newGroupIds[0] || null, // Backward compatibility
-          updated_at: serverTimestamp(),
-          updated_by: user?.id || 'system'
-        });
-        operationCount++;
-      }
-    });
-
-    if (operationCount === 0) {
-        showToast(t('groups.noChangesDetected', 'לא נעשו שינויים'), 'info');
-        setShowAssignGroupModal(false);
-        setSelectedIds(new Set());
-        return;
-    }
-
-    try {
-      await batch.commit();
-      showToast(t('groups.assignedSuccess', 'השיוך לקבוצה בוצע בהצלחה'), 'success');
-      setShowAssignGroupModal(false);
-      setSelectedIds(new Set());
-    } catch (error) {
-      logger.error('Error assigning group:', error);
-      showToast(t('common.error'), 'error');
-    }
-  };
-
   const [showFutureModal, setShowFutureModal] = useState(false);
   const [showGregorianModal, setShowGregorianModal] = useState(false);
   const [showWishlistModal, setShowWishlistModal] = useState(false);
@@ -219,18 +151,6 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   useEffect(() => {
     localStorage.setItem('birthday-gender', genderFilter);
   }, [genderFilter]);
-
-  useEffect(() => {
-    localStorage.setItem('birthday-sync-status', syncStatusFilter);
-  }, [syncStatusFilter]);
-
-  useEffect(() => {
-    localStorage.setItem('birthday-whatsapp-format', whatsappFormat);
-  }, [whatsappFormat]);
-
-  useEffect(() => {
-    localStorage.setItem('birthday-whatsapp-weekday', String(includeWeekday));
-  }, [includeWeekday]);
 
   const locale = i18n.language === 'he' ? he : enUS;
 
@@ -294,26 +214,6 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
       filtered = filtered.filter((b) => b.gender === genderFilter);
     }
 
-    // סינון לפי סטטוס סנכרון - רק אם מחוברים ליומן
-    if (isConnected && syncStatusFilter !== 'all') {
-      filtered = filtered.filter((b) => {
-        if (syncStatusFilter === 'synced') {
-          // מסונכרן תקין = isSynced וללא שגיאה
-          return b.isSynced === true && 
-                 (!b.syncMetadata || (b.syncMetadata.status !== 'ERROR' && b.syncMetadata.status !== 'PARTIAL_SYNC'));
-        }
-        if (syncStatusFilter === 'error') {
-          // שגיאה = יש syncMetadata עם שגיאה
-          return b.syncMetadata?.status === 'ERROR' || b.syncMetadata?.status === 'PARTIAL_SYNC';
-        }
-        if (syncStatusFilter === 'not-synced') {
-          // לא מסונכרן = isSynced לא true
-          return b.isSynced !== true;
-        }
-        return true;
-      });
-    }
-
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -363,21 +263,10 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
     });
 
     return sorted;
-  }, [enrichedBirthdays, searchTerm, sortBy, selectedGroupIds, genderFilter, syncStatusFilter, isConnected]);
+  }, [enrichedBirthdays, searchTerm, sortBy, selectedGroupIds, genderFilter]);
 
   const handleDelete = async (id: string) => {
-    const birthdayToDelete = birthdays.find(b => b.id === id);
-    
-    // Logic aligned with SyncStatusButton
-    const hasEvents = birthdayToDelete?.googleCalendarEventsMap && Object.keys(birthdayToDelete.googleCalendarEventsMap).length > 0;
-    const isLegacySynced = !!(birthdayToDelete?.googleCalendarEventId || (birthdayToDelete?.googleCalendarEventIds && Object.keys(birthdayToDelete.googleCalendarEventIds).length > 0));
-    const isSynced = (birthdayToDelete?.isSynced === true) || hasEvents || isLegacySynced;
-
-    const confirmMessage = isSynced
-        ? t('birthday.deleteConfirmWithCalendar', 'האם אתה בטוח? פעולה זו תמחק את יום ההולדת וגם תסיר את כל האירועים המקושרים מיומן Google.')
-        : t('common.confirmDelete', 'האם אתה בטוח שברצונך למחוק?');
-
-    if (window.confirm(confirmMessage)) {
+    if (window.confirm(t('common.confirmDelete', 'Are you sure?'))) {
       await deleteBirthday.mutateAsync(id);
     }
   };
@@ -415,22 +304,12 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   const handleBulkDelete = async () => {
     if (!window.confirm(t('common.confirmDelete'))) return;
 
-    const count = selectedIds.size;
     const deletePromises = Array.from(selectedIds).map((id) =>
       deleteBirthday.mutateAsync(id)
     );
 
     try {
       await Promise.all(deletePromises);
-      
-      // Track bulk delete - critical if >50 records (security monitoring)
-      if (count > 50) {
-        analyticsService.trackEvent('Security', 'Abuse_Monitor', 'Bulk_Delete', {
-          value: count,
-          critical: true
-        });
-      }
-      
       setSelectedIds(new Set());
     } catch (error) {
       logger.error('Error deleting birthdays:', error);
@@ -458,21 +337,17 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
 
   const handleSyncToCalendar = async (birthdayId: string) => {
     if (!isConnected) {
-      if (onOpenCalendarSettings) onOpenCalendarSettings();
+      showToast('יש להתחבר ליומן Google תחילה', 'error');
       return;
     }
 
     // Strict Mode Check
-    if (isPrimaryCalendar || !calendarId) {
+    if (calendarId === 'primary' || !calendarId) {
       if (onOpenCalendarSettings) {
-        showToast(t('googleCalendar.cannotSyncToPrimary', 'לא ניתן לסנכרן ליומן הראשי. אנא בחר יומן ייעודי.'), 'error');
         onOpenCalendarSettings();
       }
       return;
     }
-
-    // Set Loading State
-    setSyncingIds(prev => new Set(prev).add(birthdayId));
 
     try {
       const result = await syncSingleBirthday(birthdayId);
@@ -484,46 +359,28 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
     } catch (error: any) {
       logger.error('Error syncing birthday:', error);
       showToast(error.message || 'שגיאה בסנכרון ליומן Google', 'error');
-    } finally {
-      // Clear Loading State
-      setSyncingIds(prev => {
-        const next = new Set(prev);
-        next.delete(birthdayId);
-        return next;
-      });
     }
   };
 
   const handleRemoveFromCalendar = async (birthdayId: string) => {
-    // Set Loading State
-    setSyncingIds(prev => new Set(prev).add(birthdayId));
-    
     try {
       await removeBirthdayFromCalendar(birthdayId);
       showToast('יום ההולדת הוסר מיומן Google', 'success');
     } catch (error: any) {
       logger.error('Error removing birthday from calendar:', error);
       showToast(error.message || 'שגיאה בהסרת יום ההולדת מיומן Google', 'error');
-    } finally {
-      // Clear Loading State
-      setSyncingIds(prev => {
-        const next = new Set(prev);
-        next.delete(birthdayId);
-        return next;
-      });
     }
   };
 
   const handleBulkSyncToCalendar = async () => {
     if (!isConnected) {
-      if (onOpenCalendarSettings) onOpenCalendarSettings();
+      showToast('יש להתחבר ליומן Google תחילה', 'error');
       return;
     }
 
     // Strict Mode Check
-    if (isPrimaryCalendar || !calendarId) {
+    if (calendarId === 'primary' || !calendarId) {
       if (onOpenCalendarSettings) {
-        showToast(t('googleCalendar.cannotSyncToPrimary', 'לא ניתן לסנכרן ליומן הראשי. אנא בחר יומן ייעודי.'), 'error');
         onOpenCalendarSettings();
       }
       return;
@@ -546,7 +403,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
     }
   };
 
-  const handleCopyToClipboard = async (formatOverride?: 'hebrew' | 'gregorian' | 'both') => {
+  const handleCopyToClipboard = async () => {
     const selectedBirthdays = filteredAndSortedBirthdays.filter(b => selectedIds.has(b.id));
 
     if (selectedBirthdays.length === 0) {
@@ -554,122 +411,28 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
       return;
     }
 
-    let currentFormat = formatOverride || whatsappFormat;
-    if (currentFormat !== 'gregorian' && currentFormat !== 'both') {
-      currentFormat = 'hebrew';
-    }
-
-    const locale = i18n.language === 'he' ? he : enUS;
-
-    // מיפוי חודשים עבריים לאנגלית
-    const hebrewMonthsToEnglish: Record<string, string> = {
-      'ניסן': 'Nisan',
-      'אייר': 'Iyyar',
-      'סיון': 'Sivan',
-      'סיוון': 'Sivan',
-      'תמוז': 'Tamuz',
-      'אב': 'Av',
-      'אלול': 'Elul',
-      'תשרי': 'Tishrei',
-      'חשון': 'Cheshvan',
-      'חשוון': 'Cheshvan',
-      'כסלו': 'Kislev',
-      'טבת': 'Tevet',
-      'טֵבֵת': 'Tevet',
-      'שבט': 'Shvat',
-      'אדר': 'Adar',
-      'אדר א': 'Adar I',
-      'אדר א׳': 'Adar I',
-      'אדר ב': 'Adar II',
-      'אדר ב׳': 'Adar II',
-    };
-
-    // פונקציה לפורמט תאריך לידה עברי
-    const formatHebrewBirthDate = (birthday: any): string => {
-      if (i18n.language === 'he') {
-        return birthday.birth_date_hebrew_string || '';
-      }
-      
-      // באנגלית - נשתמש בשדות הנפרדים אם קיימים
-      if (birthday.hebrew_day && birthday.hebrew_month && birthday.hebrew_year) {
-        const monthEn = hebrewMonthsToEnglish[birthday.hebrew_month] || birthday.hebrew_month;
-        return `${birthday.hebrew_day} ${monthEn} ${birthday.hebrew_year}`;
-      }
-      
-      // אם אין שדות נפרדים, נחזיר את הסטרינג המקורי
-      return birthday.birth_date_hebrew_string || '';
-    };
-
     const textParts = selectedBirthdays.map(birthday => {
       const calculations = birthday.calculations;
+      const nextHebrewDate = calculations.nextHebrewBirthday;
+      
+      const formattedDate = nextHebrewDate 
+          ? format(nextHebrewDate, 'd MMMM yyyy', { locale: he }) 
+          : '';
+
       const zodiacSign = calculations.hebrewSign ? t(`zodiac.${calculations.hebrewSign}`) : '';
-      
-      let result = `*${birthday.first_name} ${birthday.last_name}*`;
-      
-      // עברי או שניהם - הצג תאריך לידה עברי
-      if (currentFormat === 'hebrew' || currentFormat === 'both') {
-        result += `\n*${t('birthday.birthDate', 'תאריך לידה')}:* ${formatHebrewBirthDate(birthday)}`;
-      }
-      
-      // עברי
-      if (currentFormat === 'hebrew') {
-        const nextHebrewDate = calculations.nextHebrewBirthday;
-        if (nextHebrewDate) {
-          const weekday = includeWeekday 
-            ? format(nextHebrewDate, 'EEEE', { locale }) + ', '
-            : '';
-          const formattedDate = format(nextHebrewDate, 'd MMMM yyyy', { locale });
-          result += `\n*${t('birthday.hebrewBirthday', 'יום הולדת עברי')}:* ${weekday}${formattedDate}`;
-        }
-        result += `\n*${t('birthday.age', 'גיל')}:* ${calculations.ageAtNextHebrewBirthday}`;
-        result += `\n*${t('birthday.zodiac', 'מזל')}:* ${zodiacSign}`;
-      }
-      
-      // לועזי
-      else if (currentFormat === 'gregorian') {
-        const nextGregDate = calculations.nextGregorianBirthday;
-        if (nextGregDate) {
-          const weekday = includeWeekday 
-            ? format(nextGregDate, 'EEEE', { locale }) + ', '
-            : '';
-          const formattedDate = format(nextGregDate, 'd MMMM yyyy', { locale });
-          result += `\n*${t('birthday.gregorianBirthday', 'יום הולדת לועזי')}:* ${weekday}${formattedDate}`;
-        }
-        result += `\n*${t('birthday.age', 'גיל')}:* ${calculations.ageAtNextGregorianBirthday}`;
-        result += `\n*${t('birthday.zodiac', 'מזל')}:* ${zodiacSign}`;
-      }
-      
-      // שניהם
-      else if (currentFormat === 'both') {
-        const nextHebrewDate = calculations.nextHebrewBirthday;
-        if (nextHebrewDate) {
-          const weekday = includeWeekday 
-            ? format(nextHebrewDate, 'EEEE', { locale }) + ', '
-            : '';
-          const formattedDate = format(nextHebrewDate, 'd MMMM yyyy', { locale });
-          result += `\n*${t('birthday.hebrewBirthday', 'יום הולדת עברי')}:* ${weekday}${formattedDate}`;
-        }
-        
-        const nextGregDate = calculations.nextGregorianBirthday;
-        if (nextGregDate) {
-          const weekday = includeWeekday 
-            ? format(nextGregDate, 'EEEE', { locale }) + ', '
-            : '';
-          const formattedDate = format(nextGregDate, 'd MMMM yyyy', { locale });
-          result += `\n*${t('birthday.gregorianBirthday', 'יום הולדת לועזי')}:* ${weekday}${formattedDate}`;
-        }
-        result += `\n*${t('birthday.age', 'גיל')}:* ${calculations.ageAtNextHebrewBirthday}`;
-        result += `\n*${t('birthday.zodiac', 'מזל')}:* ${zodiacSign}`;
-      }
-      
-      return result;
+
+      return `*${birthday.first_name} ${birthday.last_name}*
+*תאריך לידה:* ${birthday.birth_date_hebrew_string || ''}
+*מזל:* ${zodiacSign}
+*יום הולדת עברי:* ${formattedDate}
+*גיל:* ${calculations.ageAtNextHebrewBirthday}`;
     });
 
     const fullText = textParts.join('\n--\n');
 
     try {
       await navigator.clipboard.writeText(fullText);
-      showToast('הרשימה הועתקה בהצלחה', 'success');
+      showToast('התאריכים העבריים והמזלות הועתקו ללוח', 'success');
       setIsCopied(true);
       setTimeout(() => {
         setIsCopied(false);
@@ -681,11 +444,6 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
     }
   };
 
-  const quickCopy = (formatType: 'hebrew' | 'gregorian' | 'both') => {
-    setWhatsappFormat(formatType);
-    handleCopyToClipboard(formatType);
-  };
-
   const getSortSelectColor = () => {
     if (sortBy.startsWith('upcoming-hebrew')) return 'text-[#8e24aa]';
     if (sortBy.startsWith('upcoming')) return 'text-blue-600';
@@ -694,9 +452,8 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      <div className="sticky top-[56px] sm:top-[64px] z-30 bg-gray-50 py-3 -mx-3 px-3 sm:-mx-6 sm:px-6 shadow-sm transition-all">
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-          <div className="flex-1 relative">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+        <div className="flex-1 relative">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
           <input
             type="text"
@@ -720,16 +477,16 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
           <button
             onClick={() => setShowGroupFilter(!showGroupFilter)}
             className={`px-3 sm:px-4 py-1.5 sm:py-2 border rounded-lg font-medium transition-colors flex items-center gap-1.5 sm:gap-2 text-sm whitespace-nowrap ${
-              selectedGroupIds.length > 0 || genderFilter !== 'all' || syncStatusFilter !== 'all'
+              selectedGroupIds.length > 0 || genderFilter !== 'all'
                 ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
             }`}
           >
             <Filter className="w-4 h-4" />
             <span className="hidden sm:inline">{t('common.filters', 'Filters')}</span>
-            {(selectedGroupIds.length > 0 || genderFilter !== 'all' || syncStatusFilter !== 'all') && (
+            {(selectedGroupIds.length > 0 || genderFilter !== 'all') && (
               <span className="bg-white text-blue-600 px-1.5 py-0.5 rounded-full text-xs font-bold">
-                {selectedGroupIds.length + (genderFilter !== 'all' ? 1 : 0) + (syncStatusFilter !== 'all' ? 1 : 0)}
+                {selectedGroupIds.length + (genderFilter !== 'all' ? 1 : 0)}
               </span>
             )}
           </button>
@@ -757,7 +514,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
       </div>
 
       {selectedIds.size > 0 && (
-        <div className="bg-white border border-slate-200 rounded-lg p-2.5 sm:p-4 shadow-lg mt-3 sm:mt-4">
+        <div className="sticky top-14 sm:top-16 z-10 bg-white border border-slate-200 rounded-lg p-2.5 sm:p-4 shadow-lg">
           <div className={`flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 ${i18n.language === 'he' ? 'justify-start' : 'justify-start'}`}>
             <div className="flex items-center gap-2">
               <span className="font-semibold text-blue-900 text-sm">
@@ -797,22 +554,37 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                     <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">{t('birthday.exportSelected')}</span>
                   </button>
-                  <button
-                    onClick={() => setShowAssignGroupModal(true)}
-                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1"
-                  >
-                    <FolderPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">{t('groups.assignToGroup', 'הוספה לקבוצה')}</span>
-                  </button>
                   {showHebrewColumn && (
-                    <WhatsAppCopyButton
-                      onCopy={handleCopyToClipboard}
-                      onQuickCopy={quickCopy}
-                      isCopied={isCopied}
-                      includeWeekday={includeWeekday}
-                      onIncludeWeekdayChange={setIncludeWeekday}
-                    />
+                  <button
+                    onClick={handleCopyToClipboard}
+                    className={`px-2 sm:px-3 py-1 sm:py-1.5 border shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1 ${
+                      isCopied 
+                        ? 'bg-green-100 text-green-700 border-green-300' 
+                        : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'
+                    }`}
+                    title="העתק רשימת ימי הולדת (עברי)"
+                  >
+                    {isCopied ? (
+                      <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    ) : (
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                      </svg>
+                    )}
+                    <span className="hidden sm:inline">{isCopied ? 'הועתק!' : 'העתק לוואטסאפ'}</span>
+                  </button>
                   )}
+                  <button
+                    onClick={() => handleBulkRefresh()}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-violet-50 text-violet-600 border border-violet-200 hover:bg-violet-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">{t('birthday.refresh')}</span>
+                  </button>
                   <button
                     onClick={() => handleBulkDelete()}
                     className="px-2 sm:px-3 py-1 sm:py-1.5 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1"
@@ -827,25 +599,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                       className="px-2 sm:px-3 py-1 sm:py-1.5 bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <UploadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">{t('googleCalendar.syncSelected', 'סנכרן')}</span>
-                    </button>
-                  )}
-                  {isConnected && (
-                    <button
-                      onClick={async () => {
-                        if (!window.confirm(t('googleCalendar.confirmBulkUnsync', 'האם לבטל סנכרון ולמחוק מהיומן עבור הרשומות שנבחרו?'))) return;
-                        const birthdaysToUnsync = Array.from(selectedIds);
-                        let successCount = 0;
-                        for (const bid of birthdaysToUnsync) {
-                           try { await removeBirthdayFromCalendar(bid); successCount++; } catch (e) { logger.error(e); }
-                        }
-                        setSelectedIds(new Set());
-                        showToast(`${successCount} רשומות הוסרו מהסנכרון`, 'success');
-                      }}
-                      className="px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1"
-                    >
-                      <CloudOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">{t('googleCalendar.unsyncSelected', 'בטל סנכרון')}</span>
+                      <span className="hidden sm:inline">{t('googleCalendar.syncToCalendar')}</span>
                     </button>
                   )}
                   <button
@@ -863,6 +617,13 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                   >
                     <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">{t('common.delete')}</span>
+                  </button>
+                  <button
+                    onClick={() => handleBulkRefresh()}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-violet-50 text-violet-600 border border-violet-200 hover:bg-violet-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">{t('birthday.refresh')}</span>
                   </button>
                   <button
                     onClick={async () => {
@@ -894,21 +655,29 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                     <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">{t('birthday.exportSelected')}</span>
                   </button>
-                  <button
-                    onClick={() => setShowAssignGroupModal(true)}
-                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1"
-                  >
-                    <FolderPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">{t('groups.assignToGroup', 'הוספה לקבוצה')}</span>
-                  </button>
                   {showHebrewColumn && (
-                    <WhatsAppCopyButton
-                      onCopy={handleCopyToClipboard}
-                      onQuickCopy={quickCopy}
-                      isCopied={isCopied}
-                      includeWeekday={includeWeekday}
-                      onIncludeWeekdayChange={setIncludeWeekday}
-                    />
+                  <button
+                    onClick={handleCopyToClipboard}
+                    className={`px-2 sm:px-3 py-1 sm:py-1.5 border shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1 ${
+                      isCopied 
+                        ? 'bg-green-100 text-green-700 border-green-300' 
+                        : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'
+                    }`}
+                    title="העתק רשימת ימי הולדת (עברי)"
+                  >
+                    {isCopied ? (
+                      <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    ) : (
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                      </svg>
+                    )}
+                    <span className="hidden sm:inline">{isCopied ? 'הועתק!' : 'העתק לוואטסאפ'}</span>
+                  </button>
                   )}
                   {isConnected && (
                     <button
@@ -917,25 +686,7 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                       className="px-2 sm:px-3 py-1 sm:py-1.5 bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <UploadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">{t('googleCalendar.syncSelected', 'סנכרן')}</span>
-                    </button>
-                  )}
-                  {isConnected && (
-                    <button
-                      onClick={async () => {
-                        if (!window.confirm(t('googleCalendar.confirmBulkUnsync', 'האם לבטל סנכרון ולמחוק מהיומן עבור הרשומות שנבחרו?'))) return;
-                        const birthdaysToUnsync = Array.from(selectedIds);
-                        let successCount = 0;
-                        for (const bid of birthdaysToUnsync) {
-                           try { await removeBirthdayFromCalendar(bid); successCount++; } catch (e) { logger.error(e); }
-                        }
-                        setSelectedIds(new Set());
-                        showToast(`${successCount} רשומות הוסרו מהסנכרון`, 'success');
-                      }}
-                      className="px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 shadow-sm rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1"
-                    >
-                      <CloudOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">{t('googleCalendar.unsyncSelected', 'בטל סנכרון')}</span>
+                      <span className="hidden sm:inline">{t('googleCalendar.syncToCalendar')}</span>
                     </button>
                   )}
                   <button
@@ -950,71 +701,57 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
           </div>
         </div>
       )}
-      </div>
 
       {showGroupFilter && (
         <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4 space-y-3 sm:space-y-4 max-h-[60vh] sm:max-h-none overflow-y-auto">
-          {/* Sync Status Filter - מוצג רק כשיש חיבור ליומן */}
-          {isConnected && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm sm:text-base font-semibold text-gray-900 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  {t('filter.syncStatus', 'סטטוס סנכרון')}
-                </h3>
-                {syncStatusFilter !== 'all' && (
-                  <button
-                    onClick={() => setSyncStatusFilter('all')}
-                    className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    {t('common.clear', 'Clear')}
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900 flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                {t('filter.gender', 'Gender')}
+              </h3>
+              {genderFilter !== 'all' && (
                 <button
-                  onClick={() => setSyncStatusFilter('all')}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
-                    syncStatusFilter === 'all'
-                      ? 'bg-gray-600 border-gray-600 text-white'
-                      : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
-                  }`}
+                  onClick={() => setGenderFilter('all')}
+                  className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium"
                 >
-                  {t('filter.all', 'הכל')}
+                  {t('common.clear', 'Clear')}
                 </button>
-                <button
-                  onClick={() => setSyncStatusFilter(syncStatusFilter === 'synced' ? 'all' : 'synced')}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
-                    syncStatusFilter === 'synced'
-                      ? 'bg-green-600 border-green-600 text-white'
-                      : 'bg-white border-green-300 text-green-600 hover:border-green-400'
-                  }`}
-                >
-                  ✓ {t('filter.synced', 'מסונכרן')}
-                </button>
-                <button
-                  onClick={() => setSyncStatusFilter(syncStatusFilter === 'error' ? 'all' : 'error')}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
-                    syncStatusFilter === 'error'
-                      ? 'bg-red-600 border-red-600 text-white'
-                      : 'bg-white border-red-300 text-red-600 hover:border-red-400'
-                  }`}
-                >
-                  ⚠️ {t('filter.syncError', 'שגיאה')}
-                </button>
-                <button
-                  onClick={() => setSyncStatusFilter(syncStatusFilter === 'not-synced' ? 'all' : 'not-synced')}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
-                    syncStatusFilter === 'not-synced'
-                      ? 'bg-gray-600 border-gray-600 text-white'
-                      : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
-                  }`}
-                >
-                  ○ {t('filter.notSynced', 'לא מסונכרן')}
-                </button>
-              </div>
+              )}
             </div>
-          )}
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+              <button
+                onClick={() => setGenderFilter('all')}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
+                  genderFilter === 'all'
+                    ? 'bg-gray-600 border-gray-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+                }`}
+              >
+                {t('filter.all', 'All')}
+              </button>
+              <button
+                onClick={() => setGenderFilter(genderFilter === 'male' ? 'all' : 'male')}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
+                  genderFilter === 'male'
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : 'bg-white border-blue-300 text-blue-600 hover:border-blue-400'
+                }`}
+              >
+                {t('filter.male', 'Male')}
+              </button>
+              <button
+                onClick={() => setGenderFilter(genderFilter === 'female' ? 'all' : 'female')}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
+                  genderFilter === 'female'
+                    ? 'bg-pink-600 border-pink-600 text-white'
+                    : 'bg-white border-pink-300 text-pink-600 hover:border-pink-400'
+                }`}
+              >
+                {t('filter.female', 'Female')}
+              </button>
+            </div>
+          </div>
 
           {groups.length > 0 && (
             <div>
@@ -1076,56 +813,6 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
               </div>
             </div>
           )}
-
-          {/* Gender Filter - הועבר לאחרון */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm sm:text-base font-semibold text-gray-900 flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                {t('filter.gender', 'מין')}
-              </h3>
-              {genderFilter !== 'all' && (
-                <button
-                  onClick={() => setGenderFilter('all')}
-                  className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  {t('common.clear', 'נקה')}
-                </button>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              <button
-                onClick={() => setGenderFilter('all')}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
-                  genderFilter === 'all'
-                    ? 'bg-gray-600 border-gray-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
-                }`}
-              >
-                {t('filter.all', 'הכל')}
-              </button>
-              <button
-                onClick={() => setGenderFilter(genderFilter === 'male' ? 'all' : 'male')}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
-                  genderFilter === 'male'
-                    ? 'bg-blue-600 border-blue-600 text-white'
-                    : 'bg-white border-blue-300 text-blue-600 hover:border-blue-400'
-                }`}
-              >
-                {t('filter.male', 'זכר')}
-              </button>
-              <button
-                onClick={() => setGenderFilter(genderFilter === 'female' ? 'all' : 'female')}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
-                  genderFilter === 'female'
-                    ? 'bg-pink-600 border-pink-600 text-white'
-                    : 'bg-white border-pink-300 text-pink-600 hover:border-pink-400'
-                }`}
-              >
-                {t('filter.female', 'נקבה')}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -1203,30 +890,14 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                       </td>
                       <td className="px-2 sm:px-6 py-2 sm:py-4">
                         <div className="flex items-center gap-1.5 sm:gap-3">
-                          <button 
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                console.log('Opening quick actions for:', birthday.first_name);
-                                setQuickActionsBirthday(birthday);
-                            }}
-                            className="text-xs sm:text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline transition-colors text-start"
-                          >
+                          <span className="text-xs sm:text-sm font-medium text-gray-900">
                             {birthday.first_name} {birthday.last_name}
-                          </button>
+                          </span>
                           {duplicateIds?.has(birthday.id) && (
                             <div className="relative group/tooltip">
                               <Copy className="w-3 h-3 sm:w-4 sm:h-4 text-orange-500" />
                               <div className="absolute bottom-full start-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-50">
                                 {t('birthday.possibleDuplicate', 'כפילות אפשרית')}
-                              </div>
-                            </div>
-                          )}
-                          {birthday.created_by_guest && (
-                            <div className="relative group/tooltip">
-                              <UserCircle className="w-3 h-3 sm:w-4 sm:h-4 text-purple-500" />
-                              <div className="absolute bottom-full start-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-50">
-                                {t('birthday.addedByGuest', 'נוסף על ידי אורח')}
                               </div>
                             </div>
                           )}
@@ -1379,17 +1050,60 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
                         >
                           <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </button>
+                        <button
+                          onClick={() => handleRefresh(birthday.id)}
+                          disabled={refreshHebrewData.isPending}
+                          className="p-1 sm:p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={t('birthday.refresh')}
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${refreshHebrewData.isPending ? 'animate-spin' : ''}`} />
+                        </button>
                         {isConnected && (
-                          <div className="flex items-center justify-center mx-1">
-                            <SyncStatusButton
-                              birthday={birthday}
-                              isPendingChange={unsyncedMap.get(birthday.id)}
-                              isLoading={syncingIds.has(birthday.id)}
-                              isDisabled={isSyncing}
-                              onSync={handleSyncToCalendar}
-                              onRemove={handleRemoveFromCalendar}
-                            />
-                          </div>
+                          (birthday.googleCalendarEventId || birthday.googleCalendarEventIds) ? (
+                            <>
+                              {unsyncedMap.get(birthday.id) && (
+                                <div className="relative">
+                                  <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-600" title={t('birthday.unsyncedChanges')} />
+                                </div>
+                              )}
+                              <button
+                                onClick={() => handleRemoveFromCalendar(birthday.id)}
+                                disabled={isSyncing}
+                                className="p-1 sm:p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={t('googleCalendar.remove')}
+                              >
+                                <CloudOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                              </button>
+                              {unsyncedMap.get(birthday.id) && (
+                                <button
+                                  onClick={() => handleSyncToCalendar(birthday.id)}
+                                  disabled={isSyncing}
+                                  className="p-1 sm:p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title={t('googleCalendar.updateToCalendar')}
+                                >
+                                  <UploadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => handleSyncToCalendar(birthday.id)}
+                              disabled={isSyncing}
+                              className="p-1 sm:p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={t('googleCalendar.syncToCalendar')}
+                            >
+                              <UploadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </button>
+                          )
+                        )}
+                        {onAddToCalendar && (
+                          <button
+                            onClick={() => onAddToCalendar(birthday)}
+                            className="p-1 sm:p-2 text-green-600 hover:bg-green-100 rounded-lg transition-all hover:scale-110"
+                            title={t('birthday.addToCalendar')}
+                          >
+                            <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          </button>
                         )}
                         {(!birthday.group_ids || birthday.group_ids.length === 0) && (
                           <button
@@ -1427,14 +1141,6 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
         </div>
       </div>
 
-      <AssignGroupModal
-        isOpen={showAssignGroupModal}
-        onClose={() => setShowAssignGroupModal(false)}
-        onConfirm={handleBulkAssignGroup}
-        groups={groups}
-        count={selectedIds.size}
-      />
-
       <FutureBirthdaysModal
         isOpen={showFutureModal}
         onClose={() => setShowFutureModal(false)}
@@ -1460,69 +1166,6 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
           }}
           birthday={selectedBirthday}
         />
-      )}
-
-      {quickActionsBirthday && (
-        <BirthdayQuickActionsModal
-          isOpen={!!quickActionsBirthday}
-          onClose={() => setQuickActionsBirthday(null)}
-          birthday={quickActionsBirthday}
-          isConnected={isConnected}
-          isSyncing={isSyncing}
-          isPendingChange={unsyncedMap.get(quickActionsBirthday.id) || false}
-          isSyncLoading={syncingIds.has(quickActionsBirthday.id)}
-          onSync={handleSyncToCalendar}
-          onRemove={handleRemoveFromCalendar}
-          onWishlist={(b) => {
-            setSelectedBirthday(b);
-            setShowWishlistModal(true);
-          }}
-          onEdit={onEdit}
-          onDelete={handleDelete}
-        />
-      )}
-
-      {showBlockModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowBlockModal(false)}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
-                <div className="p-6 text-center space-y-4">
-                    <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Calendar className="w-8 h-8 text-amber-600" />
-                    </div>
-                    
-                    <h3 className="text-xl font-bold text-gray-900">
-                        {t('googleCalendar.setupRequired', 'נדרשת הגדרה')}
-                    </h3>
-                    
-                    <div className="space-y-2 text-gray-600">
-                        <p>
-                            {t('googleCalendar.cannotSyncToPrimary', 'לא ניתן לסנכרן ליומן הראשי.')}
-                        </p>
-                        <p className="text-sm">
-                            {t('googleCalendar.protectDataExplanation', 'כדי לשמור על הסדר ביומן האישי שלך, האפליקציה עובדת עם יומן ייעודי בלבד.')}
-                        </p>
-                    </div>
-
-                    <div className="pt-4 flex flex-col gap-3">
-                        <button
-                            onClick={() => {
-                                setShowBlockModal(false);
-                                if (onOpenCalendarSettings) onOpenCalendarSettings();
-                            }}
-                            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-blue-200"
-                        >
-                            {t('googleCalendar.goToSettings', 'עבור להגדרות יומן')}
-                        </button>
-                        <button
-                            onClick={() => setShowBlockModal(false)}
-                            className="w-full py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium rounded-xl transition-colors"
-                        >
-                            {t('common.cancel', 'ביטול')}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
       )}
     </div>
   );

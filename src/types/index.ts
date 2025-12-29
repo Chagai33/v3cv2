@@ -20,7 +20,6 @@ export interface Tenant {
   is_guest_portal_enabled?: boolean;
   sharedCalendarId?: string | null;
   sharedCalendarName?: string | null;
-  guest_last_acknowledged?: number;
   created_at: string;
   updated_at: string;
 }
@@ -53,10 +52,6 @@ export interface Group {
   type?: GroupType;
   color: string;
   is_guest_portal_enabled?: boolean;
-  guest_access_token?: string | null;
-  guest_token_expires_at?: string | null; // ISO string for token expiration (72 hours from generation)
-  guest_contribution_limit?: number; // Max number of birthdays allowed per token (default: 50)
-  is_guest_access_enabled?: boolean;
   calendar_preference?: CalendarPreference;
   created_at: string;
   updated_at: string;
@@ -97,23 +92,10 @@ export interface Birthday {
     hebrew?: string[];
   } | null;
   lastSyncedAt?: string | null;
-  googleCalendarEventsMap?: { [key: string]: string };
-  isSynced?: boolean; // Added for frontend logic
-  syncMetadata?: {
-    status: 'SYNCED' | 'PARTIAL_SYNC' | 'ERROR' | 'PENDING';
-    lastAttemptAt: string;
-    failedKeys: string[];
-    lastErrorMessage: string | null;
-    retryCount: number;
-    dataHash: string;
-  };
-  created_by_guest?: boolean;
-  guest_token_used?: string | null;
   created_at: string;
   created_by: string;
   updated_at: string;
   updated_by: string;
-  _systemUpdate?: boolean;  // ✅ דגל למניעת לולאה אינסופית ב-triggers
 }
 
 export interface WishlistItem {
@@ -218,9 +200,6 @@ export interface CSVBirthdayRow {
   validationErrors?: string[];
   warnings?: string[];
   isDuplicate?: boolean;
-  // For text import - preserve original line info
-  originalLine?: string;
-  lineNumber?: number;
 }
 
 export interface ValidationResult {
@@ -322,7 +301,7 @@ export interface GoogleCalendarStatus {
   picture: string;
   calendarId: string;
   calendarName: string;
-  syncStatus: 'IDLE' | 'IN_PROGRESS' | 'DELETING';
+  syncStatus: 'IDLE' | 'IN_PROGRESS';
   lastSyncStart: number;
   recentActivity: SyncHistoryItem[];
 }
@@ -334,14 +313,13 @@ export interface GoogleCalendarContextType {
   userEmail: string | null;
   calendarId: string | null;
   calendarName: string | null;
-  isPrimaryCalendar: boolean; // Added
-  syncStatus: 'IDLE' | 'IN_PROGRESS' | 'DELETING'; // Added
+  syncStatus: 'IDLE' | 'IN_PROGRESS'; // Added
   recentActivity: SyncHistoryItem[]; // Added
   connectToGoogle: () => Promise<void>;
   syncSingleBirthday: (birthdayId: string) => Promise<SyncResult>;
   syncMultipleBirthdays: (birthdayIds: string[]) => Promise<BulkSyncResult>;
   removeBirthdayFromCalendar: (birthdayId: string) => Promise<void>;
-  deleteAllSyncedEvents: (tenantId: string, forceDBOnly?: boolean) => Promise<{ success: boolean; message: string }>; // Updated to async job response
+  deleteAllSyncedEvents: (tenantId: string, forceDBOnly?: boolean) => Promise<{ totalDeleted: number; failedCount: number; calendarName?: string }>; // Added calendarName
   disconnect: () => Promise<void>;
   refreshStatus: () => Promise<void>;
   createCalendar: (name: string) => Promise<{ calendarId: string; calendarName: string }>;
