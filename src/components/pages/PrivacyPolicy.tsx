@@ -14,7 +14,7 @@ export const PrivacyPolicy: React.FC = () => {
         </h1>
         
         <p className="text-sm text-gray-600 mb-8">
-          {t('privacy.lastUpdated', 'תאריך עדכון אחרון')}: 12 בנובמבר 2025
+          {t('privacy.lastUpdated', 'תאריך עדכון אחרון')}: 29 בדצמבר 2025
         </p>
 
         <div className="prose prose-sm max-w-none" dir={isHebrew ? 'rtl' : 'ltr'}>
@@ -44,8 +44,8 @@ export const PrivacyPolicy: React.FC = () => {
               <div>
                 <strong className="text-gray-900">{t('privacy.section1.subtitle2', 'מידע שאתה מזין (תוכן משתמש):')}</strong>
                 <ul className="list-disc list-inside mt-2 space-y-1 text-gray-700">
-                  <li>{t('privacy.section1.item3', 'מידע אודות צדדים שלישיים (בעלי יום ההולדת): שם פרטי, שם משפחה, תאריך לידה לועזי, מין (אופציונלי), וציון האם הלידה אירעה אחרי השקיעה.')}</li>
-                  <li>{t('privacy.section1.item4', 'פרטי "ארגונים" (Tenants) ו"קבוצות" (Groups) שאתה יוצר.')}</li>
+                  <li>{t('privacy.section1.item3', 'מידע אודות צדדים שלישיים (בעלי יום ההולדת): שם פרטי, שם משפחה, תאריך לידה לועזי, מין, וציון האם הלידה אירעה אחרי השקיעה.')}</li>
+                  <li>{t('privacy.section1.item4', 'פרטי "קבוצות" (Groups) שאתה יוצר לניהול רשימות ימי הולדת.')}</li>
                   <li>{t('privacy.section1.item5', 'הערות או פריטי רשימת משאלות (Wishlist) שאתה מוסיף לרשומות.')}</li>
                 </ul>
               </div>
@@ -67,7 +67,7 @@ export const PrivacyPolicy: React.FC = () => {
             </p>
             <ul className="list-disc list-inside space-y-1 text-gray-700">
               <li>{t('privacy.section2.item1', 'כדי לאפשר את תפקודה התקין של האפליקציה, לספק לך את השירות ולאמת את זהותך.')}</li>
-              <li>{t('privacy.section2.item2', 'כדי להציג את פרטי ימי ההולדת לחברי הארגון (Tenant) שלך.')}</li>
+              <li>{t('privacy.section2.item2', 'כדי להציג את פרטי ימי ההולדת לך ולמי שתבחר לשתף איתו באמצעות לינק שיתוף.')}</li>
               <li>{t('privacy.section2.item3', 'כדי לבצע חישוב של תאריכים עבריים (כמפורט בסעיף 3).')}</li>
               <li>{t('privacy.section2.item4', 'כדי לאפשר לך לסנכרן אירועים ליומן הגוגל האישי שלך (כמפורט בסעיף 3).')}</li>
             </ul>
@@ -82,9 +82,9 @@ export const PrivacyPolicy: React.FC = () => {
             </p>
             <div className="space-y-3">
               <div>
-                <strong className="text-gray-900">{t('privacy.section3.subtitle1', 'חברי הארגון (Tenant):')}</strong>
+                <strong className="text-gray-900">{t('privacy.section3.subtitle1', 'שיתוף קבוצות (לינק אורח):')}</strong>
                 <p className="text-gray-700 mt-1">
-                  {t('privacy.section3.content1', 'תוכן המשתמש שאתה מזין (כגון פרטי ימי הולדת) יהיה גלוי לשאר המשתמשים באותו "ארגון" (Tenant) שאליו שייכת הרשומה, בהתאם להגדרות האבטחה של הפרויקט.')}
+                  {t('privacy.section3.content1', 'תוכן המשתמש שאתה מזין (כגון פרטי ימי הולדת) הוא פרטי כברירת מחדל. אם תבחר כמנהל קבוצה ליצור "לינק שיתוף", רק הרשומות בקבוצה הספציפית הזו יהיו גלויות למי שמחזיק בלינק. מחזיקי הלינק יכולים לצפות ברשומות ולהוסיף רשומות חדשות בהתאם להגדרות הקבוצה. מסיבות אבטחה, תוקף הלינק מוגבל ל-72 שעות, ולאחר מכן יש ליצור לינק חדש.')}
                 </p>
               </div>
               <div>
@@ -94,17 +94,17 @@ export const PrivacyPolicy: React.FC = () => {
                 </p>
               </div>
               <div>
-                <strong className="text-gray-900">{t('privacy.section3.subtitle3', 'Hebcal API:')}</strong>
+                <strong className="text-gray-900">{t('privacy.section3.subtitle3', 'חישוב תאריכים עבריים:')}</strong>
                 <p className="text-gray-700 mt-1">
-                  {t('privacy.section3.content3', 'לצורך חישוב תאריך עברי מדויק, אנו שולחים באופן אוטומטי את התאריך הלועזי, המין (אם סופק) והמידע האם הלידה אירעה \'אחרי השקיעה\' לשירות החיצוני Hebcal API. אנו לא שולחים שמות או כל מידע מזהה אישי אחר (כגון שם פרטי או שם משפחה) לשירות זה.')}
+                  {t('privacy.section3.content3', 'חישוב התאריכים העבריים מתבצע באופן מקומי בדפדפן שלך באמצעות ספריית @hebcal/core. אין שליחת מידע לשרתים חיצוניים לצורך חישוב זה - כל העיבוד מתבצע במכשיר שלך.')}
                 </p>
               </div>
               <div>
                 <strong className="text-gray-900">{t('privacy.section3.subtitle4', 'Google Calendar API (באישור המשתמש בלבד):')}</strong>
                 <ul className="list-disc list-inside mt-2 space-y-1 text-gray-700">
                   <li>{t('privacy.section3.item1', 'אם תבחר לסנכרן את ימי ההולדת ליומן שלך, האפליקציה תבקש את הרשאתך לגישה ליומן הגוגל שלך (scope: calendar.events).')}</li>
-                  <li>{t('privacy.section3.item2', 'אנו נשתמש בהרשאה זו אך ורק כדי ליצור, לעדכן ולמחוק אירועי יום הולדת שהאפליקציה יצרה עבורך.')}</li>
-                  <li>{t('privacy.section3.item3', 'כדי לאפשר פעולות אלו, אנו שומרים \'טוקן גישה\' (accessToken) עבור חשבונך במסד הנתונים שלנו (googleCalendarTokens). טוקן זה נשמר באופן מאובטח ונגיש רק לך, ואינו משמש לשום מטרה אחרת, ובפרט לא לקריאת אירועים קיימים ביומן שלך שלא נוצרו על ידי האפליקציה.')}</li>
+                  <li>{t('privacy.section3.item2', 'לצורך אבטחת המשתמש והגנה על המידע שלך, האפליקציה כותבת ומוחקת אירועים אך ורק מיומנים ייעודיים שנוצרו על ידי האפליקציה עצמה. אין לאפליקציה גישה לקריאה, עריכה או מחיקה של יומנים או אירועים אחרים בחשבון הגוגל שלך.')}</li>
+                  <li>{t('privacy.section3.item3', 'כדי לאפשר פעולות אלו, אנו שומרים \'טוקן גישה\' (accessToken) עבור חשבונך במסד הנתונים שלנו (googleCalendarTokens). טוקן זה נשמר באופן מאובטח ונגיש רק לך, ואינו משמש לשום מטרה אחרת.')}</li>
                 </ul>
               </div>
             </div>
@@ -112,46 +112,164 @@ export const PrivacyPolicy: React.FC = () => {
 
           <section className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-3">
-              {t('privacy.section4.title', '4. העברת נתונים בינלאומית')}
+              {t('privacy.section4.title', '4. ניתוח שימוש ואנליטיקס')}
+            </h2>
+            <p className="text-gray-700 leading-relaxed mb-3">
+              {t('privacy.section4.intro', 'אנו משתמשים ב-Google Analytics 4 (GA4) לצורך ניתוח שימוש ושיפור השירות. מידע זה עוזר לנו להבין כיצד המשתמשים משתמשים באפליקציה ולשפר את החוויה.')}
+            </p>
+            <div className="space-y-3">
+              <div>
+                <strong className="text-gray-900">{t('privacy.section4.subtitle1', 'מידע הנאסף באופן אוטומטי:')}</strong>
+                <ul className="list-disc list-inside mt-2 space-y-1 text-gray-700">
+                  <li>{t('privacy.section4.item1', 'צפיות בדפים ומסלולי ניווט באפליקציה')}</li>
+                  <li>{t('privacy.section4.item2', 'מידע טכני כללי (סוג דפדפן, מערכת הפעלה, גודל מסך)')}</li>
+                  <li>{t('privacy.section4.item3', 'מיקום גיאוגרפי משוער (מדינה/עיר)')}</li>
+                  <li>{t('privacy.section4.item4', 'מקור התנועה (מאיפה הגעת לאתר)')}</li>
+                </ul>
+              </div>
+              <div>
+                <strong className="text-gray-900">{t('privacy.section4.subtitle2', 'אירועי שימוש מובחנים:')}</strong>
+                <ul className="list-disc list-inside mt-2 space-y-1 text-gray-700">
+                  <li>{t('privacy.section4.item5', 'הרשמות חדשות (ללא פרטים מזהים)')}</li>
+                  <li>{t('privacy.section4.item6', 'שימוש בתכונות כגון שיתוף לוואטסאפ, רשימת משאלות')}</li>
+                  <li>{t('privacy.section4.item7', 'העדפות שפה וסוג קלט תאריך')}</li>
+                </ul>
+              </div>
+              <div>
+                <strong className="text-gray-900">{t('privacy.section4.subtitle3', 'ניטור אבטחה:')}</strong>
+                <p className="text-gray-700 mt-1">
+                  {t('privacy.section4.security', 'לצורך מניעת שימוש לרעה, אנו עוקבים אחר פעולות בכמויות גדולות (כגון ייבוא או מחיקה של יותר מ-50 רשומות). מידע זה אינו כולל פרטים אישיים של אנשי הקשר.')}
+                </p>
+              </div>
+              <div>
+                <strong className="text-gray-900">{t('privacy.section4.subtitle4', 'מה איננו שולחים ל-Google Analytics:')}</strong>
+                <p className="text-gray-700 mt-1 mb-2">
+                  {t('privacy.section4.notCollectedIntro', 'חשוב להבדיל: הנתונים הבאים נשמרים במסד הנתונים שלנו לצורך השירות, אך אינם נשלחים לגוגל אנליטיקס:')}
+                </p>
+                <ul className="list-disc list-inside mt-2 space-y-1 text-gray-700">
+                  <li>{t('privacy.section4.notCollected1', 'שמות של אנשי קשר או ימי הולדת')}</li>
+                  <li>{t('privacy.section4.notCollected2', 'תאריכי לידה ספציפיים')}</li>
+                  <li>{t('privacy.section4.notCollected3', 'תוכן הערות או רשימות משאלות')}</li>
+                  <li>{t('privacy.section4.notCollected4', 'מידע מזהה אישי מפורש')}</li>
+                </ul>
+              </div>
+              <div>
+                <strong className="text-gray-900">{t('privacy.section4.subtitle5', 'ביטול מעקב:')}</strong>
+                <p className="text-gray-700 mt-1">
+                  {t('privacy.section4.optout', 'ניתן לבטל את המעקב באמצעות הגדרות הפרטיות בדפדפן, התקנת תוסף Google Analytics Opt-out, או שימוש במצב גלישה פרטית.')}
+                </p>
+              </div>
+              <div>
+                <strong className="text-gray-900">{t('privacy.section4.subtitle6', 'תקופת שמירה:')}</strong>
+                <p className="text-gray-700 mt-1">
+                  {t('privacy.section4.retention', 'נתוני האנליטיקס נשמרים ב-Google Analytics למשך 14 חודשים (ברירת המחדל של GA4) ולאחר מכן נמחקים אוטומטית.')}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">
+              {t('privacy.section5.title', '5. העברת נתונים בינלאומית')}
             </h2>
             <p className="text-gray-700 leading-relaxed">
-              {t('privacy.section4.content', 'השימוש בשירותי Firebase ו-Hebcal כרוך בכך שהמידע שלך עשוי להיות מאוחסן ומעובד בשרתים הממוקמים מחוץ לגבולות מדינת ישראל. אנו מסתמכים על כך שספקים אלו נוקטים באמצעי אבטחה העומדים בסטנדרטים בינלאומיים.')}
+              {t('privacy.section5.content', 'השימוש בשירותי Firebase ו-Google Analytics כרוך בכך שהמידע שלך עשוי להיות מאוחסן ומעובד בשרתים הממוקמים מחוץ לגבולות מדינת ישראל. אנו מסתמכים על כך שספקים אלו נוקטים באמצעי אבטחה העומדים בסטנדרטים בינלאומיים. יצוין כי חישוב התאריכים העבריים מתבצע מקומית בדפדפן ואינו כרוך בהעברת נתונים לשרתים חיצוניים.')}
             </p>
           </section>
 
           <section className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-3">
-              {t('privacy.section5.title', '5. שמירת מידע ומדיניות גיבויים')}
+              {t('privacy.section6.title', '6. שמירת מידע ומדיניות גיבויים')}
             </h2>
             <p className="text-gray-700 leading-relaxed">
-              {t('privacy.section5.content', 'אנו שומרים מידע אישי רק למשך הזמן הנחוץ למטרות שלשמן הוא נאסף. מידע אישי של חשבונך ונתוני ימי ההולדת שהזנת נשמרים במערכת הפעילה כל עוד חשבונך פעיל והנתונים לא נמחקו על ידך או על ידי מנהל בארגון שלך. אנו עשויים לשמור גיבויים של בסיס הנתונים לתקופה מוגבלת לצורכי שחזור במקרה של כשל טכני (Disaster Recovery). מידע שנמחק מהמערכת הפעילה עשוי להישאר בגיבויים אלו עד למחיקתם הסופית.')}
+              {t('privacy.section6.content', 'אנו שומרים מידע אישי רק למשך הזמן הנחוץ למטרות שלשמן הוא נאסף. מידע אישי של חשבונך ונתוני ימי ההולדת שהזנת נשמרים במערכת הפעילה כל עוד חשבונך פעיל והנתונים לא נמחקו על ידך. אנו עשויים לשמור גיבויים של בסיס הנתונים לתקופה מוגבלת לצורכי שחזור במקרה של כשל טכני (Disaster Recovery). מידע שנמחק מהמערכת הפעילה עשוי להישאר בגיבויים אלו עד למחיקתם הסופית.')}
             </p>
           </section>
 
           <section className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-3">
-              {t('privacy.section6.title', '6. פרטיות ילדים')}
+              {t('privacy.sectionSecurity.title', '7. אבטחת מידע וגישה טכנית')}
+            </h2>
+            <div className="text-gray-700 leading-relaxed space-y-3">
+              <div>
+                <strong className="text-gray-900">{t('privacy.sectionSecurity.subtitle1', 'אחסון מידע:')}</strong>
+                <p className="mt-1">
+                  {t('privacy.sectionSecurity.content1', 'המידע שלך מאוחסן בשרתי Google Firebase. הסיסמאות מוצפנות, אך תוכן המשתמש (שמות, תאריכי לידה, הערות) נשמר ללא הצפנה ברמת האפליקציה. הצפנה ברמת התשתית מתבצעת על ידי Firebase.')}
+                </p>
+              </div>
+              <div>
+                <strong className="text-gray-900">{t('privacy.sectionSecurity.subtitle2', 'גישה טכנית:')}</strong>
+                <p className="mt-1">
+                  {t('privacy.sectionSecurity.content2', 'לשקיפות מלאה: למפתח האפליקציה יש גישה טכנית למסד הנתונים ב-Firebase, כפי שמקובל בכל שירות ענן. גישה זו משמשת אך ורק לצורכי תפעול, תחזוקה, תמיכה טכנית ושיפור השירות. אין שימוש במידע זה למטרות שיווק, מכירה לצדדים שלישיים, או כל מטרה אחרת שאינה קשורה לתפעול השירות.')}
+                </p>
+              </div>
+              <div>
+                <strong className="text-gray-900">{t('privacy.sectionSecurity.subtitle3', 'אמצעי אבטחה:')}</strong>
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>{t('privacy.sectionSecurity.measure1', 'חיבור מאובטח (HTTPS) בכל הפעילות')}</li>
+                  <li>{t('privacy.sectionSecurity.measure2', 'אימות דו-שלבי באמצעות Firebase Authentication')}</li>
+                  <li>{t('privacy.sectionSecurity.measure3', 'כללי אבטחה (Security Rules) המגבילים גישה למידע רק למשתמש הרלוונטי')}</li>
+                  <li>{t('privacy.sectionSecurity.measure4', 'עדכוני אבטחה שוטפים של תשתיות האפליקציה')}</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">
+              {t('privacy.section7.title', '8. פרטיות ילדים')}
             </h2>
             <p className="text-gray-700 leading-relaxed">
-              {t('privacy.section6.content', 'השירות אינו מיועד לשימוש על ידי ילדים מתחת לגיל 18. איננו אוספים ביודעין מידע אישי מילדים מתחת לגיל זה.')}
+              {t('privacy.section7.content', 'השירות אינו מיועד לשימוש על ידי ילדים מתחת לגיל 18. איננו אוספים ביודעין מידע אישי מילדים מתחת לגיל זה.')}
             </p>
           </section>
 
           <section className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-3">
-              {t('privacy.section7.title', '7. זכויות המשתמש')}
+              {t('privacy.section8.title', '9. מסירת מידע, הסכמה וזכויות המשתמש')}
             </h2>
-            <p className="text-gray-700 leading-relaxed">
-              {t('privacy.section7.content', 'על פי חוק הגנת הפרטיות, אתה זכאי לעיין במידע האישי שלך, לבקש לתקן אותו או לבקש את מחיקתו. למימוש זכויות אלו, או בכל שאלה אחרת בנושאי פרטיות, אנא פנה אלינו באמצעות כתובת המייל:')} <a href="mailto:hebbirthday@gmail.com" className="text-blue-600 hover:text-blue-800 underline">hebbirthday@gmail.com</a>.
-            </p>
+            <div className="text-gray-700 leading-relaxed space-y-4">
+              <div>
+                <strong className="text-gray-900">{t('privacy.section8.subtitle1', 'האם חובה למסור את המידע?')}</strong>
+                <p className="mt-1">
+                  {t('privacy.section8.content1', 'מסירת המידע האישי (כגון שם, כתובת דוא"ל, ותאריכי ימי הולדת) תלויה ברצונך ובהסכמתך המלאה. עם זאת, היות ומטרת האפליקציה היא ניהול ושמירת מידע זה עבורך בענן, סירוב למסירת פרטי הזיהוי (רישום) ימנע מאיתנו את האפשרות לספק לך גישה למערכת.')}
+                </p>
+              </div>
+              <div>
+                <strong className="text-gray-900">{t('privacy.section8.subtitle2', 'השירותים הניתנים:')}</strong>
+                <p className="mt-1">
+                  {t('privacy.section8.content2', 'המידע הנאסף משמש לצורך ניהול רשימות ימי הולדת (לכלל המשתמשים) ולצורך סנכרון ותזכורות ביומן Google (למשתמשים הבוחרים לחבר את חשבון הגוגל שלהם בלבד).')}
+                </p>
+              </div>
+              <div>
+                <strong className="text-gray-900">{t('privacy.section8.subtitle3', 'זכויותיך (עיון, תיקון ומחיקה):')}</strong>
+                <p className="mt-1">
+                  {t('privacy.section8.content3', 'בהתאם לחוק הגנת הפרטיות, עומדת לך הזכות לעיין במידע המוחזק אודותיך ולבקש לתקנו או למוחקו. באפליקציית HebBirthday, זכויות אלו ממומשות באופן ישיר דרך הממשק:')}
+                </p>
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>{t('privacy.section8.right1', 'ניתן לעיין בכל המידע השמור אודותיך בכל עת דרך לוח הבקרה (Dashboard).')}</li>
+                  <li>{t('privacy.section8.right2', 'ניתן לתקן או לערוך כל פרט (שם, תאריך, קבוצה) באופן עצמאי דרך כפתורי העריכה.')}</li>
+                  <li>{t('privacy.section8.right3', 'למחיקת החשבון והמידע לצמיתות, ניתן להשתמש בכפתור המחיקה באזור ההגדרות או לפנות אלינו במייל.')}</li>
+                </ul>
+              </div>
+              <div>
+                <strong className="text-gray-900">{t('privacy.section8.subtitle4', 'ביטול מעקב אנליטיקס:')}</strong>
+                <p className="mt-1">
+                  {t('privacy.section8.content4', 'ניתן לבטל את איסוף נתוני האנליטיקס באמצעות הגדרות הדפדפן, התקנת תוסף Google Analytics Opt-out, או שימוש במצב גלישה פרטית.')}
+                </p>
+              </div>
+              <p className="mt-2">
+                {t('privacy.section8.contact', 'בכל שאלה נוספת בנושאי פרטיות, אנא פנה אלינו באמצעות כתובת המייל:')} <a href="mailto:hebbirthday@gmail.com" className="text-blue-600 hover:text-blue-800 underline">hebbirthday@gmail.com</a>.
+              </p>
+            </div>
           </section>
 
           <section className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-3">
-              {t('privacy.section8.title', '8. שינויים במדיניות הפרטיות')}
+              {t('privacy.section9.title', '10. שינויים במדיניות הפרטיות')}
             </h2>
             <p className="text-gray-700 leading-relaxed">
-              {t('privacy.section8.content', 'אנו שומרים לעצמנו את הזכות לעדכן מדיניות זו מעת לעת.')}
+              {t('privacy.section9.content', 'אנו שומרים לעצמנו את הזכות לעדכן מדיניות זו מעת לעת.')}
             </p>
           </section>
         </div>

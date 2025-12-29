@@ -980,15 +980,15 @@
       "desc": "HebBirthday נועדה לגשר על הפער בין הלוח העברי לטכנולוגיה של ימינו. במקום לחשב ידנית מתי יוצא יום ההולדת העברי בכל שנה, המערכת עושה זאת אוטומטית.",
       "mainFeatures": "פיצ'רים מרכזיים:",
       "feature1Title": "סנכרון חכם:",
-      "feature1Desc": "חישוב תאריכים עבריים ל-10 שנים קדימה וסנכרון ליומן Google נפרד.",
+      "feature1Desc": "חישוב תאריכים עבריים ל-10 שנים קדימה וסנכרון ליומן Google נפרד. (ייעודי)",
       "feature2Title": "העתקה לוואטסאפ:",
-      "feature2Desc": "ייצוא רשימת חוגגים לתיאור הקבוצה המשפחתית.",
-      "feature3Title": "ניהול מתנות:",
-      "feature3Desc": "רשימות משאלות אישיות לכל חוגג.",
+      "feature2Desc": "ייצוא רשימת ימי ההולדת החודש לתיאור קבוצת הווצאפ המשפחתית.",
+      "feature3Title": "פורטל מתנות:",
+      "feature3Desc": "ניהול ועריכת רשימות משאלות אישית לכל חוגג ללא צורך בהרשמה.",
       "feature4Title": "מחשבונים:",
-      "feature4Desc": "חישוב אוטומטי של דמי חנוכה ופורים לפי גילאים.",
+      "feature4Desc": "חישוב אוטומטי של דמי חנוכה ופורים לילדים ולאחיינים לפי גילאים.",
       "feature5Title": "איסוף מידע:",
-      "feature5Desc": "לינק שיתוף שמאפשר לבני משפחה להוסיף את עצמם למערכת."
+      "feature5Desc": "לינק זמני לשיתוף עם בני המשפחה המאפשר להם להוסיף את עצמם למערכת."
     },
     "section1": {
       "title": "איסוף המידע - 3 דרכים קלות",
@@ -1162,5 +1162,12 @@
       "text": "נבנה עם ❤️ בישראל 🇮🇱",
       "rights": "כל הזכויות שמורות"
     }
+  },
+  "cookies": {
+    "message": "אנחנו משתמשים בעוגיות לשיפור החוויה. השימוש באתר מהווה הסכמה לכך.",
+    "learnMore": "למידע נוסף",
+    "privacyLink": "מדיניות פרטיות",
+    "accept": "אישור והמשך",
+    "decline": "סגור"
   }
 }

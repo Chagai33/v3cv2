@@ -854,15 +854,15 @@
       "desc": "HebBirthday bridges the gap between the Hebrew calendar and modern technology. Instead of manually calculating when the Hebrew birthday falls each year, the system does it automatically.",
       "mainFeatures": "Main Features:",
       "feature1Title": "Smart Sync:",
-      "feature1Desc": "Calculate Hebrew dates for 10 years ahead and sync to a separate Google Calendar.",
+      "feature1Desc": "Calculate Hebrew dates for 10 years ahead and sync to a dedicated separate Google Calendar.",
       "feature2Title": "Copy to WhatsApp:",
-      "feature2Desc": "Export celebrants list to family group description.",
-      "feature3Title": "Gift Management:",
-      "feature3Desc": "Personal wishlists for each celebrant.",
+      "feature2Desc": "Export this month's birthday list to the family WhatsApp group description.",
+      "feature3Title": "Gift Portal:",
+      "feature3Desc": "Manage and edit personal wishlists for each celebrant without registration.",
       "feature4Title": "Calculators:",
-      "feature4Desc": "Automatic calculation of Hanukkah/Purim money by age groups.",
+      "feature4Desc": "Automatic calculation of Hanukkah/Purim money for kids and nephews by age groups.",
       "feature5Title": "Data Collection:",
-      "feature5Desc": "Share link that allows family members to add themselves to the system."
+      "feature5Desc": "Temporary share link for family members allowing them to add themselves to the system."
     },
     "section1": {
       "title": "Data Collection - 3 Easy Ways",
@@ -1036,5 +1036,12 @@
       "text": "Built with ❤️ in Israel 🇮🇱",
       "rights": "All rights reserved"
     }
+  },
+  "cookies": {
+    "message": "We use cookies to improve your experience. By using this site, you agree to this.",
+    "learnMore": "Learn more",
+    "privacyLink": "Privacy Policy",
+    "accept": "Accept & Continue",
+    "decline": "Close"
   }
 }

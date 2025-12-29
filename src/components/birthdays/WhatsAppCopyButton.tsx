@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Calendar, CalendarDays } from 'lucide-react';
+import { analyticsService } from '../../services/analytics.service';
 
 interface WhatsAppCopyButtonProps {
   onCopy: () => void;
@@ -41,6 +42,8 @@ export const WhatsAppCopyButton: React.FC<WhatsAppCopyButtonProps> = ({
   const handleQuickCopy = (format: 'hebrew' | 'gregorian' | 'both') => {
     onQuickCopy(format);
     setIsOpen(false);
+    // Track WhatsApp share
+    analyticsService.trackEvent('Share', 'Share_Greeting', format);
   };
 
   return (

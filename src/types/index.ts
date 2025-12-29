@@ -20,6 +20,7 @@ export interface Tenant {
   is_guest_portal_enabled?: boolean;
   sharedCalendarId?: string | null;
   sharedCalendarName?: string | null;
+  guest_last_acknowledged?: number;
   created_at: string;
   updated_at: string;
 }

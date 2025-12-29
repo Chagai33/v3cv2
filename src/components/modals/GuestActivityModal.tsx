@@ -136,8 +136,8 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
       return { all: list, new: newBirthdays, history: historyBirthdays };
   }, [birthdays, isNew]);
 
-  const handleMarkAsRead = () => {
-    markAsRead();
+  const handleMarkAsRead = async () => {
+    await markAsRead();
   };
 
   const toggleSelect = (id: string) => {
@@ -177,23 +177,13 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
     setSelectedIds(new Set());
   };
 
-  const handleMarkSelectedAsRead = () => {
+  const handleMarkSelectedAsRead = async () => {
     // Mark only selected new items as read by updating the timestamp
     const selectedNewBirthdays = guestBirthdays.new.filter(b => selectedIds.has(b.id));
     if (selectedNewBirthdays.length === 0) return;
     
-    // We'll mark them as read by calling markAsRead which updates the global timestamp
-    // But first we need to get the oldest creation date from selected items
-    const oldestSelectedTime = Math.min(
-      ...selectedNewBirthdays.map(b => new Date(b.created_at).getTime())
-    );
-    
-    // Set the acknowledged time to just before the oldest selected item
-    // This way, selected items become "old" but newer unselected items stay "new"
-    localStorage.setItem('hebbirthday_guest_last_acknowledged', (oldestSelectedTime - 1).toString());
-    
-    // Force a re-render by calling the markAsRead (even though we already updated localStorage)
-    markAsRead();
+    // Mark all as read - this updates both localStorage and Firestore
+    await markAsRead();
     setSelectedIds(new Set());
   };
 

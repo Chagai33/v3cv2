@@ -5,6 +5,7 @@ import { googleCalendarService } from '../services/googleCalendar.service';
 import { useAuth } from './AuthContext';
 import { GoogleCalendarContextType, SyncResult, BulkSyncResult, CleanupOrphansResult, PreviewDeletionResult, SyncHistoryItem } from '../types';
 import { logger } from '../utils/logger';
+import { analyticsService } from '../services/analytics.service';
 import { useToast } from './ToastContext';
 
 const GoogleCalendarContext = createContext<GoogleCalendarContextType | undefined>(undefined);
@@ -178,6 +179,15 @@ export const GoogleCalendarProvider: React.FC<GoogleCalendarProviderProps> = ({ 
 
       setLastSyncTime(new Date());
       setSyncStatus('IN_PROGRESS'); // Optimistic update
+      
+      // Track bulk sync - critical if >50 records (security monitoring)
+      const count = birthdayIds.length;
+      if (count > 50) {
+        analyticsService.trackEvent('Security', 'Abuse_Monitor', 'Bulk_Sync', {
+          value: count,
+          critical: true
+        });
+      }
       
       if (result.status === 'queued') {
           showToast(t('googleCalendar.syncStarted', { count: birthdayIds.length }), 'success');

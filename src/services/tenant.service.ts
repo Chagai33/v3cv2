@@ -54,6 +54,7 @@ export const tenantService = {
       created_at: this.timestampToString(data.created_at),
       updated_at: this.timestampToString(data.updated_at),
       default_calendar_preference: data.default_calendar_preference,
+      guest_last_acknowledged: data.guest_last_acknowledged,
     };
   },
 
@@ -95,6 +96,9 @@ export const tenantService = {
     }
     if (data.default_calendar_preference !== undefined) {
       updateData.default_calendar_preference = data.default_calendar_preference;
+    }
+    if (data.guest_last_acknowledged !== undefined) {
+      updateData.guest_last_acknowledged = data.guest_last_acknowledged;
     }
 
     await updateDoc(doc(db, 'tenants', tenantId), updateData);

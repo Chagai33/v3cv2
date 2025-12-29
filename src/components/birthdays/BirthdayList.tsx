@@ -25,6 +25,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { exportBirthdaysToCSV } from '../../utils/csvExport';
 import { AssignGroupModal } from '../modals/AssignGroupModal';
+import { analyticsService } from '../../services/analytics.service';
 
 interface BirthdayListProps {
   birthdays: Birthday[];
@@ -414,12 +415,22 @@ export const BirthdayList: React.FC<BirthdayListProps> = ({
   const handleBulkDelete = async () => {
     if (!window.confirm(t('common.confirmDelete'))) return;
 
+    const count = selectedIds.size;
     const deletePromises = Array.from(selectedIds).map((id) =>
       deleteBirthday.mutateAsync(id)
     );
 
     try {
       await Promise.all(deletePromises);
+      
+      // Track bulk delete - critical if >50 records (security monitoring)
+      if (count > 50) {
+        analyticsService.trackEvent('Security', 'Abuse_Monitor', 'Bulk_Delete', {
+          value: count,
+          critical: true
+        });
+      }
+      
       setSelectedIds(new Set());
     } catch (error) {
       logger.error('Error deleting birthdays:', error);

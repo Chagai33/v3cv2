@@ -9,6 +9,7 @@ import {
   useUpdateWishlistItem,
   useDeleteWishlistItem,
 } from '../../hooks/useWishlist';
+import { analyticsService } from '../../services/analytics.service';
 
 interface WishlistModalProps {
   isOpen: boolean;
@@ -30,6 +31,13 @@ export const WishlistModal = ({ isOpen, onClose, birthday }: WishlistModalProps)
     description: '',
     priority: 'medium' as WishlistPriority,
   });
+
+  // Track wishlist usage when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      analyticsService.trackEvent('Feature', 'Wishlist_Use', birthday.id);
+    }
+  }, [isOpen, birthday.id]);
 
   if (!isOpen) return null;
 

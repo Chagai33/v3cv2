@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { Mail, Lock, LogIn, Globe, Gift } from 'lucide-react';
+import { Mail, Lock, LogIn, Globe, Gift, BookOpen } from 'lucide-react';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 import { authService } from '../../services/auth.service';
 import { DeveloperCredit } from '../common/DeveloperCredit';
@@ -84,6 +84,13 @@ export const Login: React.FC = () => {
     <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 px-4 py-8 overflow-y-auto">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-6 sm:p-8 relative">
         <div className="flex justify-end items-center gap-1 mb-4">
+          <button
+            onClick={() => navigate('/guide')}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            title={t('guide.title')}
+          >
+            <BookOpen className="w-5 h-5" />
+          </button>
           <button
             onClick={() => navigate('/portal')}
             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"

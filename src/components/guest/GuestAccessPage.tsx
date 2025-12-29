@@ -15,6 +15,7 @@ import {
   X
 } from 'lucide-react';
 import { birthdayService } from '../../services/birthday.service';
+import { analyticsService } from '../../services/analytics.service';
 import { groupService } from '../../services/group.service';
 import { Birthday, BirthdayFormData } from '../../types';
 import { Footer } from '../common/Footer';
@@ -403,6 +404,9 @@ export const GuestAccessPage: React.FC = () => {
 
       setSubmitSuccess(true);
       setShowAddForm(false);
+      
+      // Track guest contribution (critical event)
+      analyticsService.trackEvent('Guest', 'Contribution', groupId, { critical: true });
       
       // Reset form
       setFormData({

@@ -3,8 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
-import { Mail, Lock, User, UserPlus, Globe, Gift } from 'lucide-react';
+import { Mail, Lock, User, UserPlus, Globe, Gift, BookOpen } from 'lucide-react';
 import { DeveloperCredit } from '../common/DeveloperCredit';
+import { analyticsService } from '../../services/analytics.service';
 
 export const Register: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -78,6 +79,8 @@ export const Register: React.FC = () => {
 
     try {
       await signUp(email, password, displayName);
+      // Track successful sign-up (critical event)
+      analyticsService.trackEvent('User', 'Sign_Up', 'Email', { critical: true });
       // Don't navigate here - let AuthContext's onAuthStateChanged handle it
     } catch (err: any) {
       setError(getErrorMessage(err.message));
@@ -96,7 +99,10 @@ export const Register: React.FC = () => {
     setIsSubmitting(true);
     try {
       const { isNewUser } = await signInWithGoogle();
-      if (!isNewUser) {
+      if (isNewUser) {
+        // Track successful sign-up via Google (critical event)
+        analyticsService.trackEvent('User', 'Sign_Up', 'Google', { critical: true });
+      } else {
         showToast(t('auth.accountExistsLoggingIn', 'Account exists, logging in...'), 'info');
       }
       // Redirect handled by useEffect
@@ -109,14 +115,24 @@ export const Register: React.FC = () => {
   const loading = isSubmitting || authLoading;
 
   const toggleLanguage = () => {
-    const newLang = i18n.language === 'he' ? 'en' : 'he';
+    const prevLang = i18n.language;
+    const newLang = prevLang === 'he' ? 'en' : 'he';
     i18n.changeLanguage(newLang);
+    // Track language switch
+    analyticsService.trackEvent('User', 'Change_Language', `${prevLang}_to_${newLang}`);
   };
 
   return (
     <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 py-8 overflow-y-auto">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-6 sm:p-8 relative">
         <div className="flex justify-end items-center gap-1 mb-4">
+            <button
+            onClick={() => navigate('/guide')}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            title={t('guide.title')}
+            >
+            <BookOpen className="w-5 h-5" />
+            </button>
             <button
             onClick={() => navigate('/portal')}
             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"

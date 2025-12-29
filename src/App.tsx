@@ -21,6 +21,8 @@ import { PrivacyPolicy } from './components/pages/PrivacyPolicy';
 import { UserGuide } from './components/pages/UserGuide';
 import { GuestPortal } from './components/guest/GuestPortal';
 import { GuestAccessPage } from './components/guest/GuestAccessPage';
+import { AnalyticsTracker } from './components/common/AnalyticsTracker';
+import { CookieConsentBanner } from './components/common/CookieConsentBanner';
 import './config/i18n';
 
 const queryClient = new QueryClient({
@@ -79,13 +81,15 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ToastProvider>
-          <GuestNotificationsProvider>
-            <AuthProvider>
-              <TenantProvider>
-              <GoogleCalendarProvider>
-                <GroupFilterProvider>
-                  <BrowserRouter>
+          <AuthProvider>
+            <TenantProvider>
+              <GuestNotificationsProvider>
+                <GoogleCalendarProvider>
+                  <GroupFilterProvider>
+                    <BrowserRouter>
                     <ActionUrlHandler />
+                    <AnalyticsTracker />
+                    <CookieConsentBanner />
                     <Routes>
                       <Route path="/login" element={<Login />} />
                       <Route path="/register" element={<Register />} />
@@ -121,15 +125,15 @@ function App() {
                       />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
-                  </BrowserRouter>
-                </GroupFilterProvider>
-              </GoogleCalendarProvider>
+                    </BrowserRouter>
+                  </GroupFilterProvider>
+                </GoogleCalendarProvider>
+              </GuestNotificationsProvider>
             </TenantProvider>
           </AuthProvider>
-        </GuestNotificationsProvider>
-      </ToastProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+        </ToastProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 }
 

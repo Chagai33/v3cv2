@@ -310,7 +310,11 @@ export const GoogleCalendarButton: React.FC<GoogleCalendarButtonProps> = ({ init
     }
     
     // בדיקה שנייה: האם היומן נוצר על ידי האפליקציה לפי description (יומנים שנוצרו לפני הוספת הפיצ'ר)
-    if (calendarDescription && calendarDescription.includes('יומן ימי הולדת - נוצר על ידי אפליקציית ימי הולדת עבריים')) {
+    // בודקים גם טקסט עברי וגם אנגלי
+    if (calendarDescription && (
+      calendarDescription.includes('יומן ימי הולדת - נוצר על ידי אפליקציית ימי הולדת עבריים') ||
+      calendarDescription.includes('Birthday Calendar - Created by Hebrew Birthday App')
+    )) {
       return true;
     }
     

@@ -15,6 +15,7 @@ import { X, Save, Plus, Info, AlertCircle, ChevronDown, ChevronUp } from 'lucide
 import { Toast } from '../common/Toast';
 import { useToast } from '../../hooks/useToast';
 import { HDate } from '@hebcal/core';
+import { analyticsService } from '../../services/analytics.service';
 
 // --- Hebrew Format Helpers ---
 const HEBREW_MONTHS_HE = [
@@ -379,6 +380,8 @@ export const BirthdayForm = ({
       } else {
         await createBirthday.mutateAsync(data);
         showSuccess(t('messages.birthdayAdded'));
+        // Track input preference for new birthdays
+        analyticsService.trackEvent('Birthday', 'Input_Preference', inputType === 'hebrew' ? 'Hebrew' : 'Gregorian');
       }
       onSuccess();
       onClose();

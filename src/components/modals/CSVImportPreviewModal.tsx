@@ -7,6 +7,7 @@ import { CSVBirthdayRow, ValidationResult } from '../../types';
 import { useGroups, useCreateGroup } from '../../hooks/useGroups';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
+import { analyticsService } from '../../services/analytics.service';
 
 interface CSVImportPreviewModalProps {
   isOpen: boolean;
@@ -232,6 +233,16 @@ export const CSVImportPreviewModal = ({
         return row;
       });
       await onConfirm(rowsToImport, defaultGroupId);
+      
+      // Track import - critical if >50 records (security monitoring)
+      const count = rowsToImport.length;
+      if (count > 50) {
+        analyticsService.trackEvent('Security', 'HighVolume_Import', 'CSV_Import', {
+          value: count,
+          critical: true
+        });
+      }
+      
       onClose();
     } catch (error) {
       logger.error('Import failed:', error);

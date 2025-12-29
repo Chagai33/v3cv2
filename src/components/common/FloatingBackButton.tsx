@@ -23,7 +23,8 @@ export const FloatingBackButton: React.FC<FloatingBackButtonProps> = ({
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
     if (onClick) {
       onClick();
     } else if (to) {
@@ -47,8 +48,10 @@ export const FloatingBackButton: React.FC<FloatingBackButtonProps> = ({
     <div className={`fixed ${positionClass} z-40 ${visibilityClass}`}>
       <button
         onClick={handleClick}
-        className={`p-4 bg-white/80 backdrop-blur-md border border-white/30 text-gray-700 rounded-full shadow-xl hover:bg-white/90 transition-all active:scale-95 ring-1 ring-black/5 ${className}`}
+        onTouchEnd={handleClick}
+        className={`p-4 bg-white/95 border border-gray-200 text-gray-700 rounded-full shadow-xl hover:bg-white transition-all active:scale-95 cursor-pointer touch-manipulation ${className}`}
         aria-label={t('common.back')}
+        style={{ WebkitTapHighlightColor: 'transparent' }}
       >
         {i18n.language === 'he' ? (
           <ArrowRight className="w-6 h-6" />
