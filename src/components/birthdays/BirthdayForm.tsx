@@ -919,12 +919,12 @@ export const BirthdayForm = ({
               >
                 {showAdvanced ? (
                   <>
-                    <span>פחות אפשרויות</span>
+                    <span>{t('common.lessOptions')}</span>
                     <ChevronUp className="w-4 h-4" />
                   </>
                 ) : (
                   <>
-                    <span>אפשרויות מתקדמות (לוח שנה, הערות)</span>
+                    <span>{t('common.advancedOptions')}</span>
                     <ChevronDown className="w-4 h-4" />
                   </>
                 )}

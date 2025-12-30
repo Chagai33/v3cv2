@@ -16,9 +16,7 @@ import { useRootGroups, useInitializeRootGroups, useGroups } from '../hooks/useG
 import { Birthday, DashboardStats } from '../types';
 import { Plus, Users, Calendar, TrendingUp, Cake, Upload, Info, ChevronDown, ChevronUp, BarChart3, FileText } from 'lucide-react';
 import { isWithinInterval, addWeeks, addMonths } from 'date-fns';
-import { openGoogleCalendarForBirthday } from '../utils/googleCalendar';
 import { wishlistService } from '../services/wishlist.service';
-import { groupService } from '../services/group.service';
 import { parseCSVFile } from '../utils/csvExport';
 import { birthdayService } from '../services/birthday.service';
 import { validateAndEnrichCSVData } from '../utils/csvValidation';
@@ -125,53 +123,6 @@ export const Dashboard = () => {
   const handleCloseForm = () => {
     setShowForm(false);
     setEditBirthday(null);
-  };
-
-  const handleAddToCalendar = async (birthday: Birthday) => {
-    try {
-      let wishlist: any[] = [];
-      try {
-        wishlist = await wishlistService.getItemsForBirthday(birthday.id, currentTenant?.id);
-      } catch (wishlistError) {
-        logger.warn('Could not load wishlist, continuing without it:', wishlistError);
-      }
-
-      // טעינת מידע על הקבוצה (לוקח את הקבוצה הראשונה)
-      let groupInfo: { parentName?: string; groupName: string } | undefined;
-      const groupIds = birthday.group_ids || (birthday.group_id ? [birthday.group_id] : []);
-      if (groupIds.length > 0) {
-        try {
-          const group = await groupService.getGroup(groupIds[0]);
-          if (group) {
-            if (group.parent_id) {
-              const parentGroup = await groupService.getGroup(group.parent_id);
-              if (parentGroup) {
-                groupInfo = {
-                  parentName: parentGroup.name,
-                  groupName: group.name
-                };
-              } else {
-                groupInfo = {
-                  groupName: group.name
-                };
-              }
-            } else {
-              groupInfo = {
-                groupName: group.name
-              };
-            }
-          }
-        } catch (groupError) {
-          logger.warn('Could not load group info, continuing without it:', groupError);
-        }
-      }
-
-      const language = (i18n.language === 'he' ? 'he' : 'en') as 'he' | 'en';
-      openGoogleCalendarForBirthday(birthday, language, wishlist, groupInfo);
-    } catch (error) {
-      logger.error('Error opening Google Calendar:', error);
-      showError(t('messages.calendarError'));
-    }
   };
 
   const handleCSVImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -407,7 +358,7 @@ export const Dashboard = () => {
                 <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-600 rounded-md flex items-center justify-center shadow-sm flex-shrink-0">
                   <Users className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                 </div>
-                <div className="text-right min-w-0">
+                <div className={`min-w-0 flex-1 ${i18n.language === 'he' ? 'text-right' : 'text-left'}`}>
                   <p className="text-[8px] leading-tight sm:text-xs text-blue-700 font-medium mb-0.5 truncate">
                     {t('dashboard.totalBirthdays')}
                   </p>
@@ -421,7 +372,7 @@ export const Dashboard = () => {
                 <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-600 rounded-md flex items-center justify-center shadow-sm flex-shrink-0">
                   <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                 </div>
-                <div className="text-right min-w-0">
+                <div className={`min-w-0 flex-1 ${i18n.language === 'he' ? 'text-right' : 'text-left'}`}>
                   <p className="text-[8px] leading-tight sm:text-xs text-green-700 font-medium mb-0.5 truncate">
                     {t('dashboard.upcomingThisWeek')}
                   </p>
@@ -437,7 +388,7 @@ export const Dashboard = () => {
                 <div className="w-6 h-6 sm:w-8 sm:h-8 bg-orange-600 rounded-md flex items-center justify-center shadow-sm flex-shrink-0">
                   <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                 </div>
-                <div className="text-right min-w-0">
+                <div className={`min-w-0 flex-1 ${i18n.language === 'he' ? 'text-right' : 'text-left'}`}>
                   <p className="text-[8px] leading-tight sm:text-xs text-orange-700 font-medium mb-0.5 truncate">
                     {t('dashboard.upcomingThisMonth')}
                   </p>
@@ -449,23 +400,23 @@ export const Dashboard = () => {
             </div>
 
             <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg shadow-sm border border-pink-200 p-1.5 sm:p-2.5 hover:shadow-md transition-all relative group">
-              <button
-                onClick={() => setShowZodiacStats(true)}
-                className="absolute top-1 left-1 p-0.5 text-pink-400 hover:text-pink-600 hover:bg-pink-200 rounded-full transition-colors"
-                title={t('zodiac.statsTitle', 'סטטיסטיקת מזלות')}
-              >
-                <Info className="w-3 h-3" />
-              </button>
               <div className="flex flex-row items-center justify-between gap-1">
                 <div className="w-6 h-6 sm:w-8 sm:h-8 bg-pink-600 rounded-md flex items-center justify-center shadow-sm flex-shrink-0">
                   <Cake className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                 </div>
-                <div className="text-right min-w-0">
+                <div className={`min-w-0 flex-1 ${i18n.language === 'he' ? 'text-right' : 'text-left'}`}>
                   <p className="text-[8px] leading-tight sm:text-xs text-pink-700 font-medium mb-0.5 truncate">{t('dashboard.statistics')}</p>
                   <p className="text-sm sm:text-xl font-bold text-pink-900">
                     {stats.maleCount}M / {stats.femaleCount}F
                   </p>
                 </div>
+                <button
+                  onClick={() => setShowZodiacStats(true)}
+                  className="p-0.5 text-pink-400 hover:text-pink-600 hover:bg-pink-200 rounded-full transition-colors flex-shrink-0"
+                  title={t('zodiac.statsTitle', 'סטטיסטיקת מזלות')}
+                >
+                  <Info className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
@@ -566,7 +517,6 @@ export const Dashboard = () => {
             <BirthdayList
               birthdays={birthdays}
               onEdit={handleEdit}
-              onAddToCalendar={handleAddToCalendar}
               duplicateIds={duplicateIds}
             />
           )}
@@ -607,6 +557,8 @@ export const Dashboard = () => {
         onAdd={() => setShowForm(true)}
         onImport={() => fileInputRef.current?.click()}
         onTextImport={() => setShowTextImport(true)}
+        onCalendar={() => setShowCalendarModal(true)}
+        onGroups={() => navigate('/groups')}
         hidden={showForm || showCSVPreview || showCalendarModal || showZodiacStats || showTextImport}
       />
 

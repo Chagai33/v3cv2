@@ -50,7 +50,7 @@ export const BirthdayQuickActionsModal: React.FC<BirthdayQuickActionsModalProps>
               {birthday.first_name} {birthday.last_name}
             </h3>
             <p className="text-sm text-gray-500 mt-1">
-              {t('common.actions', 'פעולות מהירות')}
+              {t('common.actions')}
             </p>
           </div>
           <button 
@@ -68,7 +68,6 @@ export const BirthdayQuickActionsModal: React.FC<BirthdayQuickActionsModalProps>
           <button
             onClick={() => {
               onWishlist(birthday);
-              onClose();
             }}
             className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 bg-white hover:bg-pink-50 hover:border-pink-200 transition-all group shadow-sm hover:shadow-md text-start"
           >
@@ -77,10 +76,10 @@ export const BirthdayQuickActionsModal: React.FC<BirthdayQuickActionsModalProps>
             </div>
             <div>
               <span className="block font-semibold text-gray-900 group-hover:text-pink-700">
-                {t('wishlist.title', 'רשימת מתנות')}
+                {t('wishlist.title')}
               </span>
               <span className="text-xs text-gray-500">
-                {t('wishlist.manage', 'ניהול פריטים ומשאלות')}
+                {t('wishlist.manage')}
               </span>
             </div>
           </button>
@@ -105,12 +104,12 @@ export const BirthdayQuickActionsModal: React.FC<BirthdayQuickActionsModalProps>
                
                <div className="flex-1 min-w-0">
                   <span className="block font-semibold text-gray-900 group-hover:text-blue-700">
-                    {t('googleCalendar.sync', 'סנכרון ליומן')}
+                    {t('googleCalendar.sync')}
                   </span>
                   <span className="text-xs text-gray-500 truncate">
                     {birthday.isSynced 
-                        ? t('googleCalendar.synced', 'מסונכרן עם Google') 
-                        : t('googleCalendar.notSynced', 'לחץ לסנכרון')}
+                        ? t('googleCalendar.synced') 
+                        : t('googleCalendar.notSynced')}
                   </span>
                </div>
             </div>
@@ -120,7 +119,6 @@ export const BirthdayQuickActionsModal: React.FC<BirthdayQuickActionsModalProps>
            <button
             onClick={() => {
               onEdit(birthday);
-              onClose();
             }}
             className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 bg-white hover:bg-orange-50 hover:border-orange-200 transition-all group shadow-sm hover:shadow-md text-start"
           >
@@ -129,10 +127,10 @@ export const BirthdayQuickActionsModal: React.FC<BirthdayQuickActionsModalProps>
             </div>
             <div>
               <span className="block font-semibold text-gray-900 group-hover:text-orange-700">
-                {t('common.edit', 'עריכה')}
+                {t('common.edit')}
               </span>
               <span className="text-xs text-gray-500">
-                {t('birthday.editDetails', 'עריכת פרטים אישיים')}
+                {t('birthday.editDetails')}
               </span>
             </div>
           </button>
@@ -150,19 +148,20 @@ export const BirthdayQuickActionsModal: React.FC<BirthdayQuickActionsModalProps>
                 className="text-red-500 hover:text-red-700 text-sm font-medium flex items-center gap-1.5 px-2 py-1 rounded hover:bg-red-50 transition-colors"
             >
                 <Trash2 className="w-4 h-4" />
-                {t('common.delete', 'מחיקה')}
+                {t('common.delete')}
             </button>
              <button
                 onClick={onClose}
                 className="text-gray-500 hover:text-gray-700 text-sm font-medium px-2 py-1"
             >
-                {t('common.close', 'סגור')}
+                {t('common.close')}
             </button>
         </div>
       </div>
     </div>
   );
 };
+
 
 
 

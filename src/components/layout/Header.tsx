@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useGroupFilter } from '../../contexts/GroupFilterContext';
 import { useGroups } from '../../hooks/useGroups';
 import { useBirthdays } from '../../hooks/useBirthdays';
-import { LogOut, FolderTree, Filter, Settings, ChevronDown, ChevronUp, Menu, Calculator, Bell, Globe, User } from 'lucide-react';
+import { LogOut, FolderTree, Filter, Settings, ChevronDown, ChevronUp, Menu, Calculator, Bell, User } from 'lucide-react';
 import { useTranslatedRootGroupName } from '../../utils/groupNameTranslator';
 import { TenantSettings } from '../settings/TenantSettings';
 import { GuestActivityModal } from '../modals/GuestActivityModal';
@@ -114,13 +114,13 @@ export const Header: React.FC = () => {
 
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-3 ms-auto">
-                <button
-                  onClick={toggleLanguage}
-                  className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  title={i18n.language === 'he' ? t('common.switchToEnglish') : t('common.switchToHebrew')}
-                >
-                  <Globe className="w-5 h-5" />
-                </button>
+              <button
+                onClick={toggleLanguage}
+                className="md:hidden px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border-0"
+                title={i18n.language === 'he' ? t('common.switchToEnglish') : t('common.switchToHebrew')}
+              >
+                {i18n.language === 'he' ? 'EN' : 'HE'}
+              </button>
                 <button
                   onClick={openAboutModal}
                   className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -165,10 +165,10 @@ export const Header: React.FC = () => {
               {/* החלפת שפה - ימין */}
               <button
                 onClick={toggleLanguage}
-                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border-0"
                 title={i18n.language === 'he' ? t('common.switchToEnglish') : t('common.switchToHebrew')}
               >
-                <Globe className="w-5 h-5" />
+                {i18n.language === 'he' ? 'EN' : 'HE'}
               </button>
               {/* המבורגר - אמצע */}
               <button
@@ -404,6 +404,15 @@ export const Header: React.FC = () => {
             </div>
 
             <div className="hidden md:flex items-center gap-2">
+              {/* כפתור החלפת שפה - דסקטופ */}
+              <button
+                onClick={toggleLanguage}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border-0"
+                title={i18n.language === 'he' ? t('common.switchToEnglish') : t('common.switchToHebrew')}
+              >
+                {i18n.language === 'he' ? 'EN' : 'HE'}
+              </button>
+
               {/* התראות אורחים - בצד ימין */}
               {user && (
                 <button

@@ -125,7 +125,7 @@ export const FutureBirthdaysModal: React.FC<FutureBirthdaysModalProps> = ({
           onClick={onClose}
           className="w-full mt-6 px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
         >
-          {t('common.close', 'סגור')}
+          {t('common.close')}
         </button>
       </div>
     </div>

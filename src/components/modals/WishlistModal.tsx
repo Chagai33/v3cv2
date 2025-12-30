@@ -1,5 +1,5 @@
 import { logger } from "../../utils/logger";
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Plus, Edit, Trash2, Gift, Star, AlertCircle, CheckCircle } from 'lucide-react';
 import { Birthday, WishlistItem, WishlistPriority } from '../../types';

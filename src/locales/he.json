@@ -419,6 +419,7 @@
     "fullName": "שם מלא",
     "addBirthday": "הוספת רשומה",
     "editBirthday": "ערוך יום הולדת",
+    "editDetails": "ערוך פרטים אישיים",
     "firstName": "שם פרטי",
     "lastName": "שם משפחה",
     "birthDate": "תאריך לידה",
@@ -602,7 +603,8 @@
     "medium": "בינונית",
     "low": "נמוכה",
     "empty": "אין פריטים ברשימת המשאלות",
-    "manageWishlist": "ניהול רשימת משאלות"
+    "manageWishlist": "ניהול רשימת משאלות",
+    "manage": "ניהול פריטים ומשאלות"
   },
   "dashboard": {
     "dashboard": "לוח בקרה",

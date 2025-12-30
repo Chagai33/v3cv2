@@ -140,8 +140,11 @@
     "history": "History",
     "deleteSelected": "Delete Selected",
     "markSelectedAsRead": "Mark Selected as Read",
+    "selectAll": "Select All",
     "deselectAll": "Deselect All",
     "linkCopied": "Link copied!",
+    "advancedOptions": "Advanced Options (calendar, notes)",
+    "lessOptions": "Less Options",
     "quickGuide": "Quick Guide",
     "fullGuide": "Full User Guide"
   },
@@ -355,9 +358,14 @@
     "fullName": "Full Name",
     "addBirthday": "Add Birthday",
     "editBirthday": "Edit Birthday",
+    "editDetails": "Edit personal details",
     "firstName": "First Name",
     "lastName": "Last Name",
     "birthDate": "Birth Date",
+    "next10Years": "Next 10 years",
+    "next": "Next",
+    "past": "Past",
+    "unassigned": "Unassigned",
     "afterSunset": "After Sunset",
     "gender": "Gender",
     "group": "Group",
@@ -446,6 +454,7 @@
   },
   "wishlist": {
     "title": "Wishlist",
+    "manage": "Manage items and wishes",
     "subtitle": "The perfect gift is the one you remembered. Note it here, and we'll remind you inside the calendar event.",
     "addItem": "Add Item",
     "editItem": "Edit Item",
@@ -470,7 +479,16 @@
     "upcomingGregorian": "Upcoming Gregorian",
     "upcomingHebrew": "Upcoming Hebrew",
     "maleCount": "Male",
-    "femaleCount": "Female"
+    "femaleCount": "Female",
+    "guestNotifications": "Guest Notifications",
+    "recentGuestActivity": "Recent Guest Activity",
+    "guestActivitySubtitle": "Birthdays added by guests",
+    "noGuestActivity": "No recent guest activity",
+    "guestActivityWillAppearHere": "Birthdays added by guests will appear here",
+    "guestActivityInfo": "These birthdays were added by guests through a sharing link. You can delete them if needed.",
+    "undoAdd": "Undo Add",
+    "undoAddConfirm": "Are you sure you want to delete this birthday that was added by a guest?",
+    "deleteSelectedConfirm": "Are you sure you want to delete {{count}} records?"
   },
   "modals": {
     "duplicateVerification": {
@@ -515,6 +533,7 @@
   "import": {
     "pasteTitle": "Paste Birthday List",
     "pasteSubtitle": "Copy a list from WhatsApp, notes, or anywhere else",
+    "backToImport": "Back to Import",
     "pasteHowTo": "How does it work?",
     "pasteInstructionDate": "Each line should contain a name and date (e.g., John Smith 15/03/1990)",
     "pasteInstructionFormat": "Supports formats: DD/MM/YYYY, DD.MM.YY, YYYY-MM-DD, and more",

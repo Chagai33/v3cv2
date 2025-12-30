@@ -91,7 +91,7 @@ export const TextImportModal: React.FC<TextImportModalProps> = ({
         {/* Footer */}
         <div className="p-6 border-t border-gray-200 bg-gray-50">
           <p className="text-xs text-gray-500 text-center">
-            {t('import.backToImport', 'חזור לייבוא')} •{' '}
+            {t('import.backToImport')} •{' '}
             <button
               onClick={onClose}
               disabled={isAnalyzing}

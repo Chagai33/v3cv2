@@ -97,7 +97,7 @@ const GuestActivityItem: React.FC<GuestActivityItemProps> = ({
         onClick={() => onDelete(birthday)}
         disabled={deletingId === birthday.id}
         className="p-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-        title={t('dashboard.undoAdd', 'בטל הוספה')}
+        title={t('dashboard.undoAdd')}
       >
         {deletingId === birthday.id ? (
           <Loader className="w-5 h-5 animate-spin" />
@@ -162,7 +162,7 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
     if (selectedIds.size === 0) return;
     
     if (!window.confirm(
-      t('dashboard.deleteSelectedConfirm', `האם אתה בטוח שברצונך למחוק ${selectedIds.size} רשומות?`)
+      t('dashboard.deleteSelectedConfirm', { count: selectedIds.size })
     )) {
       return;
     }
@@ -190,9 +190,7 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
   const selectedNewCount = guestBirthdays.new.filter(b => selectedIds.has(b.id)).length;
 
   const handleDelete = async (birthday: Birthday) => {
-    if (!window.confirm(
-      t('dashboard.undoAddConfirm', 'האם אתה בטוח שברצונך למחוק את יום ההולדת הזה שנוסף על ידי אורח?')
-    )) {
+    if (!window.confirm(t('dashboard.undoAddConfirm'))) {
       return;
     }
 
@@ -252,10 +250,10 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                {t('dashboard.recentGuestActivity', 'פעילות אורחים אחרונה')}
+                {t('dashboard.recentGuestActivity')}
               </h2>
               <p className="text-sm text-gray-600">
-                {t('dashboard.guestActivitySubtitle', 'ימי הולדת שנוספו על ידי אורחים')}
+                {t('dashboard.guestActivitySubtitle')}
               </p>
             </div>
           </div>
@@ -268,7 +266,7 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
                   className="flex items-center gap-1.5 text-xs bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1.5 rounded-full font-medium transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>{t('common.deleteSelected', 'מחק נבחרים')} ({selectedIds.size})</span>
+                  <span>{t('common.deleteSelected')} ({selectedIds.size})</span>
                 </button>
                 {selectedNewCount > 0 && (
                   <button
@@ -276,7 +274,7 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
                     className="flex items-center gap-1.5 text-xs bg-green-100 text-green-700 hover:bg-green-200 px-3 py-1.5 rounded-full font-medium transition-colors"
                   >
                     <CheckCheck className="w-3.5 h-3.5" />
-                    <span>{t('common.markSelectedAsRead', 'סמן נבחרים כנקרא')} ({selectedNewCount})</span>
+                    <span>{t('common.markSelectedAsRead')} ({selectedNewCount})</span>
                   </button>
                 )}
               </>
@@ -285,10 +283,10 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
               <button
                 onClick={handleMarkAsRead}
                 className="flex items-center gap-1.5 text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-full font-medium transition-colors"
-                title={t('common.markAsRead', 'סמן הכל כנקרא')}
+                title={t('common.markAsRead')}
               >
                 <CheckCheck className="w-3.5 h-3.5" />
-                <span>{t('common.markAsRead', 'סמן הכל כנקרא')}</span>
+                <span>{t('common.markAsRead')}</span>
               </button>
             )}
             <button
@@ -309,10 +307,10 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
                 <UserCircle className="w-10 h-10 text-gray-400" />
               </div>
               <p className="text-gray-900 font-semibold text-lg mb-2">
-                {t('dashboard.noGuestActivity', 'אין פעילות אורחים אחרונה')}
+                {t('dashboard.noGuestActivity')}
               </p>
               <p className="text-sm text-gray-500 max-w-md">
-                {t('dashboard.guestActivityWillAppearHere', 'ימי הולדת שיוספו על ידי אורחים יופיעו כאן')}
+                {t('dashboard.guestActivityWillAppearHere')}
               </p>
             </div>
           ) : (
@@ -331,13 +329,13 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
                   />
                   <span>
                     {selectedIds.size === guestBirthdays.all.length && guestBirthdays.all.length > 0
-                      ? t('common.deselectAll', 'בטל בחירה')
-                      : t('common.selectAll', 'בחר הכל')}
+                      ? t('common.deselectAll')
+                      : t('common.selectAll')}
                   </span>
                 </button>
                 {selectedIds.size > 0 && (
                   <span className="text-sm text-gray-600">
-                    {selectedIds.size} {t('common.selected', 'נבחרו')}
+                    {selectedIds.size} {t('common.selected')}
                   </span>
                 )}
               </div>
@@ -348,7 +346,7 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                    <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">{t('common.new', 'חדש')}</h3>
+                    <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">{t('common.new')}</h3>
                   </div>
                   {guestBirthdays.new.map((birthday) => (
                     <GuestActivityItem 
@@ -378,7 +376,7 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
                   >
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wider">
-                        {t('common.history', 'היסטוריה')}
+                        {t('common.history')}
                       </h3>
                       <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-semibold">
                         {guestBirthdays.history.length}
@@ -422,7 +420,7 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
             <div className="mt-6 flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
               <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-blue-700">
-                {t('dashboard.guestActivityInfo', 'ימי הולדת אלו נוספו על ידי אורחים דרך קישור שיתוף. תוכל למחוק אותם במידת הצורך.')}
+                {t('dashboard.guestActivityInfo')}
               </p>
             </div>
           )}
@@ -434,7 +432,7 @@ export const GuestActivityModal: React.FC<GuestActivityModalProps> = ({ isOpen, 
             onClick={onClose}
             className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
           >
-            {t('common.close', 'סגור')}
+            {t('common.close')}
           </button>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { X, Globe, MessageSquare, LogOut, Settings, Gift, Calculator, Bell, BookOpen, Users, Calendar } from 'lucide-react';
+import { X, Globe, MessageSquare, Gift, Calculator, Bell, BookOpen, Users, Calendar } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGuestNotifications } from '../../contexts/GuestNotificationsContext';
 import { useBirthdays } from '../../hooks/useBirthdays';
@@ -20,10 +20,9 @@ interface AboutModalProps {
 
 export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
   const { t, i18n } = useTranslation();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { isNew } = useGuestNotifications();
   const { data: birthdays = [] } = useBirthdays();
-  const navigate = useNavigate();
   const [showSettings, setShowSettings] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showGuestActivity, setShowGuestActivity] = useState(false);
@@ -35,12 +34,6 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
   const guestBirthdaysCount = useMemo(() => {
     return birthdays.filter(b => b.created_by_guest === true && isNew(b.created_at)).length;
   }, [birthdays, isNew]);
-
-  const handleSignOut = async () => {
-    await signOut();
-    onClose();
-    navigate('/login');
-  };
 
   const toggleLanguage = () => {
     const newLang = i18n.language === 'he' ? 'en' : 'he';
@@ -112,7 +105,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                 className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors w-full text-start relative"
               >
                 <Bell className="w-5 h-5 text-indigo-600" />
-                <span className="text-sm font-medium">{t('dashboard.guestNotifications', 'התראות אורחים')}</span>
+                <span className="text-sm font-medium">{t('dashboard.guestNotifications')}</span>
                 {guestBirthdaysCount > 0 && (
                   <span className="mr-auto bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
                     {guestBirthdaysCount}
@@ -141,7 +134,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                 className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors w-full text-start"
               >
                 <Gift className="w-5 h-5 text-purple-500" />
-                <span className="text-sm font-medium">{t('guestPortal.manage', 'ניהול פורטל מתנות')}</span>
+                <span className="text-sm font-medium">{t('guestPortal.manage')}</span>
               </button>
             )}
 
@@ -157,13 +150,16 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               </Link>
             )}
 
+            {/* Divider לפני המדריכים */}
+            <div className="h-px bg-gray-100 my-2" />
+
             {/* מדריך מקוצר */}
             <button
               onClick={() => setShowInfoModal(true)}
               className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors w-full text-start"
             >
               <BookOpen className="w-5 h-5 text-teal-600" />
-              <span className="text-sm font-medium">{t('common.quickGuide', 'מדריך מקוצר')}</span>
+              <span className="text-sm font-medium">{t('common.quickGuide')}</span>
             </button>
 
             {/* המדריך המלא */}
@@ -173,29 +169,8 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
             >
               <BookOpen className="w-5 h-5 text-purple-600" />
-              <span className="text-sm font-medium">{t('common.fullGuide', 'המדריך המלא')}</span>
+              <span className="text-sm font-medium">{t('common.fullGuide')}</span>
             </Link>
-
-            {/* הגדרות */}
-            {user && (
-              <button
-                onClick={() => setShowSettings(true)}
-                className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors w-full text-start"
-              >
-                <Settings className="w-5 h-5 text-gray-600" />
-                <span className="text-sm font-medium">{t('tenant.settings')}</span>
-              </button>
-            )}
-
-            {user && (
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors w-full text-start mt-2"
-              >
-                <LogOut className="w-5 h-5" />
-                <span className="text-sm font-medium">{t('auth.signOut')}</span>
-              </button>
-            )}
           </div>
 
           <div className="pt-4 border-t border-gray-100">
@@ -205,7 +180,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                 onClick={onClose}
                 className="hover:text-gray-700 transition-colors"
               >
-                {t('footer.termsOfUse', 'תנאי שימוש')}
+                {t('footer.termsOfUse')}
               </Link>
               <span>•</span>
               <Link
@@ -213,7 +188,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                 onClick={onClose}
                 className="hover:text-gray-700 transition-colors"
               >
-                {t('footer.privacyPolicy', 'מדיניות פרטיות')}
+                {t('footer.privacyPolicy')}
               </Link>
               <span>•</span>
               <a
@@ -222,7 +197,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                 rel="noopener noreferrer"
                 className="hover:text-gray-700 transition-colors"
               >
-                {t('footer.feedback', 'משוב')}
+                {t('footer.feedback')}
               </a>
             </div>
             <div className="text-center text-xs text-gray-400">
