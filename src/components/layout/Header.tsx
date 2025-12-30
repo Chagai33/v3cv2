@@ -33,6 +33,7 @@ export const Header: React.FC = () => {
   const filterRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const mobileUserMenuRef = useRef<HTMLDivElement>(null);
 
   const toggleLanguage = () => {
     const newLang = i18n.language === 'en' ? 'he' : 'en';
@@ -49,7 +50,9 @@ export const Header: React.FC = () => {
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
         setMobileMenuOpen(false);
       }
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+      const clickedInDesktopMenu = userMenuRef.current?.contains(event.target as Node);
+      const clickedInMobileMenu = mobileUserMenuRef.current?.contains(event.target as Node);
+      if (!clickedInDesktopMenu && !clickedInMobileMenu) {
         setShowUserMenu(false);
       }
     }
@@ -158,7 +161,8 @@ export const Header: React.FC = () => {
           </div>
 
             <div className="flex items-center gap-2">
-            <div className="flex items-center gap-3 ms-auto md:hidden">
+            <div className="flex items-center gap-2 ms-auto md:hidden">
+              {/* החלפת שפה - ימין */}
               <button
                 onClick={toggleLanguage}
                 className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -166,12 +170,94 @@ export const Header: React.FC = () => {
               >
                 <Globe className="w-5 h-5" />
               </button>
+              {/* המבורגר - אמצע */}
               <button
                 onClick={openAboutModal}
                 className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <Menu className="w-6 h-6" />
+                <Menu className="w-5 h-5" />
               </button>
+              {/* אווטאר - שמאל */}
+              {user && (
+                <div className="relative" ref={mobileUserMenuRef}>
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    {user.photo_url ? (
+                      <img
+                        src={user.photo_url}
+                        alt={user.display_name || 'User'}
+                        className="w-7 h-7 rounded-full object-cover border-2 border-gray-200"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                        <User className="w-3.5 h-3.5 text-white" />
+                      </div>
+                    )}
+                  </button>
+
+                  {/* User Dropdown Menu - Mobile */}
+                  {showUserMenu && (
+                    <div className="absolute top-full mt-2 end-0 bg-white border border-gray-200 rounded-xl shadow-lg py-2 z-50 min-w-[200px]">
+                      {/* פרטי משתמש */}
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <div className="flex items-center gap-3">
+                          {user.photo_url ? (
+                            <img
+                              src={user.photo_url}
+                              alt={user.display_name || 'User'}
+                              className="w-9 h-9 rounded-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                              <User className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {user.display_name || t('common.user', 'משתמש')}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {user.email}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* פעולות */}
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            setShowSettings(true);
+                            setShowUserMenu(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Settings className="w-4 h-4 text-gray-500" />
+                          <span>{t('tenant.settings')}</span>
+                        </button>
+                      </div>
+
+                      {/* התנתקות */}
+                      <div className="border-t border-gray-100 pt-1">
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            handleSignOut();
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>{t('auth.signOut')}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* תפריט ביניים (Tablet/Small Laptop) */}
