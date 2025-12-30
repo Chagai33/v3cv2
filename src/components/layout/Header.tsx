@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useGroupFilter } from '../../contexts/GroupFilterContext';
 import { useGroups } from '../../hooks/useGroups';
 import { useBirthdays } from '../../hooks/useBirthdays';
-import { LogOut, FolderTree, Filter, Settings, ChevronDown, ChevronUp, Menu, Calculator, Bell, Globe } from 'lucide-react';
+import { LogOut, FolderTree, Filter, Settings, ChevronDown, ChevronUp, Menu, Calculator, Bell, Globe, User } from 'lucide-react';
 import { useTranslatedRootGroupName } from '../../utils/groupNameTranslator';
 import { TenantSettings } from '../settings/TenantSettings';
 import { GuestActivityModal } from '../modals/GuestActivityModal';
@@ -26,11 +26,13 @@ export const Header: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showGuestActivity, setShowGuestActivity] = useState(false);
   const [showGroupsPanel, setShowGroupsPanel] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const { selectedGroupIds, toggleGroupFilter, clearGroupFilters } = useGroupFilter();
   const { data: allGroups = [] } = useGroups();
   const { data: birthdays = [] } = useBirthdays();
   const filterRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const toggleLanguage = () => {
     const newLang = i18n.language === 'en' ? 'he' : 'en';
@@ -47,15 +49,18 @@ export const Header: React.FC = () => {
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
         setMobileMenuOpen(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
     }
 
-    if (showGroupFilter || mobileMenuOpen) {
+    if (showGroupFilter || mobileMenuOpen || showUserMenu) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showGroupFilter, mobileMenuOpen]);
+  }, [showGroupFilter, mobileMenuOpen, showUserMenu]);
   
   // Check if we're on a public page (terms, privacy) without user
   const isPublicPage = !user && (location.pathname === '/terms' || location.pathname === '/privacy');
@@ -106,15 +111,6 @@ export const Header: React.FC = () => {
 
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-3 ms-auto">
-                <a
-                  href="https://www.linkedin.com/in/chagai-yechiel/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hidden md:flex flex-col items-start text-[10px] leading-tight text-gray-500 hover:text-gray-700 transition-colors whitespace-nowrap"
-                >
-                  <span>{t('common.developedBy')}</span>
-                  <span>{i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}</span>
-                </a>
                 <button
                   onClick={toggleLanguage}
                   className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -162,29 +158,20 @@ export const Header: React.FC = () => {
           </div>
 
             <div className="flex items-center gap-2">
-            <div className="flex items-center gap-3 ms-auto">
-              <a
-                href="https://www.linkedin.com/in/chagai-yechiel/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hidden md:flex flex-col items-start text-[10px] leading-tight text-gray-500 hover:text-gray-700 transition-colors whitespace-nowrap"
-              >
-                <span>{t('common.developedBy')}</span>
-                <span>{i18n.language === 'he' ? 'חגי יחיאל' : 'Chagai Yechiel'}</span>
-              </a>
+            <div className="flex items-center gap-3 ms-auto md:hidden">
               <button
                 onClick={toggleLanguage}
-                className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 title={i18n.language === 'he' ? t('common.switchToEnglish') : t('common.switchToHebrew')}
               >
                 <Globe className="w-5 h-5" />
               </button>
-                <button
-                  onClick={openAboutModal}
-                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
+              <button
+                onClick={openAboutModal}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
             </div>
 
             {/* תפריט ביניים (Tablet/Small Laptop) */}
@@ -331,99 +318,11 @@ export const Header: React.FC = () => {
             </div>
 
             <div className="hidden md:flex items-center gap-2">
-            {user && (
-              <>
-                <span className="text-sm text-gray-600 px-2">
-                  {user.display_name || user.email}
-                </span>
-                <div className="h-6 w-px bg-gray-300" />
-              </>
-            )}
-
-            {user && location.pathname === '/' && (
-              <>
-                <div className="relative" ref={filterRef}>
-                  <button
-                    onClick={() => setShowGroupFilter(!showGroupFilter)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
-                      selectedGroupIds.length > 0
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Filter className="w-4 h-4" />
-                    <span>{t('groups.filterByGroup')}</span>
-                    {selectedGroupIds.length > 0 && (
-                      <span className="ml-1 px-1.5 py-0.5 bg-white text-blue-600 text-xs font-bold rounded-full">
-                        {selectedGroupIds.length}
-                      </span>
-                    )}
-                  </button>
-
-                  {showGroupFilter && (
-                    <GroupFilterDropdown
-                      allGroups={allGroups}
-                      selectedGroupIds={selectedGroupIds}
-                      toggleGroupFilter={toggleGroupFilter}
-                      clearGroupFilters={clearGroupFilters}
-                      countsByGroup={countsByGroup}
-                      onClose={() => setShowGroupFilter(false)}
-                    />
-                  )}
-                </div>
-                <div className="h-6 w-px bg-gray-300" />
-              </>
-            )}
-
-            {user && (
-              <>
-                <button
-                  onClick={() => setShowGroupsPanel(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  <FolderTree className="w-4 h-4" />
-                  <span>{t('groups.manageGroups')}</span>
-                </button>
-                <div className="h-6 w-px bg-gray-300" />
-              </>
-            )}
-
-            {user && (
-              <>
-                <button
-                  onClick={() => {
-                    if (location.pathname === '/gelt') {
-                      navigate('/');
-                    } else {
-                      navigate('/gelt');
-                    }
-                  }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${
-                    location.pathname === '/gelt'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Calculator className="w-4 h-4" />
-                  <span>{t('gelt.title')}</span>
-                </button>
-                <div className="h-6 w-px bg-gray-300" />
-              </>
-            )}
-
-            {user && (
-              <>
-                <button
-                  onClick={() => setShowSettings(true)}
-                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  title={t('tenant.settings')}
-                >
-                  <Settings className="w-5 h-5" />
-                </button>
-                <div className="h-6 w-px bg-gray-300" />
+              {/* התראות אורחים - בצד ימין */}
+              {user && (
                 <button
                   onClick={() => setShowGuestActivity(true)}
-                  className="hidden md:flex relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                   title={t('dashboard.guestNotifications', 'התראות אורחים')}
                 >
                   <Bell className="w-5 h-5" />
@@ -431,17 +330,99 @@ export const Header: React.FC = () => {
                     <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
                   )}
                 </button>
-                <div className="hidden md:block h-6 w-px bg-gray-300" />
-                <button
-                  onClick={handleSignOut}
-                  className="flex items-center gap-2 px-3 py-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>{t('auth.signOut')}</span>
-                </button>
-              </>
-            )}
-          </div>
+              )}
+
+              {/* תפריט המבורגר - צמוד לאווטאר */}
+              <button
+                onClick={openAboutModal}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+
+              {/* תפריט משתמש עם אווטאר - בצד שמאל */}
+              {user && (
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    {user.photo_url ? (
+                      <img
+                        src={user.photo_url}
+                        alt={user.display_name || 'User'}
+                        className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                        <User className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                    <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* User Dropdown Menu */}
+                  {showUserMenu && (
+                    <div className="absolute top-full mt-2 end-0 bg-white border border-gray-200 rounded-xl shadow-lg py-2 z-50 min-w-[220px]">
+                      {/* פרטי משתמש */}
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <div className="flex items-center gap-3">
+                          {user.photo_url ? (
+                            <img
+                              src={user.photo_url}
+                              alt={user.display_name || 'User'}
+                              className="w-10 h-10 rounded-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                              <User className="w-5 h-5 text-white" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {user.display_name || t('common.user', 'משתמש')}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {user.email}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* פעולות */}
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            setShowSettings(true);
+                            setShowUserMenu(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Settings className="w-4 h-4 text-gray-500" />
+                          <span>{t('tenant.settings')}</span>
+                        </button>
+                      </div>
+
+                      {/* התנתקות */}
+                      <div className="border-t border-gray-100 pt-1">
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            handleSignOut();
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>{t('auth.signOut')}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
         </div>
       </div>
     </div>
